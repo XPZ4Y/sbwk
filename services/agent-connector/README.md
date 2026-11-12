@@ -1,181 +1,158 @@
-# Sleepy Bot — Agent Connector
+# Sleepy Bot — Agent Connector (rollback architecture)
 
-A read-only integration microservice that allows Agent Core to inspect application infrastructure and retrieve diagnostic evidence.
+Read-only integration service called by **Agent Core**. In the current architecture, Agent Connector connects to only three monitored dependencies:
 
-## Responsibilities
+- Database
+- Authentication service
+- Other third-party API(s)
 
-- Exposes a tool catalogue to Agent Core.
-- Executes allowlisted, read-only diagnostic tools.
-- Connects to server, database-monitor, authentication, external API, Git and CI/CD interfaces.
-- Normalizes results into a common evidence format.
-- Handles timeouts, unreachable services and partial failures.
-- Supports mock mode for development and demonstrations.
+The Client calls the `Middleware: sleepy_bot` layer. Middleware routes agent work to Agent Core. Agent Core calls this connector over HTTP when it needs dependency diagnostics. The application Server, Codebase, CI/CD pipeline, Developer Team and Notification components are separate components and are deliberately not implemented inside this connector.
 
-It does **not** diagnose root causes, approve actions, restart services, change configuration or roll back deployments. Those responsibilities belong to Agent Core and the separate safety/remediation module.
+## Responsibilities and boundaries
+
+- Expose a discoverable catalogue of read-only diagnostic tools.
+- Retrieve health, metrics and logs from database, auth and external API integrations.
+- Validate common response contracts and return normalized evidence.
+- Support mock incident scenarios for development and demos.
+- Never change infrastructure, restart services, deploy code, or execute remediation.
+- Never call the Core Agent or an LLM. Agent Core is the caller.
 
 ## Requirements
 
 - Node.js 20+
 - npm
 
-## Run locally
+## Setup
 
 ```bash
 npm install
 cp .env.example .env
 ```
 
-Set a strong `CONNECTOR_API_TOKEN` in `.env`.
-
-Start in mock mode:
+Set `CONNECTOR_API_TOKEN` in `.env` to a unique random value of at least 32 characters. Keep `.env` private and do not commit it. Start in mock mode:
 
 ```bash
 npm run dev
 ```
 
-The service listens on `http://localhost:4100`.
+The service listens on `http://localhost:4100` by default.
 
-## Authentication
+## Verification
 
-All `/connector/*` endpoints require:
+```bash
+npm run typecheck
+npm test
+npm run build
+```
+
+## API for Agent Core
+
+All `/connector/*` routes require `Authorization: Bearer <CONNECTOR_API_TOKEN>`.
+
+### Health (connector's own liveness)
 
 ```http
-Authorization: Bearer YOUR_CONNECTOR_API_TOKEN
+GET /health
 ```
 
-The public `/health` endpoint is intentionally unauthenticated for container health checks.
+### Discover tools
 
-## Endpoints
+```http
+GET /connector/tools
+GET /connector/tools?format=openai
+```
 
-### `GET /health`
+The native catalogue includes tool names, descriptions, input schemas, read permission and output descriptions. `format=openai` returns function-tool definitions suitable for providers that accept OpenAI-style `tools` arrays. Agent Core remains responsible for deciding which tools to call and interpreting evidence.
 
-Liveness check. No authentication required.
+### Execute one tool
 
-### `GET /connector/status`
+```http
+POST /connector/execute
+Content-Type: application/json
 
-Returns connector mode, read-only status and supported services.
+{"tool":"inspect_database_health","arguments":{}}
+```
 
-### `GET /connector/tools`
+Available tools:
 
-Returns the registered diagnostic tool catalogue.
+- `inspect_database_health`, `inspect_database_metrics`, `inspect_database_logs`
+- `inspect_auth_health`, `inspect_auth_metrics`, `inspect_auth_logs`
+- `inspect_external_api_health`, `inspect_external_api_metrics`, `inspect_external_api_logs`
 
-### `POST /connector/execute`
+### Batch investigation
 
-Execute one allowlisted diagnostic tool.
+```http
+POST /connector/investigate
+Content-Type: application/json
 
-Example:
+{"services":["database","auth","external_api"]}
+```
 
+The connector runs supported checks with bounded concurrency and returns individual results plus a status summary. Partial failures are represented per check; one unreachable dependency does not erase other results.
+
+### Mock scenario controls
+
+These routes are available only when `CONNECTOR_MODE=mock`:
+
+```http
+GET /connector/demo/scenario
+POST /connector/demo/scenario
+Content-Type: application/json
+
+{"scenario":"database_failure"}
+```
+
+Scenarios: `normal`, `database_failure`, `external_api_failure`.
+
+## Live integration contract
+
+Set `CONNECTOR_MODE=live` and configure the relevant `*_BASE_URL` variables. The default endpoint paths are shown in `.env.example`. Each service should return JSON:
+
+Health:
 ```json
-{
-  "tool": "inspect_database_health",
-  "arguments": {}
-}
+{"service":"database","status":"healthy","timestamp":"2026-11-12T12:00:00.000Z","checks":{"connectivity":"healthy"}}
 ```
 
-### `POST /connector/investigate`
-
-Run all supported checks for selected services concurrently with a concurrency limit.
-
-Example:
-
+Metrics:
 ```json
-{
-  "services": ["server", "database", "auth", "external_api", "codebase", "cicd"]
-}
+{"service":"database","timestamp":"2026-11-12T12:00:00.000Z","metrics":{"active_connections":32,"max_connections":100}}
 ```
 
-Individual integration failures are returned as evidence results; one unavailable service does not fail the entire investigation.
-
-## Switch to live integrations
-
-Set:
-
-```env
-CONNECTOR_MODE=live
+Logs:
+```json
+{"service":"database","timestamp":"2026-11-12T12:00:00.000Z","logs":[{"timestamp":"2026-11-12T12:00:00.000Z","level":"error","message":"Example failure","source":"database"}]}
 ```
 
-Configure the base URLs and paths in `.env`. The monitored services must expose the read-only endpoints listed in `.env.example`.
-
-The connector does not assume those endpoints exist. Coordinate their exact paths and response formats with the infrastructure owner.
-
-### Expected endpoint examples
-
-| Service | Endpoint | Purpose |
-|---|---|---|
-| Server | `GET /internal/health` | Server health |
-| Server | `GET /internal/metrics` | Server metrics |
-| Server | `GET /internal/logs` | Recent logs |
-| Database monitor | `GET /internal/health` | Database health |
-| Database monitor | `GET /internal/metrics` | Database metrics |
-| Auth | `GET /internal/health` | Auth health |
-| Auth | `GET /internal/metrics` | Auth metrics |
-| Auth | `GET /internal/logs` | Auth logs |
-| External API | `GET /health` | Dependency health |
-| External API | `GET /metrics` | Dependency metrics |
-| CI/CD | Configured deployments path | Deployment history |
-
-All integration endpoints should return JSON. Keep their response contracts documented and avoid returning credentials or personal data.
-
-### Git integration
-
-Set `GIT_REPOSITORY_PATH` to a local, read-only checkout available to the connector process. The connector runs a fixed `git log` command; it does not accept shell commands or user-supplied Git arguments.
-
-### CI/CD integration
-
-Set `CICD_BASE_URL`, `CICD_DEPLOYMENTS_PATH` and a read-only `CICD_API_TOKEN` if required by your provider.
+The connector validates response shape. A missing or unreachable endpoint is reported as `unreachable`, never as healthy. Use read-only credentials for every monitored integration. Do not include passwords, tokens, session cookies, or personal data in logs.
 
 ## Docker
 
 ```bash
-cp .env.example .env
 docker compose up --build
 ```
 
-If running in Docker Compose, service URLs must use Compose service names, not `localhost`, when the target services are in the same Compose network.
-
-## Test
-
-```bash
-npm test
-npm run typecheck
-npm run build
-```
-
-## Example cURL requests
-
-```bash
-curl http://localhost:4100/health
-```
-
-```bash
-curl -H "Authorization: Bearer YOUR_TOKEN" \
-  http://localhost:4100/connector/tools
-```
-
-```bash
-curl -X POST http://localhost:4100/connector/investigate \
-  -H "Authorization: Bearer YOUR_TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{"services":["server","database","auth","external_api","codebase","cicd"]}'
-```
-
-## Integration contract for Agent Core
-
-Agent Core should:
-
-1. Call `GET /connector/tools` to discover available tools.
-2. Call `POST /connector/execute` for one tool, or `POST /connector/investigate` for a batch of service checks.
-3. Treat `healthy`, `degraded`, `unhealthy`, `unreachable` and `unknown` as distinct states.
-4. Use `evidence`, `data`, `source`, `observedAt` and `error` when reasoning.
-5. Never treat a connector timeout as proof that the target service itself is down.
+When Agent Core runs in the same Compose network, call the connector using its Compose service DNS name (for example `http://agent-connector:4100`), not `localhost`.
 
 ## Security notes
 
-- Use a long, unique connector token and rotate it.
-- Keep `.env` out of Git.
-- Use read-only credentials for monitored services.
-- Do not expose database rows, passwords, tokens or secrets in diagnostic responses.
-- Keep the connector on a private network where possible.
-- Add TLS or terminate TLS at a trusted reverse proxy in shared environments.
-- The mock mode is for development/demo only.
-- This connector is diagnostic-only; remediation must go through the separate safety-controlled module.
+- Bearer-token authentication protects connector routes.
+- Helmet, CORS allowlisting, JSON body limits and rate limiting are enabled.
+- Tool names are allowlisted; arbitrary URLs, shell commands and write operations are not accepted from Agent Core.
+- Integration credentials are configured server-side and are never returned by tool discovery.
+- Keep mock scenario controls disabled in live mode (enforced by the route handler).
+
+## Project layout
+
+```text
+src/
+  adapters/       # Mock and live dependency adapters
+  contracts/      # Zod diagnostic response contracts
+  lib/            # HTTP and normalized result helpers
+  middleware/     # Bearer authentication
+  registry/       # Agent-callable tool catalogue
+  routes/         # Connector HTTP endpoints
+  services/       # Tool execution and batch investigation
+  app.ts
+  config.ts
+  server.ts
+```

@@ -10,7 +10,7 @@ export const executeSchema = z.object({
 }).strict();
 
 export const investigateSchema = z.object({
-  services: z.array(z.enum(["server", "database", "auth", "external_api", "codebase", "cicd"])).min(1).max(6)
+  services: z.array(z.enum(["database", "auth", "external_api"])).min(1).max(6)
 }).strict();
 
 export async function executeTool(input: z.infer<typeof executeSchema>) {

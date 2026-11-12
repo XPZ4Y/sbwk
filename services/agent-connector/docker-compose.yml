@@ -1,12 +1,8 @@
 services:
   agent-connector:
     build: .
-    container_name: sleepy-bot-agent-connector
     ports:
       - "4100:4100"
     env_file:
       - .env
-    environment:
-      PORT: 4100
-      CONNECTOR_MODE: ${CONNECTOR_MODE:-mock}
     restart: unless-stopped

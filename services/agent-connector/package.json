@@ -1,16 +1,15 @@
 {
   "name": "sleepy-bot-agent-connector",
-  "version": "1.0.0",
+  "version": "1.2.0",
   "private": true,
-  "description": "Read-only service integration layer for Sleepy Bot incident investigation",
+  "description": "Read-only dependency diagnostics connector called by Sleepy Bot Agent Core",
   "scripts": {
     "dev": "tsx watch src/server.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest",
-    "lint": "eslint src test"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "cors": "^2.8.5",
