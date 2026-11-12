@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  # 1. The Fake Body (Your target app)
+  server:
+    image: kennethreitz/httpbin # A dummy server that returns 500s if we want
+    ports:
+      - "8000:80"
+
+  # 2. The Edge (Middleware)
+  middleware:
+    build: ./middleware
+    ports:
+      - "8080:8080" # Users hit this
+    depends_on:
+      - server
+      - agent-core
+
+  # 3. The Brain (Agent Core)
+  agent-core:
+    build: ./agent
+    environment:
+      - GROQ_API_KEY=${GROQ_API_KEY}
+    depends_on:
+      - connector
+
+  # 4. The Hands (Agent Connector)
+  connector:
+    build: ./connector
+    # No ports exposed to the public! Only accessible internally.
