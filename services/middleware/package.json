@@ -1,0 +1,13 @@
+{
+  "name": "sleepy-bot-middleware",
+  "version": "2.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SBWK edge middleware: reverse proxy + anomaly detection (zero-dependency Node.js)",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=20" }
+}

@@ -1,0 +1,13 @@
+{
+  "name": "sleepy-bot-control-plane",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "SBWK onboarding control plane — makes the developer onboarding UI real (zero-dependency Node.js)",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs",
+    "test": "node --test"
+  },
+  "engines": { "node": ">=20" }
+}

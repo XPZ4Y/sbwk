@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SLEEPY BOT // DEVELOPER ONBOARDING</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<script>
+  tailwind.config = {
+    theme: { extend: { fontFamily: { mono: ['"Space Mono"', 'monospace'] } } }
+  }
+</script>
+<style>
+  html, body { background:#fff; color:#000; }
+  body { font-family:'Space Mono', monospace; -webkit-font-smoothing:antialiased; }
+  ::selection { background:#000; color:#fff; }
+  ::-webkit-scrollbar { width:10px; }
+  ::-webkit-scrollbar-track { background:#fff; }
+  ::-webkit-scrollbar-thumb { background:#000; }
+  * { -webkit-tap-highlight-color: transparent; }
+
+  /* ---------- RED GLOW (hover / focus only) ---------- */
+  .glow {
+    transition: box-shadow .3s ease, background-color .25s ease,
+                color .25s ease, transform .3s ease, opacity .25s ease;
+  }
+  .glow:hover, .glow:focus-visible {
+    box-shadow: 0 0 24px rgba(255,43,43,.50), 0 0 80px rgba(255,43,43,.22);
+  }
+  .glow-text {
+    transition: text-shadow .25s ease, color .25s ease;
+  }
+  .glow-text:hover, .glow-text:focus-visible {
+    text-shadow: 0 0 14px rgba(255,43,43,.85), 0 0 44px rgba(255,43,43,.45);
+  }
+
+  /* ---------- BUTTON ---------- */
+  .btn {
+    display:inline-flex; align-items:center; justify-content:center; gap:.65rem;
+    background:#000; color:#fff; border:0; border-radius:0; cursor:pointer;
+    font-family:'Space Mono', monospace; font-weight:700; text-transform:uppercase;
+    letter-spacing:.14em; font-size:.72rem; padding:1.05rem 1.9rem;
+  }
+  .btn-invert { background:#fff; color:#000; }
+  .btn:disabled { opacity:.45; cursor:wait; }
+
+  /* ---------- FIELDS ---------- */
+  .field {
+    width:100%; background:#f4f4f4; color:#000; border:0; border-radius:0;
+    padding:1rem 1.15rem; font-family:'Space Mono', monospace;
+    font-size:.9rem; font-weight:700;
+    transition: box-shadow .3s ease, background-color .25s ease;
+  }
+  .field::placeholder { color:#a3a3a3; font-weight:400; }
+  .field:hover { box-shadow: 0 0 20px rgba(255,43,43,.30), 0 0 60px rgba(255,43,43,.14); }
+  .field:focus {
+    outline:none; background:#fff;
+    box-shadow: 0 0 26px rgba(255,43,43,.55), 0 0 70px rgba(255,43,43,.25);
+  }
+
+  /* ---------- SIDEBAR NAV ---------- */
+  .nav-link {
+    display:flex; align-items:center; gap:.85rem;
+    padding:.7rem .85rem; font-size:11px; font-weight:700;
+    text-transform:uppercase; letter-spacing:.18em; color:#737373;
+    transition: background-color .2s ease, color .2s ease, box-shadow .3s ease;
+  }
+  .nav-link:hover {
+    background:#f4f4f4; color:#000;
+    box-shadow: 0 0 20px rgba(255,43,43,.35), 0 0 60px rgba(255,43,43,.15);
+  }
+  .nav-link.is-active { background:#000; color:#fff; }
+
+  /* ---------- TOGGLE ---------- */
+  .toggle {
+    position:relative; width:4rem; height:2rem; flex:none;
+    background:#e5e5e5; border:0; padding:0; cursor:pointer;
+    transition: background-color .25s ease, box-shadow .3s ease;
+  }
+  .toggle .knob {
+    position:absolute; top:.3rem; left:.3rem; width:1.4rem; height:1.4rem;
+    background:#000; transition: transform .25s ease, background-color .25s ease;
+  }
+  .toggle[aria-checked="true"] { background:#000; }
+  .toggle[aria-checked="true"] .knob { transform:translateX(2rem); background:#fff; }
+  .toggle:hover { box-shadow: 0 0 24px rgba(255,43,43,.50), 0 0 70px rgba(255,43,43,.22); }
+  .toggle:focus-visible { outline:2px solid #ff2b2b; outline-offset:4px; }
+
+  /* ---------- KEYBOARD FOCUS ---------- */
+  a:focus-visible, button:focus-visible {
+    outline:2px solid #ff2b2b; outline-offset:4px;
+  }
+</style>
+</head>
+
+<body class="font-mono bg-white text-black antialiased overflow-x-hidden">
+
+<!-- ══════════════════ MOBILE HEADER ══════════════════ -->
+<header class="lg:hidden sticky top-0 z-40 bg-white px-6 py-5 flex items-center justify-between"
+        style="box-shadow:0 12px 32px -20px rgba(0,0,0,.45)">
+  <div class="flex items-center gap-3">
+    <span class="bg-black text-white text-[10px] font-bold tracking-[0.25em] px-2 py-1">SB</span>
+    <span class="text-[11px] font-bold uppercase tracking-[0.2em]">Sleepy Bot</span>
+  </div>
+  <button onclick="toggleMobileNav()" class="btn glow" style="padding:.6rem 1.1rem; font-size:.65rem;">Menu</button>
+</header>
+
+<!-- ══════════════════ MOBILE NAV ══════════════════ -->
+<div id="mobileNav" class="hidden fixed inset-0 z-50 bg-white p-6 flex flex-col justify-between overflow-y-auto">
+  <div>
+    <div class="flex items-center justify-between mb-14">
+      <span class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400">// Setup Steps</span>
+      <button onclick="toggleMobileNav()" class="btn glow" style="padding:.6rem 1.1rem; font-size:.65rem;">Close</button>
+    </div>
+    <nav class="space-y-1">
+      <a href="#step-01" onclick="toggleMobileNav()" class="block text-2xl font-bold uppercase tracking-tight py-3 glow-text">01 — Gateway</a>
+      <a href="#step-02" onclick="toggleMobileNav()" class="block text-2xl font-bold uppercase tracking-tight py-3 glow-text">02 — External</a>
+      <a href="#step-03" onclick="toggleMobileNav()" class="block text-2xl font-bold uppercase tracking-tight py-3 glow-text">03 — Codebase</a>
+      <a href="#step-04" onclick="toggleMobileNav()" class="block text-2xl font-bold uppercase tracking-tight py-3 glow-text">04 — Safety</a>
+    </nav>
+  </div>
+  <div class="text-[10px] font-bold uppercase tracking-[0.25em] text-neutral-400 pt-10">
+    System status: ready
+  </div>
+</div>
+
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<aside class="hidden lg:flex fixed top-0 left-0 h-screen w-[20%] flex-col justify-between p-8 xl:p-10 z-30 bg-white">
+  <div>
+    <div class="inline-block bg-black text-white text-[10px] font-bold tracking-[0.28em] px-2 py-1 mb-7">SLEEPY BOT</div>
+    <h2 class="text-sm font-bold uppercase tracking-[0.16em] leading-relaxed">
+      Developer<br>Onboarding
+    </h2>
+  </div>
+
+  <nav id="sidebarNav" class="space-y-1">
+    <a href="#step-01" class="nav-link"><span class="text-[10px] opacity-60">01</span> Gateway</a>
+    <a href="#step-02" class="nav-link"><span class="text-[10px] opacity-60">02</span> External</a>
+    <a href="#step-03" class="nav-link"><span class="text-[10px] opacity-60">03</span> Codebase</a>
+    <a href="#step-04" class="nav-link"><span class="text-[10px] opacity-60">04</span> Safety</a>
+  </nav>
+
+  <div class="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 space-y-2">
+    <div class="flex items-center gap-2">
+      <span class="w-1.5 h-1.5 bg-black inline-block"></span> Status: ready
+    </div>
+    <div>EG Software // 2026</div>
+  </div>
+</aside>
+
+<!-- ══════════════════ MAIN ══════════════════ -->
+<main class="lg:ml-[20%] px-6 sm:px-12 lg:px-16 xl:px-24">
+<div class="mx-auto max-w-5xl">
+
+  <!-- ─────────── HERO ─────────── -->
+  <section id="top" class="pt-16 sm:pt-24 pb-20 sm:pb-28">
+    <div class="inline-block bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] px-3 py-1.5 mb-10">
+      System Initialization
+    </div>
+
+    <h1 class="font-bold uppercase tracking-tighter leading-[0.85] mb-10">
+      <span class="block text-[13vw] sm:text-6xl md:text-7xl xl:text-8xl">Sleepy Bot</span>
+      <span class="block text-[8.5vw] sm:text-4xl md:text-5xl text-neutral-300">Never sleeps</span>
+    </h1>
+
+    <p class="text-lg sm:text-2xl font-bold leading-snug max-w-2xl mb-4">
+      An all-seeing middleware agent for your stack.
+    </p>
+    <p class="text-base sm:text-lg font-bold leading-relaxed max-w-2xl text-neutral-600 mb-12">
+      It reads every request, pulls your logs, reads your code — and tells you exactly
+      where the problem is. If things don't work out, it wakes the human engineer.
+    </p>
+
+    <div class="flex flex-wrap items-center gap-4">
+      <a href="#step-01" class="btn glow">Begin setup →</a>
+      <a href="#how" class="text-[11px] font-bold uppercase tracking-[0.2em] px-2 py-3 glow-text">How it works</a>
+    </div>
+
+    <div class="mt-16 text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400">
+      v0.1 // SBWK
+    </div>
+  </section>
+
+  <!-- ─────────── HOW IT WORKS ─────────── -->
+  <section id="how" class="py-20 sm:py-28 scroll-mt-24">
+    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-4">// How it works</div>
+    <h2 class="text-3xl sm:text-5xl font-bold uppercase tracking-tighter leading-none mb-14">The pipeline</h2>
+
+    <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div class="bg-neutral-100 p-8 glow">
+        <div class="text-[11px] font-bold tracking-[0.25em] text-neutral-400 mb-8">01</div>
+        <h3 class="text-base font-bold uppercase mb-3">Intercept</h3>
+        <p class="text-xs font-bold text-neutral-600 leading-relaxed">
+          A container takes inbound traffic and forwards it to your server, Cloudflare-style.
+          Nothing reaches the app unread.
+        </p>
+      </div>
+
+      <div class="bg-neutral-100 p-8 glow">
+        <div class="text-[11px] font-bold tracking-[0.25em] text-neutral-400 mb-8">02</div>
+        <h3 class="text-base font-bold uppercase mb-3">Detect</h3>
+        <p class="text-xs font-bold text-neutral-600 leading-relaxed">
+          A built-in detector flags anomalies. 404s, 500s, slow responses — anything unusual
+          gets dispatched to the core agent.
+        </p>
+      </div>
+
+      <div class="bg-neutral-100 p-8 glow">
+        <div class="text-[11px] font-bold tracking-[0.25em] text-neutral-400 mb-8">03</div>
+        <h3 class="text-base font-bold uppercase mb-3">Diagnose</h3>
+        <p class="text-xs font-bold text-neutral-600 leading-relaxed">
+          The agent pulls logs from your auth and database providers, then reads your codebase
+          and compares it to recent commits.
+        </p>
+      </div>
+
+      <div class="bg-neutral-100 p-8 glow">
+        <div class="text-[11px] font-bold tracking-[0.25em] text-neutral-400 mb-8">04</div>
+        <h3 class="text-base font-bold uppercase mb-3">Escalate</h3>
+        <p class="text-xs font-bold text-neutral-600 leading-relaxed">
+          It proposes a fix. If confidence drops below your threshold, it stops and wakes
+          the human engineer.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── STEP 01 ─────────── -->
+  <article id="step-01" class="py-20 sm:py-28 scroll-mt-20">
+    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-5">
+      // Step 01 <span class="text-neutral-300">/ 04</span>
+    </div>
+    <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold uppercase tracking-tighter leading-none mb-10">
+      Network<br>Gateway
+    </h2>
+
+    <div class="max-w-3xl space-y-8">
+      <p class="text-lg sm:text-xl font-bold leading-snug">
+        Sleepy Bot sits between the client and the server. It receives all traffic.
+      </p>
+      <p class="text-base font-bold leading-relaxed text-neutral-600">
+        Point your DNS at the Sleepy Bot edge container. Your server stops receiving traffic
+        directly — every request passes through the agent first.
+      </p>
+
+      <div class="bg-black text-white p-7 sm:p-10 glow">
+        <div class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-6">
+          // Configuration required
+        </div>
+        <form class="space-y-5" onsubmit="return false;">
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">Target URL</label>
+            <input id="gateway-target" type="text" class="field" placeholder="https://your-production-app.com">
+          </div>
+          <div>
+            <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">Edge port</label>
+            <input id="gateway-port" type="number" class="field" placeholder="8080" value="8080">
+          </div>
+          <div class="pt-2">
+            <button type="button" id="btn-gateway" class="btn btn-invert glow">Save &amp; check gateway</button>
+          </div>
+        </form>
+
+        <div class="mt-8">
+          <div class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-4">
+            // Diagnostic
+          </div>
+          <div id="status-gateway" class="text-xs sm:text-sm leading-loose font-mono font-bold text-white">
+            &gt; awaiting configuration
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- ─────────── STEP 02 ─────────── -->
+  <article id="step-02" class="py-20 sm:py-28 scroll-mt-20">
+    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-5">
+      // Step 02 <span class="text-neutral-300">/ 04</span>
+    </div>
+    <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold uppercase tracking-tighter leading-none mb-10">
+      External<br>Access
+    </h2>
+
+    <div class="max-w-3xl space-y-8">
+      <p class="text-lg sm:text-xl font-bold leading-snug">
+        The agent needs logs from your external services — authentication and database.
+      </p>
+      <p class="text-base font-bold leading-relaxed text-neutral-600">
+        Provide read-only credentials only. The agent must never have write access.
+      </p>
+
+      <form class="space-y-6" onsubmit="return false;">
+        <div>
+          <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
+            Auth provider endpoint
+          </label>
+          <input id="auth-endpoint" type="text" class="field" placeholder="https://auth.your-app.com/logs">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
+            Read-only API key
+          </label>
+          <input id="api-key" type="password" class="field" placeholder="••••••••••••••••••••">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
+            Database provider endpoint
+          </label>
+          <input id="db-endpoint" type="text" class="field" placeholder="mongodb+srv://readonly@cluster.mongodb.net">
+        </div>
+
+        <div class="pt-4">
+          <button type="button" id="btn-test" class="btn glow">Test connections</button>
+          <div class="mt-5">
+            <span id="status-test" class="text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">
+              // awaiting input
+            </span>
+          </div>
+        </div>
+      </form>
+    </div>
+  </article>
+
+  <!-- ─────────── STEP 03 ─────────── -->
+  <article id="step-03" class="py-20 sm:py-28 scroll-mt-20">
+    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-5">
+      // Step 03 <span class="text-neutral-300">/ 04</span>
+    </div>
+    <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold uppercase tracking-tighter leading-none mb-10">
+      Codebase<br>Link
+    </h2>
+
+    <div class="max-w-3xl space-y-8">
+      <p class="text-lg sm:text-xl font-bold leading-snug">
+        The agent reads your source code to find the root cause.
+      </p>
+      <p class="text-base font-bold leading-relaxed text-neutral-600">
+        Connect the repository. The agent reads the last five commits and correlates them
+        with the failing requests.
+      </p>
+
+      <form class="space-y-6" onsubmit="return false;">
+        <div>
+          <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
+            Repository URL
+          </label>
+          <input id="repo-url" type="text" class="field" placeholder="https://github.com/your-org/your-repo">
+        </div>
+        <div>
+          <label class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
+            Personal access token
+          </label>
+          <input id="repo-token" type="password" class="field" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
+        </div>
+
+        <div class="pt-4">
+          <button type="button" id="btn-repo" class="btn glow">Connect repository</button>
+          <div class="mt-5">
+            <span id="status-repo" class="text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">
+              // not connected
+            </span>
+            <div id="repo-commits" class="mt-6 space-y-2"></div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </article>
+
+  <!-- ─────────── STEP 04 ─────────── -->
+  <article id="step-04" class="py-20 sm:py-28 scroll-mt-20">
+    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-5">
+      // Step 04 <span class="text-neutral-300">/ 04</span>
+    </div>
+    <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold uppercase tracking-tighter leading-none mb-10">
+      Safety<br>Limits
+    </h2>
+
+    <div class="max-w-3xl">
+      <p class="text-lg sm:text-xl font-bold leading-snug mb-12">
+        The agent acts automatically. Set the limits before it does.
+      </p>
+
+      <div class="space-y-12">
+        <div class="flex items-start justify-between gap-8">
+          <div>
+            <div class="text-base font-bold uppercase mb-2">Dry-run mode</div>
+            <p class="text-xs font-bold text-neutral-500 leading-relaxed max-w-sm">
+              The agent suggests actions. It does not execute them. You approve manually.
+            </p>
+          </div>
+          <button id="toggle-dryrun" class="toggle" role="switch" aria-checked="true" aria-label="Dry-run mode">
+            <span class="knob"></span>
+          </button>
+        </div>
+
+        <div class="flex items-start justify-between gap-8">
+          <div>
+            <div class="text-base font-bold uppercase mb-2">Auto-rollback on failure</div>
+            <p class="text-xs font-bold text-neutral-500 leading-relaxed max-w-sm">
+              If a fix fails to resolve the error within 60 seconds, revert the change.
+            </p>
+          </div>
+          <button id="toggle-rollback" class="toggle" role="switch" aria-checked="true" aria-label="Auto-rollback on failure">
+            <span class="knob"></span>
+          </button>
+        </div>
+
+        <div class="flex items-start justify-between gap-8">
+          <div>
+            <div class="text-base font-bold uppercase mb-2">Escalation window</div>
+            <p class="text-xs font-bold text-neutral-500 leading-relaxed max-w-sm">
+              Below 80% confidence, the agent stops and wakes the human engineer.
+            </p>
+          </div>
+          <button id="toggle-escalation" class="toggle" role="switch" aria-checked="true" aria-label="Escalation window">
+            <span class="knob"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- FINAL ACTION -->
+      <div class="bg-black text-white p-8 sm:p-12 mt-20 glow">
+        <div class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-500 mb-6">
+          // Final step
+        </div>
+        <h3 class="text-2xl sm:text-3xl font-bold uppercase tracking-tight mb-4">Initialize agent</h3>
+        <p class="text-sm font-bold text-neutral-400 leading-relaxed max-w-md mb-9">
+          All steps complete. The agent is ready to watch. It will not sleep.
+        </p>
+        <button id="btn-start" class="btn btn-invert glow">Start monitoring</button>
+        <div id="status-monitor" class="mt-6 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">// monitoring inactive</div>
+        <div id="incident-feed" class="mt-6 space-y-3"></div>
+      </div>
+    </div>
+  </article>
+
+  <!-- ─────────── FOOTER ─────────── -->
+  <footer class="py-16 sm:py-20 text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400
+                 flex flex-col sm:flex-row justify-between gap-6">
+    <div>Sleepy Bot // SBWK — EG Software, 2026</div>
+    <a href="#top" class="glow-text hover:text-black w-fit">[ top of page ]</a>
+  </footer>
+
+</div>
+</main>
+
+<script>
+  /* ---------- REAL BACKEND WIRING (no fake timeouts) ---------- */
+  const $ = id => document.getElementById(id);
+  const api = async (path, body) => {
+    const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : undefined);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.success === false) throw new Error(data.error || ('HTTP ' + res.status));
+    return data;
+  };
+  const escapeHtml = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const setStatus = (el, text, ok) => { el.textContent = text; el.classList.toggle('text-neutral-400', !ok); el.classList.toggle('text-black', ok); };
+
+  function toggleMobileNav() { $('mobileNav').classList.toggle('hidden'); document.body.classList.toggle('overflow-hidden'); }
+
+  /* STEP 01 — Gateway: save config + real reachability healthcheck */
+  $('btn-gateway').addEventListener('click', async () => {
+    const btn = $('btn-gateway'), s = $('status-gateway');
+    const targetUrl = $('gateway-target').value.trim(), port = $('gateway-port').value.trim();
+    if (!targetUrl) { s.textContent = '> enter a target URL'; return; }
+    btn.disabled = true; s.textContent = '> saving + checking edge…';
+    try {
+      await api('/api/gateway', { targetUrl, port });
+      const { check } = await api('/api/gateway/check', {});
+      s.textContent = check.reachable
+        ? `> [OK] EDGE CONNECTED. SERVER REACHABLE (${check.method === 'http' ? 'HTTP ' + check.status : check.method}, ${check.latencyMs}ms)`
+        : `> [FAIL] SERVER UNREACHABLE: ${check.error}`;
+    } catch (e) { s.textContent = '> [ERROR] ' + e.message; }
+    finally { btn.disabled = false; }
+  });
+
+  /* STEP 02 — External: save endpoints + real connection tests */
+  $('btn-test').addEventListener('click', async () => {
+    const btn = $('btn-test'), s = $('status-test');
+    btn.disabled = true; setStatus(s, '> validating…', false);
+    try {
+      await api('/api/external', { authEndpoint: $('auth-endpoint').value.trim(), apiKey: $('api-key').value, databaseEndpoint: $('db-endpoint').value.trim() });
+      const r = await api('/api/external/test', {});
+      const detail = `auth:${r.auth.reachable ? 'OK' : 'FAIL'} db:${r.database.reachable ? 'OK' : 'FAIL'}`;
+      setStatus(s, `> [${r.reachable === r.total ? 'OK' : 'WARN'}] ${r.reachable}/${r.total} SERVICES REACHABLE (${detail})`, r.reachable > 0);
+    } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
+    finally { btn.disabled = false; }
+  });
+
+  /* STEP 03 — Codebase: real GitHub repo metadata + last 5 commits */
+  $('btn-repo').addEventListener('click', async () => {
+    const btn = $('btn-repo'), s = $('status-repo'), box = $('repo-commits');
+    btn.disabled = true; setStatus(s, '> cloning metadata…', false); box.innerHTML = '';
+    try {
+      const r = await api('/api/codebase', { repoUrl: $('repo-url').value.trim(), token: $('repo-token').value });
+      setStatus(s, `> [OK] REPOSITORY LINKED — ${r.codebase.fullName} (${r.codebase.commits.length} commits)`, true);
+      box.innerHTML = '<div class="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">// last ' + r.codebase.commits.length + ' commits</div>' +
+        r.codebase.commits.map(c => `<div class="bg-neutral-100 p-3 text-xs font-bold"><span class="text-neutral-400">${escapeHtml((c.sha || '').slice(0, 7))}</span> ${escapeHtml((c.message || '').split('\n')[0])}<div class="text-[10px] text-neutral-400 mt-1">${escapeHtml(c.author || '')} · ${escapeHtml(c.date || '')}</div></div>`).join('');
+    } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
+    finally { btn.disabled = false; }
+  });
+
+  /* STEP 04 — Safety: persist toggles to the agent */
+  const safetyPayload = () => ({
+    dryRun: $('toggle-dryrun').getAttribute('aria-checked') === 'true',
+    autoRollback: $('toggle-rollback').getAttribute('aria-checked') === 'true',
+    escalationThreshold: $('toggle-escalation').getAttribute('aria-checked') === 'true' ? 0.8 : 0
+  });
+  async function pushSafety() { try { await api('/api/safety', safetyPayload()); } catch (e) { console.error(e); } }
+  ['toggle-dryrun', 'toggle-rollback', 'toggle-escalation'].forEach(id => {
+    $(id).addEventListener('click', function () { const on = this.getAttribute('aria-checked') === 'true'; this.setAttribute('aria-checked', on ? 'false' : 'true'); pushSafety(); });
+  });
+
+  /* Monitoring: real start + live incident feed */
+  async function refreshIncidents() {
+    try {
+      const r = await api('/api/incidents');
+      const feed = $('incident-feed');
+      if (!r.incidents.length) { feed.innerHTML = '<div class="text-[11px] font-bold text-neutral-500">// no incidents yet — trigger one via the edge (e.g. /status/500)</div>'; return; }
+      feed.innerHTML = r.incidents.map(rec => {
+        const a = rec.analysis;
+        return `<div class="bg-white text-black p-4 text-xs font-bold"><div class="flex justify-between gap-4"><span>${escapeHtml(rec.incident.method)} ${escapeHtml(rec.incident.path)} → ${rec.incident.statusCode}</span><span>${a ? a.severity.toUpperCase() : rec.status}</span></div>${a ? `<div class="mt-1 text-neutral-600">${escapeHtml(a.rootCause.summary)}</div><div class="mt-1 text-[10px] text-neutral-400">confidence ${(a.confidence * 100).toFixed(0)}% · ${a.escalate ? 'ESCALATED' : 'auto'}</div>` : ''}</div>`;
+      }).join('');
+    } catch (e) { /* ignore */ }
+  }
+  let feedTimer = null;
+  $('btn-start').addEventListener('click', async () => {
+    const btn = $('btn-start'), s = $('status-monitor');
+    btn.disabled = true; s.textContent = '> starting…';
+    try {
+      await pushSafety();
+      await api('/api/monitoring/start', {});
+      btn.textContent = '> Monitoring active'; s.textContent = '> [OK] AGENT WATCHING. IT WILL NOT SLEEP.';
+      await refreshIncidents();
+      if (!feedTimer) feedTimer = setInterval(refreshIncidents, 4000);
+    } catch (e) { s.textContent = '> [ERROR] ' + e.message; btn.disabled = false; }
+  });
+
+  /* Load real state + scroll spy */
+  document.addEventListener('DOMContentLoaded', async () => {
+    const sections = document.querySelectorAll('article');
+    const links = document.querySelectorAll('#sidebarNav .nav-link');
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => { if (!entry.isIntersecting) return; links.forEach(link => link.classList.toggle('is-active', link.getAttribute('href') === '#' + entry.target.id)); });
+    }, { root: null, rootMargin: '-20% 0px -60% 0px', threshold: 0 });
+    sections.forEach(s => observer.observe(s));
+
+    try {
+      const { state } = await api('/api/state');
+      if (state.gateway.targetUrl) $('gateway-target').value = state.gateway.targetUrl;
+      if (state.gateway.port) $('gateway-port').value = state.gateway.port;
+      if (state.external.authEndpoint) $('auth-endpoint').value = state.external.authEndpoint;
+      if (state.external.databaseEndpoint) $('db-endpoint').value = state.external.databaseEndpoint;
+      if (state.codebase.repoUrl) $('repo-url').value = state.codebase.repoUrl;
+      $('toggle-dryrun').setAttribute('aria-checked', String(state.safety.dryRun));
+      $('toggle-rollback').setAttribute('aria-checked', String(state.safety.autoRollback));
+      $('toggle-escalation').setAttribute('aria-checked', String(state.safety.escalationThreshold > 0));
+      if (state.monitoring.active) { $('btn-start').textContent = '> Monitoring active'; $('status-monitor').textContent = '> [OK] AGENT WATCHING.'; refreshIncidents(); feedTimer = setInterval(refreshIncidents, 4000); }
+    } catch (e) { /* backend not reachable yet */ }
+  });
+</script>
+</body>
+</html>

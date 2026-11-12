@@ -1,0 +1,12 @@
+{
+  "name": "sleepy-bot-dummy-server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Tiny zero-dependency dummy backend (httpbin-compatible /status/:code) — replaces the 200MB httpbin image",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node --watch server.mjs"
+  },
+  "engines": { "node": ">=20" }
+}
