@@ -1,17 +1,8 @@
-FROM node:22-alpine AS build
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY tsconfig.json ./
-COPY src ./src
-RUN npm run build
-
+# Zero-dependency: no npm install, no build step.
 FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
-COPY package*.json ./
-RUN npm install --omit=dev
-COPY --from=build /app/dist ./dist
+COPY *.mjs ./
 EXPOSE 4100
 USER node
-CMD ["node", "dist/server.js"]
+CMD ["node", "server.mjs"]

@@ -1,29 +1,103 @@
-version: '3.8'
+# SBWK — Sleepy Bot with Keys
+# Full "middleman" stack + developer onboarding control plane.
+# Copy .env.example to .env and set the shared secrets before `docker compose up`.
 services:
-  # 1. The Fake Body (Your target app)
+  # 1. The application Server — our tiny zero-dep dummy backend (replaces ~200MB httpbin).
+  #    Shares node:22-alpine with the rest of the stack: no extra base-image pull.
   server:
-    image: kennethreitz/httpbin # A dummy server that returns 500s if we want
+    build: ./services/dummy-server
     ports:
-      - "8000:80"
+      - "8000:8000"
+    environment:
+      NODE_ENV: production
+      PORT: "8000"
+      FAIL_MODE: normal
+    restart: unless-stopped
 
-  # 2. The Edge (Middleware)
+  # 2. The Edge — reverse proxy + anomaly detector. Clients hit this.
   middleware:
-    build: ./middleware
+    build: ./services/middleware
     ports:
-      - "8080:8080" # Users hit this
+      - "8080:8080"
+    environment:
+      NODE_ENV: production
+      PORT: "8080"
+      TARGET_SERVER_URL: http://server:8000
+      AGENT_CORE_URL: http://agent-core:4200
+      AGENT_CORE_TOKEN: ${AGENT_CORE_TOKEN}
+      MIDDLEWARE_ADMIN_TOKEN: ${MIDDLEWARE_ADMIN_TOKEN}
+      DETECT_STATUS_MIN: ${DETECT_STATUS_MIN:-500}
+      DETECT_SLOW_MS: ${DETECT_SLOW_MS:-2000}
+      DETECT_UPSTREAM_ERRORS: "true"
+      DISPATCH_COOLDOWN_MS: ${DISPATCH_COOLDOWN_MS:-15000}
     depends_on:
       - server
       - agent-core
+    restart: unless-stopped
 
-  # 3. The Brain (Agent Core)
+  # 3. The Brain — investigates, reasons, suggests fixes, escalates.
   agent-core:
-    build: ./agent
+    build: ./services/agent-core
+    ports:
+      - "4200:4200" # bearer-protected; exposed for inspection/demo convenience
     environment:
-      - GROQ_API_KEY=${GROQ_API_KEY}
+      NODE_ENV: production
+      PORT: "4200"
+      AGENT_CORE_TOKEN: ${AGENT_CORE_TOKEN}
+      AGENT_MODE: ${AGENT_MODE:-mock}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+      CONNECTOR_URL: http://agent-connector:4100
+      CONNECTOR_API_TOKEN: ${CONNECTOR_API_TOKEN}
+      INVESTIGATE_SERVICES: database,auth,external_api
+      CODEBASE_PATH: /codebase
+      DRY_RUN: "true"
+      AUTO_ROLLBACK: "true"
+      MONITORING_ACTIVE: "true"
+      ESCALATION_CONFIDENCE_THRESHOLD: ${ESCALATION_CONFIDENCE_THRESHOLD:-0.8}
+      NOTIFICATION_WEBHOOK_URL: ${NOTIFICATION_WEBHOOK_URL:-}
+      DATA_DIR: /data
+    volumes:
+      - ./:/codebase:ro
+      - agent-core-data:/data
     depends_on:
-      - connector
+      - agent-connector
+    restart: unless-stopped
 
-  # 4. The Hands (Agent Connector)
-  connector:
-    build: ./connector
-    # No ports exposed to the public! Only accessible internally.
+  # 4. The Hands — read-only dependency diagnostics. Internal only.
+  agent-connector:
+    build: ./services/agent-connector
+    environment:
+      NODE_ENV: production
+      PORT: "4100"
+      CONNECTOR_API_TOKEN: ${CONNECTOR_API_TOKEN}
+      CONNECTOR_MODE: ${CONNECTOR_MODE:-mock}
+    restart: unless-stopped
+
+  # 5. Developer onboarding control plane — serves the UI and configures the stack.
+  control-plane:
+    build: ./services/control-plane
+    ports:
+      - "4300:4300"
+    environment:
+      NODE_ENV: production
+      PORT: "4300"
+      MIDDLEWARE_URL: http://middleware:8080
+      MIDDLEWARE_ADMIN_TOKEN: ${MIDDLEWARE_ADMIN_TOKEN}
+      CONNECTOR_URL: http://agent-connector:4100
+      CONNECTOR_API_TOKEN: ${CONNECTOR_API_TOKEN}
+      AGENT_CORE_URL: http://agent-core:4200
+      AGENT_CORE_TOKEN: ${AGENT_CORE_TOKEN}
+      DEFAULT_TARGET_URL: http://server:8000
+      DATA_DIR: /data
+    volumes:
+      - control-plane-data:/data
+    depends_on:
+      - middleware
+      - agent-core
+      - agent-connector
+    restart: unless-stopped
+
+volumes:
+  agent-core-data:
+  control-plane-data:

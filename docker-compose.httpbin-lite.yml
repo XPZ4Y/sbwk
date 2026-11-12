@@ -1,0 +1,23 @@
+# Optional override: swap our dummy backend for the ~4.3MB mccutchen/go-httpbin
+# image (a zero-dependency Go port of httpbin with /status/:code, /delay/:n, ...).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.httpbin-lite.yml up --build
+#
+# Requires Docker Compose v2.24+ (for the !reset / !override merge tags).
+# Note: go-httpbin has no /_control failure injection or /users /external routes;
+# use /status/500, /status/404, /delay/3 to trigger anomalies instead.
+services:
+  server:
+    build: !reset null
+    image: mccutchen/go-httpbin:latest
+    ports: !override
+      - "8000:8080"
+    environment: !reset null
+
+  middleware:
+    environment:
+      TARGET_SERVER_URL: http://server:8080
+
+  control-plane:
+    environment:
+      DEFAULT_TARGET_URL: http://server:8080
