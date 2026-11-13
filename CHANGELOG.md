@@ -4,6 +4,119 @@ All notable changes to SBWK (Sleepy Bot with Keys). Newest first.
 
 ---
 
+## v2.3.0 — Resend.com fault emails, Git Branches tab, last-4 diffs & agent rollback
+
+### Added
+- **Zero-dependency Resend.com fault notifications (`services/agent-core/notify.mjs`, `services/agent-core/config.mjs`, `services/agent-core/investigate.mjs`)**:
+  - Configurable via `.env`: `RESEND_API_KEY`, `DEVELOPER_EMAIL`, `RESEND_FROM_EMAIL` (defaults to `onboarding@resend.dev`), and `RESEND_NOTIFY_ALL_INCIDENTS` (defaults to `true`).
+  - Uses Node's built-in `fetch` to `https://api.resend.com/emails` with HTML + plain-text fault summaries, suggested fixes, and rollback recommendations.
+  - Added unit tests in `services/agent-core/test/notify.test.mjs`.
+- **Git Branches tab (`services/control-plane/git-service.mjs`, `services/control-plane/server.mjs`, `services/control-plane/public/index.html`, `services/control-plane/app.js`)**:
+  - Automatically appears in the Control Plane UI when a GitHub PAT & repository are configured.
+  - Displays repository branches, last 4 commit diffs (expandable file patches), a **Feed Last 4 Diffs to Agent** button (`POST /api/git/feed-agent` → `POST /git-context` on `agent-core`), and per-commit **Rollback to Parent** (`POST /api/git/rollback`).
+- **Agent rollback decision (`services/agent-core/server.mjs`, `services/agent-core/reason.mjs`)**:
+  - `POST /git-context` and `GET /git-context` endpoints on `agent-core` store the last 4 commit diffs in `config.codebase.diffs`.
+  - `buildPromptVariables` includes recent git diffs in the LLM evidence, and `parseModelResponse` normalizes `rollbackDecision: { shouldRollback, targetCommitSha, reason }`.
+- **Environment documentation (`.env.example`)**:
+  - Added documented examples for `RESEND_API_KEY`, `DEVELOPER_EMAIL`, `RESEND_FROM_EMAIL`, and `RESEND_NOTIFY_ALL_INCIDENTS`.
+
+---
+
+## v2.2.2 — onboarding saves work on a fresh volume (EACCES on /data)
+
+**Bug:** every save from the onboarding UI failed with
+
+```
+save failed: could not save: EACCES: permission denied, open '/data/onboarding.json.tmp'
+```
+
+`control-plane-data` is a named volume, which Docker creates as `root:root 0755`,
+while the image ran as `USER node` (uid 1000). The store's atomic write (temp file
++ rename) therefore could not create the temp file. The GitHub token was never at
+fault — the repo is fetched and verified *before* the write.
+
+### Fixes
+
+* `services/control-plane/preflight.mjs` (new): probes `DATA_DIR` for real
+  (create + delete a file, not mode bits) at boot; reclaims it when the process
+  has the rights; otherwise logs `data_dir_not_writable` with the exact `chown`
+  and keeps serving so the UI still explains itself.
+* `store.mjs` wraps persistence failures in a `DataDirError` that names the
+  directory, the running uid and the remedy, and preserves the original errno as
+  `code` (`EACCES`, `EROFS`, …). The misleading `.tmp` path is gone; a half-written
+  temp file is cleaned up.
+* `docker-entrypoint.sh` (new, control-plane **and** agent-core): starts as root,
+  chowns `DATA_DIR` to the runtime user only when it is wrong, then
+  `su-exec node`. Existing broken volumes heal on the next `docker compose up`;
+  fresh ones are correct on first boot. Running the image as an arbitrary uid
+  (compose `user:`) still works — the entrypoint then simply skips the chown.
+* `agent-core` had the same mount/uid mismatch and swallowed it: context was
+  silently never persisted. It now logs `state_persist_failed` (once per errno)
+  with the remedy.
+* `GET /api/state` → `dataDir: { path, status, writable }` so the UI (or `curl`)
+  can show why saves fail without reading container logs.
+
+### Tests
+
+`services/control-plane/test/preflight.test.mjs` (6): writable probe, `DATA_DIR`
+unset no-op, unwritable dir → `readonly` (never throws), chown reclaim, chown
+failure fallthrough, and an end-to-end check that a failed persist reports
+`DataDirError` with `dataDir` + errno rather than a `.tmp` path.
+
+---
+
+## v2.2.1 — dumb activation function for the batch gate
+
+**Theme:** the gate's wake condition was one number, which meant five 404s woke it
+exactly as readily as the upstream dying — and it never said "this is obviously
+not something a model can help with". Two dumb, predictable rules fix both ends.
+
+### 1. IMPULSE — one severe event skips the pattern rule (`services/middleware/activation.mjs` — new)
+
+`BATCH_IMPULSE=true` (default) flushes a single bad request immediately instead
+of waiting for `BATCH_MIN_BAD` when it is:
+
+| signal | why |
+| --- | --- |
+| 5xx | a server error has a plausible code cause, no need to aggregate |
+| `upstream_unreachable` / `timeout` | the most actionable class there is |
+| repeat failure on the same path | recurrence already means "pattern" |
+| `durationMs >= BATCH_IMPULSE_SEVERE_MS` (default 5000) | a very slow response |
+
+Scanner noise never self-activates, however often it repeats. Set
+`BATCH_IMPULSE=false` to make `BATCH_MIN_BAD` the only way in.
+
+### 2. TRIVIAL — known noise is answered locally (`BATCH_SKIP_TRIVIAL`, default off)
+
+When **every** incident in a batch is recognised noise — scanner paths
+(`/.env`, `/wp-login.php`, `/phpmyadmin`…), `favicon`/`robots` probes, plain
+`401`/`403` client auth mistakes — the batch is marked `trivial` and Agent Core
+answers it with `reason: "known_noise"` **without calling Liquid at all**. 5xx and
+upstream failures are never trivial, and one real incident disables the shortcut
+for the whole batch. Off by default: it filters traffic, so opt in knowingly.
+
+### 3. Reporting
+
+* `/_sbwk/status` → `batch.activation { impulse, impulseSevereMs, skipTrivial,
+  impulses, trivialFlushes, lastImpulse }` (additive).
+* Flushes carry `reason: "impulse"`; noise flushes carry
+  `trivial/trivialReason/trivialCode` in the payload, and the resulting analyses
+  get `batch.reason: "known_noise"` with no warning attached (noise is not an
+  error).
+* Log events: `batch_flush` now includes `trivial`, `impulse` shows up as the
+  flush reason, `batch_skipped` reports the noise reason.
+
+### 4. Tests
+
+* `services/middleware/test/activation.test.mjs` (17) plus 10 new buffer tests
+  and 2 new gate tests (`known_noise` short-circuit, trusted even with
+  `LIQUID_BATCH_FALLBACK=skip`).
+* `npm run demo:batch` rewritten into 7 isolated scenarios (immediate mode,
+  count rule, impulse rule, trivial rule, Liquid down, agent-core down) — all 35
+  checks pass against real services.
+
+---
+
 ## v2.2.0 — lazy two-stage gate (opt-in batch detection)
 
 **Theme:** every bad request is cheaply buffered; only a *pattern* of bad

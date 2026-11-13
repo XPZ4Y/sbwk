@@ -5,12 +5,18 @@ import http from "node:http";
 import fs from "node:fs";
 import { config } from "./config.mjs";
 import * as store from "./store.mjs";
+import { ensureWritableDataDir } from "./preflight.mjs";
 import { checkReachability, fetchGitHubRepo } from "./checks.mjs";
 import { applyGateway, applyExternal, applyCodebase, applySafety, applyMonitoring, serviceHealth } from "./apply.mjs";
 import { saveConfig } from "./config-service.mjs";
 import { initAuth, verifyPassword, createSession, destroySession, sessionFromRequest, sessionCookie, clearCookie } from "./auth.mjs";
 import { getAiConfig, saveAiConfig, runPromptTest } from "./ai.mjs";
+import { fetchGitStatus, rollbackToParent } from "./git-service.mjs";
 
+// Make the mounted DATA_DIR usable before anything tries to write to it. The
+// Docker entrypoint normally did this already (as root, before dropping to node);
+// this covers `node server.mjs` and containers started as a non-root user.
+const dataDirStatus = ensureWritableDataDir(config.DATA_DIR);
 store.load();
 initAuth();
 
@@ -103,7 +109,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p === "/api/state" && req.method === "GET") {
-      return ok(res, { state: store.redacted(), services: await serviceHealth() });
+      return ok(res, {
+        state: store.redacted(),
+        services: await serviceHealth(),
+        // "ok" | "reclaimed" | "readonly" | "disabled" — "readonly" means saves
+        // will fail and the container needs its DATA_DIR chown (see README).
+        dataDir: { path: config.DATA_DIR || null, status: dataDirStatus, writable: dataDirStatus !== "readonly" }
+      });
     }
 
     // Atomic config save (the form in the Config tab). This route was missing:
@@ -213,6 +225,61 @@ const server = http.createServer(async (req, res) => {
         codebase: { fullName: repo.fullName, repoUrl: repo.repoUrl, defaultBranch: repo.defaultBranch, commits: repo.commits },
         apply,
       });
+    }
+
+    // Git Branches tab — status, last 4 diffs, feed to agent, and rollback
+    if (p === "/api/git/status" && req.method === "GET") {
+      const state = store.get();
+      const repoUrl = state.codebase?.repoUrl;
+      const token = state.codebase?.githubToken;
+      if (!repoUrl || !token) {
+        return ok(res, { configured: false });
+      }
+      const status = await fetchGitStatus(repoUrl, token);
+      return ok(res, status);
+    }
+
+    if (p === "/api/git/feed-agent" && req.method === "POST") {
+      const state = store.get();
+      const repoUrl = state.codebase?.repoUrl;
+      const token = state.codebase?.githubToken;
+      if (!repoUrl || !token) {
+        return fail(res, 400, "GitHub repository URL and PAT must be configured first");
+      }
+      const status = await fetchGitStatus(repoUrl, token);
+      if (!status.ok) return fail(res, 502, status.error || "Failed to fetch git diffs");
+      const r = await fetch(`${config.AGENT_CORE_URL}/git-context`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${config.AGENT_CORE_TOKEN}`
+        },
+        body: JSON.stringify({
+          repoUrl,
+          fullName: status.repo?.fullName,
+          branch: status.repo?.defaultBranch,
+          diffs: status.diffs
+        })
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok) return fail(res, 502, data.error?.message || "Failed to feed diffs to agent-core");
+      return ok(res, { fedCount: status.diffs.length, branch: status.repo?.defaultBranch });
+    }
+
+    if (p === "/api/git/rollback" && req.method === "POST") {
+      const state = store.get();
+      const repoUrl = state.codebase?.repoUrl;
+      const token = state.codebase?.githubToken;
+      if (!repoUrl || !token) {
+        return fail(res, 400, "GitHub repository URL and PAT must be configured first");
+      }
+      const body = await readJson(req);
+      const targetSha = body.targetSha;
+      const branch = body.branch || state.codebase?.defaultBranch || "main";
+      if (!targetSha) return fail(res, 400, "targetSha is required");
+      const result = await rollbackToParent(repoUrl, token, targetSha, branch);
+      if (!result.ok) return fail(res, 400, result.error || "Rollback failed");
+      return ok(res, result);
     }
 
     // STEP 04 — Safety limits

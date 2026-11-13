@@ -349,6 +349,14 @@ function parseFinalAnswer(content) {
     ...(typeof f?.diff === "string" && f.diff.trim() ? { diff: f.diff } : {})
   }));
 
+  const rollbackDecision = parsed.rollbackDecision && typeof parsed.rollbackDecision === "object"
+    ? {
+        shouldRollback: Boolean(parsed.rollbackDecision.shouldRollback),
+        targetCommitSha: parsed.rollbackDecision.targetCommitSha ? String(parsed.rollbackDecision.targetCommitSha) : null,
+        reason: String(parsed.rollbackDecision.reason || "")
+      }
+    : { shouldRollback: false, targetCommitSha: null, reason: "No rollback recommended" };
+
   return {
     mode: "live",
     severity: String(parsed.severity).toLowerCase(),
@@ -358,6 +366,7 @@ function parseFinalAnswer(content) {
       confidence: Math.max(0, Math.min(1, Number(parsed.rootCause.confidence) || 0))
     },
     suggestedFixes,
+    rollbackDecision,
     confidence: Math.max(0, Math.min(1, Number(parsed.confidence))),
     reasoning: String(parsed.reasoning || "")
   };
@@ -394,6 +403,9 @@ export function buildPromptVariables(input, cfg = defaultConfig) {
     JSON.stringify(codeFindings, null, 2),
     `recurring on this path: ${input.recurring ?? 0}`,
     recentCommits.length ? `recent commits:\n${JSON.stringify(recentCommits, null, 2)}` : "recent commits: none",
+    Array.isArray(cfg.codebase?.diffs) && cfg.codebase.diffs.length
+      ? `recent git diffs (last ${cfg.codebase.diffs.length}):\n${JSON.stringify(cfg.codebase.diffs.map(d => ({ sha: d.shortSha || d.sha, message: d.message, files: (d.files || []).map(f => ({ filename: f.filename, status: f.status, patch: String(f.patch || "").slice(0, 800) })) })), null, 2)}`
+      : "recent git diffs: none",
     input.repoUrl ? `repository: ${input.repoUrl}` : "repository: not linked"
   ].join("\n");
 

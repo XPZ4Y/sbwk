@@ -10,6 +10,7 @@
 // Zero dependencies, and clock/timer injectable so the wake-up logic is testable
 // without sleeping.
 import { buildLogDigest, describeDigest } from "./digest.mjs";
+import { classifyImpulse, explainBatch } from "./activation.mjs";
 
 /** The only two ways it can be configured; anything else means "immediate". */
 export const DETECT_MODES = ["immediate", "batch"];
@@ -53,6 +54,15 @@ export class LogBatchBuffer {
     this.sweepMs = Math.max(50, Math.floor(Number(opts.sweepMs) || 1000));
     this.samples = Math.max(0, Math.floor(Number(opts.samples ?? 5)));
     this.topPaths = Math.max(1, Math.floor(Number(opts.topPaths) || 5));
+    // ── dumb activation rules (see activation.mjs) ──────────────────────────
+    // impulse:   one severe-enough bad request bypasses the count threshold.
+    // trivial:   known-noise batches are answered locally, never sent to Liquid.
+    this.impulse = opts.impulse !== false;
+    this.impulseSevereMs = Number.isFinite(Number(opts.impulseSevereMs)) ? Number(opts.impulseSevereMs) : 5000;
+    this.impulseSevereStatuses = opts.impulseSevereStatuses !== false;
+    this.skipTrivial = opts.skipTrivial === true;
+    this.activation = { impulses: 0, trivialFlushes: 0, lastImpulse: null };
+
     this.onFlush = typeof opts.onFlush === "function" ? opts.onFlush : async () => null;
     this.now = typeof opts.now === "function" ? opts.now : () => Date.now();
     this.setIntervalImpl = opts.setIntervalImpl || globalThis.setInterval;
@@ -80,13 +90,37 @@ export class LogBatchBuffer {
    */
   add(incident) {
     if (!this.enabled || !incident) return { buffered: this.entries.length, flush: null };
+    // Recurrence is measured BEFORE this incident is buffered, so a single
+    // failure is never counted as its own repeat.
+    const recurrence = this.recurringOn(incident.path);
     this.entries.push({ at: this.now(), incident });
     while (this.entries.length > this.maxSize) {
       this.entries.shift();
       this.dropped += 1;
     }
+    // IMPULSE rule: a single severe event (upstream down, 5xx, a path that keeps
+    // breaking, a very slow response) may skip the "wait for a pattern" step.
+    if (this.impulse) {
+      const verdict = classifyImpulse(incident, {
+        recurrence,
+        severeMs: this.impulseSevereMs,
+        severeStatuses: this.impulseSevereStatuses
+      });
+      if (verdict.impulse) {
+        this.activation.impulses += 1;
+        this.activation.lastImpulse = { path: incident.path, reasons: verdict.reasons, at: new Date(this.now()).toISOString() };
+        return { buffered: this.entries.length, flush: this.flush("impulse") };
+      }
+    }
     const flush = this.maybeFlush("threshold");
     return { buffered: this.entries.length, flush };
+  }
+
+  /** How many buffered incidents already failed on the same path (recurrence). */
+  recurringOn(path, exclude) {
+    let n = 0;
+    for (const e of this.entries) if (e.incident.path === path && e.incident !== exclude) n += 1;
+    return n;
   }
 
   /** Count of buffered incidents that arrived inside the wake window. */
@@ -139,6 +173,18 @@ export class LogBatchBuffer {
     const entries = this.entries;
     this.entries = [];
     const incidents = entries.map(e => e.incident);
+
+    // TRIVIAL rule: if every incident in the batch is recognised noise (scanner
+    // paths, favicon probes, plain client auth mistakes), say so locally instead
+    // of spending a Liquid call on it. One real incident disables this.
+    let trivial = null;
+    if (this.skipTrivial) {
+      const verdict = explainBatch(incidents);
+      if (verdict.trivial) {
+        trivial = verdict;
+        this.activation.trivialFlushes += 1;
+      }
+    }
     const digest = buildLogDigest(incidents, {
       samples: this.samples,
       topPaths: this.topPaths,
@@ -153,12 +199,17 @@ export class LogBatchBuffer {
       buffered: incidents.length,
       flushedAt: new Date(this.now()).toISOString(),
       dropped: this.dropped,
-      expired: this.expired
+      expired: this.expired,
+      ...(trivial ? { trivial: true, trivialReason: trivial.reason, trivialCode: trivial.code, trivialByCode: trivial.byCode, trivialCount: trivial.trivialCount } : {})
     };
     this.dropped = 0;
     this.expired = 0;
 
-    log("info", "batch_flush", { batchId: meta.batchId, reason, count: incidents.length, digest: describeDigest(digest) });
+    log("info", "batch_flush", {
+      batchId: meta.batchId, reason, count: incidents.length,
+      ...(trivial ? { trivial: true, trivialReason: trivial.reason } : {}),
+      digest: describeDigest(digest)
+    });
 
     this.inFlight = (async () => {
       try {
@@ -213,7 +264,15 @@ export class LogBatchBuffer {
       expired: this.expired,
       lastFlushAt: this.lastFlushAt,
       lastFlushReason: this.lastFlushReason,
-      inFlight: Boolean(this.inFlight)
+      inFlight: Boolean(this.inFlight),
+      activation: {
+        impulse: this.impulse,
+        impulseSevereMs: this.impulseSevereMs,
+        skipTrivial: this.skipTrivial,
+        impulses: this.activation.impulses,
+        trivialFlushes: this.activation.trivialFlushes,
+        lastImpulse: this.activation.lastImpulse
+      }
     };
   }
 }

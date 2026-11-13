@@ -141,6 +141,9 @@ call here with a compact digest. That is stage two of the gate, implemented in
    - probability `>=` threshold → **investigate**: each buffered incident runs
      through the *existing* investigator (Liquid routing → Groq/heuristic →
      escalation). The batch stage is a pre-gate, not a parallel pipeline.
+   - the middleware already knows the batch is pure noise (`batch.trivial:
+     true`, from its `BATCH_SKIP_TRIVIAL` rule) → **skip** with
+     `reason: "known_noise"`, and Liquid is **not called at all**;
    - Liquid unavailable (`LIQUID_API_KEY` unset, `LIQUID_ENABLED=false`,
      timeout, HTTP error, unusable answer) → `LIQUID_BATCH_FALLBACK`:
      `investigate` (default, keeps signal) or `skip` (loud `error` log + a
@@ -174,7 +177,7 @@ Response (`batch` block): `{ batchId, action: "investigate"|"skip", reason,
 fallback, anomalyProbability, threshold, liquidStatus, accepted, rejected[],
 ids[], investigating?, skipped?, investigated? }` — `reason` is `anomalous`,
 `liquid_says_normal`, `liquid_unreachable`/`liquid_timeout`/… ,
-`liquid_answer_unusable` or `monitoring_inactive`.
+`liquid_answer_unusable`, `known_noise` or `monitoring_inactive`.
 
 If `MONITORING_ACTIVE` is false the batch is recorded as `skipped` without
 calling Liquid at all, mirroring the per-incident "paused" behaviour.

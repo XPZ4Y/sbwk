@@ -38,6 +38,11 @@ services:
       BATCH_FLUSH_TIMEOUT_MS: ${BATCH_FLUSH_TIMEOUT_MS:-0}
       BATCH_TIMEOUT_MS: ${BATCH_TIMEOUT_MS:-25000}
       LIQUID_BATCH_FALLBACK: ${LIQUID_BATCH_FALLBACK:-investigate}
+      # Dumb activation function: one severe event may self-activate; known
+      # noise may be answered locally without a model call.
+      BATCH_IMPULSE: ${BATCH_IMPULSE:-true}
+      BATCH_IMPULSE_SEVERE_MS: ${BATCH_IMPULSE_SEVERE_MS:-5000}
+      BATCH_SKIP_TRIVIAL: ${BATCH_SKIP_TRIVIAL:-false}
     depends_on:
       - server
       - agent-core
@@ -122,6 +127,11 @@ services:
       DEFAULT_TARGET_URL: http://server:8000
       DATA_DIR: /data
     volumes:
+      # A named volume is created root:root, but the app runs as `node` (uid 1000),
+      # which used to fail every save with
+      #   EACCES: permission denied, open '/data/onboarding.json.tmp'
+      # The image's entrypoint now starts as root, chowns this mount to `node`,
+      # then drops privileges — so existing volumes heal on the next `up`.
       - control-plane-data:/data
     depends_on:
       - middleware

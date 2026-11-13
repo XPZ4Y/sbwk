@@ -117,10 +117,20 @@ const batch = new LogBatchBuffer({
   maxSize: config.BATCH_MAX_SIZE,
   flushTimeoutMs: config.BATCH_FLUSH_TIMEOUT_MS,
   sweepMs: config.BATCH_SWEEP_MS,
+  // Dumb activation rules: one severe event may self-activate; known noise may
+  // self-answer without a model call.
+  impulse: config.BATCH_IMPULSE,
+  impulseSevereMs: config.BATCH_IMPULSE_SEVERE_MS,
+  skipTrivial: config.BATCH_SKIP_TRIVIAL,
   onFlush: async ({ incidents, digest, meta }) => {
     const payload = {
       batchId: meta.batchId,
-      batch: { reason: meta.reason, minBad: meta.minBad, windowMs: meta.windowMs, dropped: meta.dropped, expired: meta.expired },
+      batch: {
+        reason: meta.reason, minBad: meta.minBad, windowMs: meta.windowMs,
+        dropped: meta.dropped, expired: meta.expired,
+        // Set when the buffer already knows the batch is pure noise.
+        ...(meta.trivial ? { trivial: true, trivialReason: meta.trivialReason, trivialCode: meta.trivialCode, trivialByCode: meta.trivialByCode } : {})
+      },
       digest,
       incidents
     };

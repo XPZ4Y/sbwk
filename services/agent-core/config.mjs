@@ -78,6 +78,11 @@ export const config = {
   DATA_DIR: str(env.DATA_DIR, undefined),
   ESCALATION_CONFIDENCE_THRESHOLD: num(env.ESCALATION_CONFIDENCE_THRESHOLD, 0.5),
   NOTIFICATION_WEBHOOK_URL: str(env.NOTIFICATION_WEBHOOK_URL, undefined),
+  // --- Resend.com email notifications (zero-dependency via fetch) ----------
+  RESEND_API_KEY: str(env.RESEND_API_KEY, undefined),
+  DEVELOPER_EMAIL: str(env.DEVELOPER_EMAIL, undefined),
+  RESEND_FROM_EMAIL: str(env.RESEND_FROM_EMAIL, "onboarding@resend.dev"),
+  RESEND_NOTIFY_ALL_INCIDENTS: bool(env.RESEND_NOTIFY_ALL_INCIDENTS, true),
   // Safety limits (onboarding Step 04). Runtime-mutable via POST /config.
   DRY_RUN: env.DRY_RUN === undefined ? true : ["true", "1", "yes", "on"].includes(String(env.DRY_RUN).toLowerCase()),
   AUTO_ROLLBACK: env.AUTO_ROLLBACK === undefined ? true : ["true", "1", "yes", "on"].includes(String(env.AUTO_ROLLBACK).toLowerCase()),
@@ -86,7 +91,7 @@ export const config = {
 
 // Runtime codebase link (onboarding Step 03): GitHub repo metadata + last commits.
 // Populated by POST /config from the control plane. Never stores the access token.
-config.codebase = { repoUrl: undefined, fullName: undefined, commits: [] };
+config.codebase = { repoUrl: undefined, fullName: undefined, branch: undefined, commits: [], diffs: [] };
 
 // Runtime prompt overrides for the Groq reasoner (Config tab -> "AI"). Any key
 // left out falls back to GROQ_PROMPT_PROFILE / env. See prompts.mjs.

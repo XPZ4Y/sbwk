@@ -226,6 +226,23 @@ const server = http.createServer(async (req, res) => {
       if (req.method === "POST") { applyConfig(await readJson(req)); return sendJson(res, 200, { success: true, config: publicConfig() }); }
     }
 
+    if (path === "/git-context") {
+      if (!authed(req)) return err(res, 401, "UNAUTHORIZED", "Valid agent-core bearer token required");
+      if (req.method === "GET") {
+        return sendJson(res, 200, { success: true, codebase: config.codebase });
+      }
+      if (req.method === "POST") {
+        const body = await readJson(req);
+        if (body.repoUrl) config.codebase.repoUrl = String(body.repoUrl);
+        if (body.fullName) config.codebase.fullName = String(body.fullName);
+        if (body.branch) config.codebase.branch = String(body.branch);
+        if (Array.isArray(body.diffs)) {
+          config.codebase.diffs = body.diffs.slice(0, 4);
+        }
+        return sendJson(res, 200, { success: true, count: config.codebase.diffs.length, branch: config.codebase.branch });
+      }
+    }
+
     if (!path.startsWith("/incidents")) return err(res, 404, "NOT_FOUND", "Route not found");
     if (!authed(req)) return err(res, 401, "UNAUTHORIZED", "Valid agent-core bearer token required");
 

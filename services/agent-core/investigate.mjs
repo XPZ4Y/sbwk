@@ -186,8 +186,9 @@ export function createInvestigator(deps) {
       confidence: analysis.confidence, escalate, route: routing.route, warnings: warnings.length
     });
 
-    if (escalate) {
-      const notification = await notifyEngineer(incident, analysis, escalationReason || "escalation policy");
+    const shouldNotifyResend = Boolean(config.RESEND_NOTIFY_ALL_INCIDENTS && config.RESEND_API_KEY && config.DEVELOPER_EMAIL);
+    if (escalate || shouldNotifyResend) {
+      const notification = await notifyEngineer(incident, analysis, escalationReason || (escalate ? "escalation policy" : "fault detected (Resend notification)"));
       store.setNotification(incident.id, notification);
     }
     return store.get(incident.id);

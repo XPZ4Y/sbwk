@@ -84,9 +84,27 @@ Nothing about that path changed.
 Because the incidents were already de-duplicated by `DispatchThrottle` before
 buffering, `DISPATCH_COOLDOWN_MS` keeps working exactly as it did.
 
+### The dumb activation function (`activation.mjs`)
+
+The wake condition is deliberately stupid: a handful of comparisons you can
+predict, with all the expensive intelligence sitting *behind* it. Two rules:
+
+| rule | what it does | default |
+| --- | --- | --- |
+| **IMPULSE** | ONE severe bad request skips the "wait for a pattern" step. Severe = 5xx, unreachable/timed-out upstream, a repeat failure on the same path, or slower than `BATCH_IMPULSE_SEVERE_MS`. | `on` |
+| **TRIVIAL** | Known noise is answered locally instead of spending a Liquid call on it: scanner paths (`/.env`, `/wp-login.php`, `/phpmyadmin`…), `favicon.ico`/`robots.txt` probes, and plain `401`/`403` client auth mistakes. Only when *every* incident in the batch is trivial — one real incident disables it. Never applies to 5xx or upstream failures. | `off` |
+
+So in `batch` mode a single unexplained 500 still wakes the agent immediately
+(it is 5xx), while five requests to `/.env` are quietly marked "known noise" and
+cost nothing. Turn `BATCH_IMPULSE=false` if you want *only* the count threshold,
+and set `BATCH_SKIP_TRIVIAL=true` to stop paying for script-kiddie traffic.
+
 | Variable | Default | Meaning |
 | --- | --- | --- |
 | `DETECT_MODE` | `immediate` | `immediate` = today's behaviour; `batch` = opt in to the gate |
+| `BATCH_IMPULSE` | `true` | Let one severe request self-activate the gate |
+| `BATCH_IMPULSE_SEVERE_MS` | `5000` | A response this slow counts as severe |
+| `BATCH_SKIP_TRIVIAL` | `false` | Answer recognised noise locally (no Liquid call) |
 | `BATCH_MIN_BAD` | `5` | Bad requests needed to wake the agent |
 | `BATCH_WINDOW_MS` | `60000` | The window that count is measured over |
 | `BATCH_MAX_SIZE` | `50` | Bounded ring buffer size (overflow is counted, never grown) |
@@ -95,8 +113,8 @@ buffering, `DISPATCH_COOLDOWN_MS` keeps working exactly as it did.
 | `BATCH_TIMEOUT_MS` | `25000` | Timeout for the whole batch round trip |
 | `LIQUID_BATCH_FALLBACK` | `investigate` | Batch endpoint down → `investigate` (keep signal) or `skip` |
 
-The digest is built by the pure `digest.mjs` helpers and the ring buffer lives in
-`batch-buffer.mjs`; `GET /_sbwk/batch` exposes the buffer state, and
+The digest is built by the pure `digest.mjs` helpers, the wake rules live in
+`activation.mjs`, and the ring buffer lives in `batch-buffer.mjs`; `GET /_sbwk/batch` exposes the buffer state, and
 `POST /_sbwk/batch/flush` forces a flush (demo/debug aid; a no-op in immediate
 mode). `node --test` and `node demo/run-batch-demo.mjs` cover both modes.
 
@@ -151,6 +169,7 @@ Compose network, set `TARGET_SERVER_URL=http://server:80` and
 config.mjs        # env config (+ optional .env loader)
 detector.mjs      # status classification, throttle, incident builder
 digest.mjs        # compact log digest of a batch (pure)
+activation.mjs    # dumb activation: impulse (one severe event) + trivial (noise)
 batch-buffer.mjs  # lazy batch gate: bounded ring buffer + wake condition
 server.mjs        # node:http reverse proxy + detection hooks + admin routes
 test/             # node --test

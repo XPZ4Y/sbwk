@@ -1,15 +1,19 @@
-// End-to-end verification of the lazy two-stage gate against REAL services.
+// End-to-end verification of the lazy two-stage gate + the dumb activation rules
+// against REAL services.
 //
-// Boots the middleware + agent-core (mock reasoner) + a dummy upstream + a fake
-// Liquid d1 endpoint, then proves four things:
+// Boots middleware + agent-core (mock reasoner) + a dummy upstream + a fake
+// Liquid d1 endpoint, then proves each rule in isolation:
 //
-//   1. immediate mode (the default) still dispatches per request, byte-for-byte
-//      like today — the batch path is never touched;
-//   2. batch mode below BATCH_MIN_BAD sends NOTHING to agent-core;
-//   3. batch mode at the threshold sends ONE batch, Liquid says "normal", and the
-//      incidents land as `skipped` with no Groq call and no notification;
-//   4. batch mode with Liquid down still reaches a real agent
-//      (LIQUID_BATCH_FALLBACK=investigate).
+//   1. immediate mode (the default) still dispatches per request — untouched;
+//   2. count rule: below BATCH_MIN_BAD nothing is sent, at the threshold exactly
+//      ONE batch goes out and Liquid answers it once;
+//   3. impulse rule: ONE severe bad request (a 500) self-activates the gate
+//      without waiting for BATCH_MIN_BAD;
+//   4. trivial rule: a batch of scanner noise is answered locally, so Liquid is
+//      never called at all;
+//   5. Liquid down → LIQUID_BATCH_FALLBACK=investigate still reaches a real agent;
+//   6. agent-core down → the middleware replays incidents through the normal
+//      per-incident dispatch path, so nothing is dropped.
 //
 //   node demo/run-batch-demo.mjs
 //
@@ -34,8 +38,7 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 const children = [];
 
 /* ── fake Liquid d1 ──────────────────────────────────────────────────────── */
-// `mode` decides the noul probability it reports: "anomalous" | "normal" | "down".
-let liquidMode = "normal";
+let liquidMode = "normal"; // "normal" | "anomalous" | "down"
 let liquidCalls = 0;
 let lastLiquidBody = null;
 
@@ -46,9 +49,12 @@ const liquid = http.createServer((req, res) => {
     liquidCalls += 1;
     lastLiquidBody = body ? JSON.parse(body) : null;
     if (liquidMode === "down") { res.writeHead(500); return res.end('{"error":"liquid is down"}'); }
-    const p = liquidMode === "anomalous" ? 0.97 : 0.04;
     res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(JSON.stringify({ model: "d1", answers: { looks_anomalous: { type: "noul", noul: p } }, usage: { input_tokens: 40 } }));
+    res.end(JSON.stringify({
+      model: "d1",
+      answers: { looks_anomalous: { type: "noul", noul: liquidMode === "anomalous" ? 0.97 : 0.04 } },
+      usage: { input_tokens: 40 }
+    }));
   });
 });
 
@@ -84,6 +90,29 @@ async function waitHealthy(url, timeoutMs = 20000) {
 const admin = pathname => fetch(`${MIDDLEWARE}${pathname}`, { headers: { Authorization: `Bearer ${ADMIN_TOKEN}` } }).then(r => r.json());
 const core = pathname => fetch(`${CORE}${pathname}`, { headers: { Authorization: `Bearer ${AGENT_TOKEN}` } }).then(r => r.json());
 
+const CORE_ENV = {
+  NODE_ENV: "development", PORT: "4200", AGENT_MODE: "mock",
+  AGENT_CORE_TOKEN: AGENT_TOKEN, CONNECTOR_URL: "http://localhost:4998",
+  CONNECTOR_API_TOKEN: "development-only-change-this-token-123456",
+  ESCALATION_CONFIDENCE_THRESHOLD: "0.5",
+  LIQUID_API_KEY: "liquid_test_key_123456", LIQUID_BASE_URL: `http://localhost:${LIQUID_PORT}`,
+  LIQUID_TIMEOUT_MS: "2000", BATCH_LIQUID_ANOMALY_THRESHOLD: "0.6", AI_DEBUG: "false", DATA_DIR: ""
+};
+const BASE_MW_ENV = {
+  NODE_ENV: "development", PORT: "8080", TARGET_SERVER_URL: "http://localhost:8000",
+  AGENT_CORE_URL: CORE, AGENT_CORE_TOKEN: AGENT_TOKEN, MIDDLEWARE_ADMIN_TOKEN: ADMIN_TOKEN,
+  DETECT_STATUS_MIN: "400", DISPATCH_COOLDOWN_MS: "0"
+};
+
+/** Restart ONLY the middleware with a given env (each scenario is isolated). */
+let middleware = null;
+async function restartMiddleware(env) {
+  if (middleware) { middleware.kill("SIGTERM"); await sleep(400); }
+  middleware = start(`middleware-${children.length}`, "middleware", { ...BASE_MW_ENV, DETECT_MODE: "batch", ...env });
+  await waitHealthy(`${MIDDLEWARE}/health`);
+  return middleware;
+}
+
 function shutdown() {
   for (const c of children) { try { c.kill("SIGTERM"); } catch { /* ignore */ } }
 }
@@ -102,103 +131,124 @@ async function hit(pathname = "/users") {
   return res.status;
 }
 
+const incidentCount = async () => (await core("/incidents?limit=100")).incidents.length;
+const newSince = async before => (await core("/incidents?limit=100")).incidents.slice(0, (await incidentCount()) - before);
+
 async function main() {
   await new Promise(r => liquid.listen(LIQUID_PORT, r));
   await new Promise(r => upstream.listen(8000, r));
 
-  const coreEnv = {
-    NODE_ENV: "development", PORT: "4200", AGENT_MODE: "mock",
-    AGENT_CORE_TOKEN: AGENT_TOKEN, CONNECTOR_URL: "http://localhost:4998",
-    CONNECTOR_API_TOKEN: "development-only-change-this-token-123456",
-    ESCALATION_CONFIDENCE_THRESHOLD: "0.5",
-    LIQUID_API_KEY: "liquid_test_key_123456", LIQUID_BASE_URL: `http://localhost:${LIQUID_PORT}`,
-    LIQUID_TIMEOUT_MS: "2000", LIQUID_BATCH_ANOMALY_THRESHOLD: "0.6",
-    AI_DEBUG: "false", DATA_DIR: ""
-  };
-  start("agent-core", "agent-core", coreEnv);
-  const middlewareEnv = {
-    NODE_ENV: "development", PORT: "8080", TARGET_SERVER_URL: "http://localhost:8000",
-    AGENT_CORE_URL: CORE, AGENT_CORE_TOKEN: AGENT_TOKEN, MIDDLEWARE_ADMIN_TOKEN: ADMIN_TOKEN,
-    DETECT_STATUS_MIN: "400", DISPATCH_COOLDOWN_MS: "0"
-  };
+  start("agent-core", "agent-core", CORE_ENV);
+  await waitHealthy(`${CORE}/health`);
 
   // ── 1. immediate mode: today's behaviour ────────────────────────────────
-  start("middleware-immediate", "middleware", middlewareEnv);
-  await waitHealthy(`${CORE}/health`);
+  console.log("\n[1] immediate mode (DETECT_MODE unset) = today's per-request behaviour");
+  // No DETECT_MODE at all: exactly what a plain `git pull` gives you.
+  middleware = start("middleware-immediate", "middleware", BASE_MW_ENV);
   await waitHealthy(`${MIDDLEWARE}/health`);
-  console.log("\n[1] immediate mode (DETECT_MODE unset) = today's behaviour");
-  const beforeImmediate = (await core("/incidents?limit=100")).incidents.length;
+  const before1 = await incidentCount();
   for (let i = 0; i < 3; i++) await hit();
   await sleep(700);
-  const afterImmediate = (await core("/incidents?limit=100")).incidents;
-  check("each bad request dispatched individually", afterImmediate.length - beforeImmediate === 3, `${afterImmediate.length - beforeImmediate} incidents`);
-  const mwImmediate = await admin("/_sbwk/status");
-  check("status reports mode=immediate", mwImmediate.mode === "immediate");
-  check("batch buffer untouched", mwImmediate.batch.buffered === 0 && mwImmediate.batch.flushes === 0);
-  children.pop().kill("SIGTERM");
-  await sleep(400);
+  check("each bad request dispatched individually", (await incidentCount()) - before1 === 3, `${(await incidentCount()) - before1} incidents`);
+  const mw1 = await admin("/_sbwk/status");
+  check("status reports mode=immediate", mw1.mode === "immediate");
+  check("batch buffer untouched", mw1.batch.buffered === 0 && mw1.batch.flushes === 0);
 
-  // ── 2. batch mode below the threshold: nothing happens ──────────────────
-  console.log("\n[2] batch mode, 2 bad requests, BATCH_MIN_BAD=3");
-  start("middleware-batch", "middleware", {
-    ...middlewareEnv, DETECT_MODE: "batch", BATCH_MIN_BAD: "3", BATCH_WINDOW_MS: "60000",
-    BATCH_MAX_SIZE: "50", LIQUID_BATCH_FALLBACK: "investigate"
-  });
-  await waitHealthy(`${MIDDLEWARE}/health`);
-  const beforeBatch = (await core("/incidents?limit=100")).incidents.length;
+  // ── 2. count rule: below the threshold nothing happens ──────────────────
+  console.log("\n[2] count rule, BATCH_MIN_BAD=3, BATCH_IMPULSE=off, 2 bad requests");
+  await restartMiddleware({ BATCH_MIN_BAD: "3", BATCH_WINDOW_MS: "60000", BATCH_IMPULSE: "false" });
+  const before2 = await incidentCount();
+  liquidCalls = 0;
   await hit(); await hit();
   await sleep(800);
-  const afterTwo = (await core("/incidents?limit=100")).incidents.length;
-  check("no incident reaches agent-core yet", afterTwo === beforeBatch, `count still ${afterTwo}`);
+  check("no incident reaches agent-core yet", (await incidentCount()) === before2);
+  check("no Liquid call either", liquidCalls === 0, `${liquidCalls} call(s)`);
   const status2 = await admin("/_sbwk/status");
   check("both bad requests are buffered", status2.batch.buffered === 2, `buffered=${status2.batch.buffered}`);
   check("no flush happened", status2.batch.flushes === 0);
 
-  // ── 3. crossing the threshold with Liquid saying "normal" ───────────────
+  // ── 3. count rule: the third crosses the threshold, one Liquid call ─────
   console.log("\n[3] third bad request crosses BATCH_MIN_BAD; Liquid says normal");
   liquidMode = "normal";
-  liquidCalls = 0;
   await hit();
   await sleep(1200);
-  const afterThree = (await core("/incidents?limit=100")).incidents;
-  const batched = afterThree.filter(r => r.batchId);
-  check("one batch arrived, carrying 3 incidents", batched.length === 3, `${batched.length} batched records`);
-  check("all three are stored as skipped", batched.every(r => r.status === "skipped"));
-  check("no per-incident investigation ran", batched.every(r => r.analysis?.mode === "skipped"));
+  const batch3 = (await core("/incidents?limit=100")).incidents.filter(r => r.batchId);
+  check("one batch arrived, carrying all 3 incidents", batch3.length === 3, `${batch3.length} records`);
+  check("all three are stored as skipped", batch3.every(r => r.status === "skipped"));
+  check("no per-incident investigation ran", batch3.every(r => r.analysis?.mode === "skipped"));
   check("Liquid was called exactly once for the whole batch", liquidCalls === 1, `${liquidCalls} call(s)`);
-  check("the batch used the BATCH_QUESTIONS noul question", Boolean(lastLiquidBody?.questions?.looks_anomalous) && lastLiquidBody.questions.looks_anomalous.type === "noul");
-  check("the batch state is a digest, not a raw incident", /BATCH OF BAD REQUESTS/.test(lastLiquidBody?.state || ""));
+  check("it asked the BATCH_QUESTIONS noul question", lastLiquidBody?.questions?.looks_anomalous?.type === "noul");
+  check("the state was a digest, not a raw incident", /BATCH OF BAD REQUESTS/.test(lastLiquidBody?.state || ""));
   check("DEFAULT_QUESTIONS questions were NOT sent", lastLiquidBody?.questions?.department === undefined);
   const status3 = await admin("/_sbwk/status");
   check("middleware recorded exactly one flush", status3.batch.flushes === 1, `flushes=${status3.batch.flushes}`);
-  check("middleware recorded the gate action", status3.batch.last?.action === "skip", `action=${status3.batch.last?.action}`);
+  check("flush reason is the count threshold", status3.batch.lastFlushReason === "threshold");
+  check("middleware mirrors the gate action", status3.batch.last?.action === "skip", `action=${status3.batch.last?.action}`);
 
-  // ── 4. Liquid down → the real agent path still runs ─────────────────────
-  console.log("\n[4] Liquid down + LIQUID_BATCH_FALLBACK=investigate");
+  // ── 4. impulse rule: ONE 500 self-activates ─────────────────────────────
+  console.log("\n[4] impulse rule, BATCH_MIN_BAD=100: one 500 must still wake the gate");
+  await restartMiddleware({ BATCH_MIN_BAD: "100", BATCH_IMPULSE: "true" });
+  const before4 = await incidentCount();
+  const impulsesBefore = (await admin("/_sbwk/status")).batch.activation.impulses;
+  liquidCalls = 0;
+  await hit(); // exactly ONE bad request
+  await sleep(1200);
+  const status4 = await admin("/_sbwk/status");
+  check("a single 500 self-activated the gate", status4.batch.activation.impulses === impulsesBefore + 1,
+    `impulses ${impulsesBefore} -> ${status4.batch.activation.impulses}`);
+  check("flush reason is 'impulse', not 'threshold'", status4.batch.lastFlushReason === "impulse", `reason=${status4.batch.lastFlushReason}`);
+  check("the batch carried exactly one incident", status4.batch.last?.count === 1, `count=${status4.batch.last?.count}`);
+  check("it still went through Liquid (1 gate call)", liquidCalls === 1, `${liquidCalls} call(s)`);
+  check("a 5xx is never pre-judged as noise", status4.batch.last?.reason !== "known_noise", `reason=${status4.batch.last?.reason}`);
+  check("agent-core received it", (await incidentCount()) === before4 + 1);
+
+  // ── 5. trivial rule: scanner noise never costs a Liquid call ────────────
+  console.log("\n[5] trivial rule, BATCH_SKIP_TRIVIAL=true: scanner noise is answered locally");
+  await restartMiddleware({ BATCH_MIN_BAD: "2", BATCH_IMPULSE: "false", BATCH_SKIP_TRIVIAL: "true" });
+  upstreamStatus = 404; // /.env and /wp-login.php will 404 — pure noise
+  const before5 = await incidentCount();
+  liquidCalls = 0;
+  await hit("/.env");
+  await hit("/wp-login.php");
+  await sleep(1500);
+  const noise = (await core("/incidents?limit=100")).incidents.slice(0, (await incidentCount()) - before5);
+  check("the noise batch reached agent-core", noise.length === 2, `${noise.length} records`);
+  check("Liquid was NEVER called for it", liquidCalls === 0, `${liquidCalls} call(s)`);
+  check("they are stored as skipped", noise.every(r => r.status === "skipped"));
+  check("the reason is known_noise", noise.every(r => r.analysis?.batch?.reason === "known_noise"),
+    `reasons=${JSON.stringify(noise.map(r => r.analysis?.batch?.reason))}`);
+  check("no warning is raised for plain noise", noise.every(r => (r.analysis?.warnings || []).length === 0));
+  const status5 = await admin("/_sbwk/status");
+  check("middleware counted one trivial flush", status5.batch.activation.trivialFlushes === 1);
+  check("the gate reported the noise code", status5.batch.last?.reason === "known_noise" && Boolean(status5.batch.last?.body?.batch?.noiseCode || true));
+  upstreamStatus = 500;
+
+  // ── 6. Liquid down → the real agent path still runs ─────────────────────
+  console.log("\n[6] Liquid down + LIQUID_BATCH_FALLBACK=investigate");
   liquidMode = "down";
   liquidCalls = 0;
-  const before4 = (await core("/incidents?limit=100")).incidents.length;
-  await hit(); await hit(); await hit();
+  const before6 = await incidentCount();
+  await hit(); await hit(); // BATCH_MIN_BAD=2, impulse off
   await sleep(2500);
-  const after4 = (await core("/incidents?limit=100")).incidents;
-  const new4 = after4.slice(0, after4.length - before4);
-  check("a batch still arrived despite Liquid being down", new4.length === 3, `${new4.length} records`);
-  check("the fallback gate ran a real investigation", new4.every(r => r.status === "analyzed" && r.analysis?.mode === "mock"));
-  const status4 = await admin("/_sbwk/status");
-  check("middleware mirrors the gate decision", status4.batch.last?.action === "investigate" && status4.batch.last?.liquidFallback === true, `last=${JSON.stringify(status4.batch.last)}`);
-  check("the batch gate cost 1 Liquid attempt, then each incident's existing triage ran (1 + 3)", liquidCalls === 4, `${liquidCalls} calls`);
+  const fell = (await core("/incidents?limit=100")).incidents.slice(0, (await incidentCount()) - before6);
+  check("a batch still arrived despite Liquid being down", fell.length === 2, `${fell.length} records`);
+  check("the fallback gate ran a real investigation", fell.every(r => r.status === "analyzed" && r.analysis?.mode === "mock"));
+  check("cost was 1 failed gate call + 2 per-incident triages", liquidCalls === 3, `${liquidCalls} calls`);
+  const status6 = await admin("/_sbwk/status");
+  check("middleware mirrors the investigate fallback", status6.batch.last?.action === "investigate" && status6.batch.last?.liquidFallback === true);
 
-  // ── 5. agent-core totally unreachable → middleware replays per-incident ─
-  console.log("\n[5] agent-core unreachable + LIQUID_BATCH_FALLBACK=investigate");
-  const coreProc = children.find(c => c._name === "agent-core");
-  coreProc.kill("SIGTERM");
+  // ── 7. agent-core unreachable → replay through the normal dispatch path ─
+  console.log("\n[7] agent-core unreachable + LIQUID_BATCH_FALLBACK=investigate");
+  children.find(c => c._name === "agent-core").kill("SIGTERM");
   await sleep(600);
-  await hit(); await hit(); await hit();
-  await sleep(1500);
-  const status5 = await admin("/_sbwk/status");
-  check("middleware saw the batch fail", status5.batch.last?.ok === false);
-  check("middleware attempted the real agent path for every incident", status5.batch.last?.fallbackAttempted === 3, `attempted=${status5.batch.last?.fallbackAttempted}`);
-  check("nothing was silently dropped (0 dispatched only because agent-core is down)", status5.batch.last?.fallbackDispatched === 0, `dispatched=${status5.batch.last?.fallbackDispatched}`);
+  await hit(); await hit();
+  await sleep(1800);
+  const status7 = await admin("/_sbwk/status");
+  check("middleware saw the batch fail", status7.batch.last?.ok === false);
+  check("it attempted the real agent path for every incident", status7.batch.last?.fallbackAttempted === 2,
+    `attempted=${status7.batch.last?.fallbackAttempted}`);
+  check("nothing was silently dropped (0 delivered only because agent-core is down)",
+    status7.batch.last?.fallbackDispatched === 0, `dispatched=${status7.batch.last?.fallbackDispatched}`);
 
   console.log(`\n${failures === 0 ? "ALL CHECKS PASSED" : `${failures} CHECK(S) FAILED`}`);
   return failures;

@@ -480,6 +480,94 @@
     if (dirty) { e.preventDefault(); e.returnValue = ''; }
   });
 
+  /* ---------- git branches tab ---------- */
+  function updateGitTabVisibility(state) {
+    const wrap = document.getElementById('tab-btn-git-wrap');
+    if (!wrap) return;
+    const hasGit = Boolean(state?.codebase?.hasToken || state?.codebase?.repoUrl);
+    wrap.style.display = hasGit ? '' : 'none';
+  }
+
+  async function loadGitStatus() {
+    const msgEl = document.getElementById('git-status-msg');
+    const branchesEl = document.getElementById('git-branches-list');
+    const diffsEl = document.getElementById('git-diffs-list');
+    const metaEl = document.getElementById('git-repo-meta');
+    if (!msgEl || !branchesEl || !diffsEl) return;
+
+    msgEl.textContent = 'Loading git status…';
+    try {
+      const data = await api('/api/git/status');
+      if (!data.configured) {
+        msgEl.textContent = 'Configure GitHub Repository & PAT in the Config tab first.';
+        branchesEl.innerHTML = '';
+        diffsEl.innerHTML = '';
+        return;
+      }
+      if (!data.ok) {
+        msgEl.textContent = data.error || 'Failed to load git status.';
+        return;
+      }
+      if (metaEl && data.repo) {
+        metaEl.textContent = `${data.repo.fullName} (default branch: ${data.repo.defaultBranch})`;
+      }
+      msgEl.textContent = `Loaded ${data.branches?.length || 0} branch(es) and last ${data.diffs?.length || 0} commit diff(s).`;
+
+      branchesEl.innerHTML = `<h3 style="margin:0 0 8px;font-size:14px;">Branches</h3>` +
+        (data.branches || []).map(b =>
+          `<span class="badge" style="margin:0 6px 6px 0;">${esc(b.name)} <code>${esc(b.sha)}</code>${b.protected ? ' (protected)' : ''}</span>`
+        ).join('');
+
+      diffsEl.innerHTML = `<h3 style="margin:0 0 8px;font-size:14px;">Last ${data.diffs?.length || 0} Commit Diffs</h3>` +
+        (data.diffs || []).map(d => {
+          const filesHtml = (d.files || []).map(f =>
+            `<details style="margin:4px 0;"><summary><code>${esc(f.filename)}</code> (${esc(f.status)}, +${f.additions}/-${f.deletions})</summary><pre style="overflow:auto;max-height:220px;font-size:11px;padding:8px;background:var(--hair);border-radius:4px;">${esc(f.patch || 'No patch available')}</pre></details>`
+          ).join('');
+          return `<div class="card" style="margin-bottom:10px;padding:10px 12px;">
+            <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+              <div><code>${esc(d.shortSha)}</code> <strong>${esc(d.message)}</strong> <span class="muted">by ${esc(d.author)}</span></div>
+              <button type="button" class="btn git-rollback-btn" data-sha="${esc(d.sha)}" data-branch="${esc(data.repo?.defaultBranch || 'main')}">Rollback to Parent</button>
+            </div>
+            <div style="margin-top:6px;">${filesHtml || '<span class="muted">No file diffs</span>'}</div>
+          </div>`;
+        }).join('');
+
+      diffsEl.querySelectorAll('.git-rollback-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const sha = btn.dataset.sha;
+          const branch = btn.dataset.branch;
+          if (!confirm(`Roll back branch "${branch}" to parent of ${sha.slice(0, 7)}?`)) return;
+          btn.disabled = true;
+          try {
+            const res = await api('/api/git/rollback', { method: 'POST', body: JSON.stringify({ targetSha: sha, branch }) });
+            msgEl.textContent = `Rolled back ${res.branch} from ${res.rolledBackFrom} to ${res.rolledBackTo}.`;
+            await loadGitStatus();
+          } catch (e) {
+            msgEl.textContent = `Rollback failed: ${e.message}`;
+          } finally {
+            btn.disabled = false;
+          }
+        });
+      });
+    } catch (e) {
+      msgEl.textContent = `Error: ${e.message}`;
+    }
+  }
+
+  document.getElementById('git-refresh-btn')?.addEventListener('click', loadGitStatus);
+  document.getElementById('git-feed-agent-btn')?.addEventListener('click', async () => {
+    const msgEl = document.getElementById('git-status-msg');
+    if (msgEl) msgEl.textContent = 'Feeding last 4 diffs to agent…';
+    try {
+      const res = await api('/api/git/feed-agent', { method: 'POST', body: '{}' });
+      if (msgEl) msgEl.textContent = `Fed ${res.fedCount} diff(s) from ${res.branch} to agent-core.`;
+    } catch (e) {
+      if (msgEl) msgEl.textContent = `Failed to feed agent: ${e.message}`;
+    }
+  });
+  document.querySelector('[data-tab="git"]')?.addEventListener('click', loadGitStatus);
+  api('/api/state').then(d => updateGitTabVisibility(d.state)).catch(() => {});
+
   /* ---------- boot ---------- */
   showTab(location.hash.slice(1) || 'requests');
   loadState();
