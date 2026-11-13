@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SLEEPY BOT // CONTROL PLANE</title>
+<title>SLEEPY BOT // DEVELOPER ONBOARDING</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,557 +23,832 @@
     --brown-muted: #8b775f;
     --line: #e4dbcc;
   }
+
+  html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
   body {
-    background-color: var(--cream);
-    color: var(--brown-dark);
-    font-family: "Space Mono", monospace;
+    background: var(--cream) !important;
+    color: var(--brown-dark) !important;
+    font-family: 'Space Mono', monospace;
+    -webkit-font-smoothing: antialiased;
   }
-  .card {
-    background-color: var(--surface);
-    border: 1px solid var(--line);
+  ::selection { background: #e9e1d4; color: var(--brown-dark); }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: var(--cream); }
+  ::-webkit-scrollbar-thumb { background: #d6cbb9; border-radius: 1rem; }
+  * { -webkit-tap-highlight-color: transparent; }
+
+  .text-black { color: var(--brown-dark) !important; }
+  .text-white { color: var(--cream) !important; }
+  [class*="text-neutral-"] { color: var(--brown-muted) !important; }
+  .bg-white { background: var(--surface) !important; }
+  .bg-neutral-100 { background: var(--surface-muted) !important; }
+  .bg-black { background: var(--brown) !important; border-radius: .7rem; }
+  .bg-black [class*="text-neutral-"] { color: #e5d9c8 !important; }
+
+  aside, header.lg\:hidden { background: var(--surface) !important; }
+  aside { border-right: 1px solid var(--line); }
+  header.lg\:hidden {
+    border-bottom: 1px solid var(--line);
+    box-shadow: 0 6px 20px rgba(87, 67, 47, .06) !important;
   }
-  .btn-primary {
-    background-color: var(--brown);
-    color: var(--surface);
-    transition: background-color 0.15s ease;
+  #mobileNav { background: var(--cream) !important; }
+
+  .brand-mark {
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    text-decoration: none;
   }
-  .btn-primary:hover {
-    background-color: var(--brown-dark);
+  .brand-dot {
+    width: .7rem;
+    height: .7rem;
+    border-radius: 50%;
+    background: var(--brown);
+    flex: none;
   }
-  .btn-outline {
-    background-color: var(--surface-muted);
-    color: var(--brown-dark);
-    border: 1px solid var(--line);
-    transition: background-color 0.15s ease;
-  }
-  .btn-outline:hover {
-    background-color: var(--line);
-  }
-  .tab-btn {
-    border-bottom: 2px solid transparent;
-    color: var(--brown-muted);
-  }
-  .tab-btn.active {
-    border-bottom-color: var(--brown-dark);
-    color: var(--brown-dark);
+  .brand-text {
+    font-size: .62rem;
     font-weight: 700;
-  }
-  input[type="text"], input[type="password"], input[type="number"] {
-    background-color: var(--surface-muted);
-    border: 1px solid var(--line);
+    letter-spacing: .22em;
+    text-transform: uppercase;
+    line-height: 1.4;
     color: var(--brown-dark);
   }
-  input:focus {
-    outline: 1px solid var(--brown);
+  aside .brand-mark { margin-bottom: 2rem; }
+  header .brand-mark { max-width: 55vw; }
+
+  main { min-height: 100vh; }
+  #top { border-bottom: 1px solid var(--line); }
+  #how .grid > div {
+    background: var(--surface) !important;
+    border: 1px solid var(--line);
+    border-radius: .8rem;
+    box-shadow: 0 6px 20px rgba(87, 67, 47, .035);
   }
-  .diff-add { background-color: #e6f4ea; color: #137333; }
-  .diff-del { background-color: #fce8e6; color: #c5221f; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: .65rem;
+    padding: 1rem 1.75rem;
+    border: 1px solid var(--brown);
+    border-radius: .5rem;
+    background: var(--brown);
+    color: var(--cream);
+    cursor: pointer;
+    font: 700 .72rem 'Space Mono', monospace;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    transition: background-color .2s ease, transform .2s ease;
+  }
+  .btn:hover { background: var(--brown-dark); transform: translateY(-1px); }
+  .btn-invert { background: var(--cream); color: var(--brown-dark); border-color: var(--line); }
+  .btn-invert:hover { background: var(--surface-muted); }
+  .btn:disabled { opacity: .5; cursor: wait; transform: none; }
+
+  .field {
+    width: 100%;
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--line);
+    border-radius: .5rem;
+    background: var(--surface);
+    color: var(--brown-dark);
+    font: 700 .9rem 'Space Mono', monospace;
+    transition: border-color .2s ease, box-shadow .2s ease;
+  }
+  .field::placeholder { color: #9b866d; font-weight: 400; }
+  .field:focus { outline: none; border-color: #baa98f; box-shadow: 0 0 0 3px rgba(118, 88, 59, .09); }
+
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: .85rem;
+    padding: .7rem .85rem;
+    border-radius: .5rem;
+    color: var(--brown-muted);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    transition: background-color .2s ease, color .2s ease;
+  }
+  .nav-link:hover { background: var(--surface-muted); color: var(--brown-dark); }
+  .nav-link.is-active { background: #e9e2d6; color: var(--brown-dark); }
+
+  .toggle {
+    position: relative;
+    width: 4rem;
+    height: 2rem;
+    flex: none;
+    padding: 0;
+    border: 0;
+    border-radius: 999px;
+    background: #e5ded2;
+    cursor: pointer;
+    transition: background-color .2s ease;
+  }
+  .toggle .knob {
+    position: absolute;
+    top: .3rem;
+    left: .3rem;
+    width: 1.4rem;
+    height: 1.4rem;
+    border-radius: 50%;
+    background: var(--brown);
+    transition: transform .2s ease, background-color .2s ease;
+  }
+  .toggle[aria-checked="true"] { background: #cfc1ad; }
+  .toggle[aria-checked="true"] .knob { transform: translateX(2rem); background: var(--brown-dark); }
+  a:focus-visible, button:focus-visible { outline: 2px solid #9b866d; outline-offset: 3px; }
+
+  #repo-commits > div, #incident-feed > div {
+    border: 1px solid var(--line);
+    border-radius: .55rem;
+  }
+  footer { border-top: 1px solid var(--line); }
+
+  @media (max-width: 640px) {
+    #how .grid > div { padding: 1.5rem; }
+  }
+  .wizard-step { display: none; }
+  body.is-wizard #top, body.is-wizard #how { display: none; }
+  body.is-wizard #wizardProgress { display: block; }
+  body.is-wizard .wizard-step.is-current { display: block; }
+  .wizard-progress { margin: 0 0 2.5rem; padding-top: 2rem; }
+  .wizard-progress-track { height: 3px; overflow: hidden; background: var(--surface-muted); }
+  .wizard-progress-bar { display: block; width: 25%; height: 100%; background: var(--brown); transition: width .25s ease; }
+  .wizard-actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.5rem; }
+  .wizard-actions.justify-start { justify-content: flex-start; }
+
+  .diff-view { background: var(--surface-muted); border: 1px solid var(--line); border-radius: .5rem; }
+  .diff-view .line { padding: 0 .6rem; white-space: pre; }
+  .diff-add { background: #e6f4ea; color: #137333; }
+  .diff-del { background: #fce8e6; color: #c5221f; }
   .diff-hdr { color: var(--brown-muted); }
+  .sev-high { background: #f6ddd9; color: #9c2f24; }
+  .sev-low { background: var(--surface-muted); color: var(--brown-dark); }
 </style>
 </head>
-<body class="min-h-screen flex flex-col">
 
-  <!-- Top Header -->
-  <header class="border-b border-[#e4dbcc] bg-[#fbfaf7] px-6 py-4">
-    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-4">
-      <div class="flex items-center gap-3">
-        <span class="inline-block w-3 h-3 rounded-full bg-[#76583b]"></span>
-        <h1 class="text-lg font-bold tracking-wider">SLEEPY BOT // CONTROL PLANE</h1>
-      </div>
+<body class="font-mono bg-white text-black antialiased overflow-x-hidden">
 
-      <div class="flex items-center gap-4 text-xs">
-        <div id="serviceBadges" class="flex items-center gap-3">
-          <span class="px-2 py-1 rounded bg-[#f0ece2]">EDGE: <strong id="svc-middleware">...</strong></span>
-          <span class="px-2 py-1 rounded bg-[#f0ece2]">BRAIN: <strong id="svc-agentCore">...</strong></span>
-          <span class="px-2 py-1 rounded bg-[#f0ece2]">HANDS: <strong id="svc-connector">...</strong></span>
-        </div>
-        <button id="toggleMonitoringBtn" onclick="toggleMonitoring()" class="btn-primary px-3 py-1.5 rounded text-xs font-bold">
-          MONITORING: ON
-        </button>
-      </div>
+<!-- ══════════════════ MOBILE HEADER ══════════════════ -->
+<header class="lg:hidden sticky top-0 z-40 bg-white px-6 py-5 flex items-center justify-between"
+        style="box-shadow:0 12px 32px -20px rgba(0,0,0,.45)">
+  <a href="#top" class="brand-mark" aria-label="Sleepy Bot home">
+    <span class="brand-dot"></span>
+    <span class="brand-text">Sleepy Bot</span>
+  </a>
+  <button onclick="toggleMobileNav()" class="btn" style="padding:.6rem 1.1rem; font-size:.65rem;">Menu</button>
+</header>
+
+<!-- ══════════════════ MOBILE NAV ══════════════════ -->
+<div id="mobileNav" class="hidden fixed inset-0 z-50 bg-white p-6 flex flex-col justify-between overflow-y-auto">
+  <div>
+    <div class="flex items-center justify-between mb-14">
+      <span class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400">// Setup Steps</span>
+      <button onclick="toggleMobileNav()" class="btn" style="padding:.6rem 1.1rem; font-size:.65rem;">Close</button>
+    </div>
+    <nav class="space-y-1">
+      <a href="#step-01" onclick="toggleMobileNav()" class="block text-2xl font-bold uppercase tracking-tight py-3">01 — Gateway</a>
+      <a href="#step-02" onclick="toggleMobileNav()" class="block text-2xl font-bold uppercase tracking-tight py-3">02 — External</a>
+      <a href="#step-03" onclick="toggleMobileNav()" class="block text-2xl font-bold uppercase tracking-tight py-3">03 — Codebase</a>
+      <a href="#step-04" onclick="toggleMobileNav()" class="block text-2xl font-bold uppercase tracking-tight py-3">04 — Safety</a>
+    </nav>
+  </div>
+  <div class="text-[10px] font-bold uppercase tracking-[0.25em] text-neutral-400 pt-10">
+    System status: ready
+  </div>
+</div>
+
+<!-- ══════════════════ SIDEBAR ══════════════════ -->
+<aside class="hidden lg:flex fixed top-0 left-0 h-screen w-[20%] flex-col justify-between p-8 xl:p-10 z-30 bg-white">
+  <div>
+    <a href="#top" class="brand-mark" aria-label="Sleepy Bot home">
+      <span class="brand-dot"></span>
+      <span class="brand-text">Sleepy Bot<br>with Keys</span>
+    </a>
+    <h2 class="text-sm font-bold uppercase tracking-[0.16em] leading-relaxed">
+      Developer<br>Onboarding
+    </h2>
+  </div>
+
+  <nav id="sidebarNav" class="space-y-1">
+    <a href="#step-01" class="nav-link"><span class="text-[10px] opacity-60">01</span> Gateway</a>
+    <a href="#step-02" class="nav-link"><span class="text-[10px] opacity-60">02</span> External</a>
+    <a href="#step-03" class="nav-link"><span class="text-[10px] opacity-60">03</span> Codebase</a>
+    <a href="#step-04" class="nav-link"><span class="text-[10px] opacity-60">04</span> Safety</a>
+  </nav>
+
+  <div class="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 space-y-2">
+    <div class="flex items-center gap-2">
+      <span class="w-1.5 h-1.5 bg-black inline-block"></span> Status: ready
+    </div>
+    <div>EG Software // 2026</div>
+  </div>
+</aside>
+
+<!-- ══════════════════ MAIN ══════════════════ -->
+<main class="lg:ml-[20%] px-6 sm:px-12 lg:px-16 xl:px-24">
+<div class="mx-auto max-w-5xl">
+  <div id="wizardProgress" class="wizard-progress" hidden aria-live="polite">
+    <div class="flex items-center justify-between gap-4 mb-3">
+      <span id="wizardStepLabel" class="text-[11px] font-bold uppercase tracking-[0.2em]">Step 1 of 4</span>
+      <span class="text-[11px] font-bold text-neutral-400">Setup</span>
+    </div>
+    <div class="wizard-progress-track" role="progressbar" aria-label="Setup progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="25">
+      <span id="wizardProgressBar" class="wizard-progress-bar"></span>
+    </div>
+  </div>
+
+  <!-- ─────────── HERO ─────────── -->
+  <section id="top" class="pt-16 sm:pt-24 pb-20 sm:pb-28">
+    <div class="inline-block bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] px-3 py-1.5 mb-10">
+      System Initialization
     </div>
 
-    <!-- Navigation Tabs -->
-    <div class="max-w-6xl mx-auto mt-4 flex gap-6 text-sm border-t border-[#e4dbcc] pt-3">
-      <button onclick="switchTab('setup')" id="tab-btn-setup" class="tab-btn active pb-2">01 // SETUP</button>
-      <button onclick="switchTab('logs')" id="tab-btn-logs" class="tab-btn pb-2">02 // LOGS (<span id="logCountBadge">0</span>)</button>
-      <button onclick="switchTab('ai')" id="tab-btn-ai" class="tab-btn pb-2">03 // AI ACTIVITY &amp; DIFFS (<span id="aiCountBadge">0</span>)</button>
+    <h1 class="font-bold uppercase tracking-tighter leading-[0.85] mb-10">
+      <span class="block text-[13vw] sm:text-6xl md:text-7xl xl:text-8xl">Sleepy Bot</span>
+      <span class="block text-[8.5vw] sm:text-4xl md:text-5xl text-neutral-300">Never sleeps</span>
+    </h1>
+
+    <p class="text-lg sm:text-2xl font-bold leading-snug max-w-2xl mb-4">
+      An all-seeing middleware agent for your stack.
+    </p>
+    <p class="text-base sm:text-lg font-bold leading-relaxed max-w-2xl text-neutral-600 mb-12">
+      It reads every request, pulls your logs, reads your code — and tells you exactly
+      where the problem is. If things don't work out, it wakes the human engineer.
+    </p>
+
+    <div class="flex flex-wrap items-center gap-4">
+      <button id="btn-begin" type="button" class="btn">Start setup</button>
+      <a href="#how" class="text-[11px] font-bold uppercase tracking-[0.2em] px-2 py-3">How it works</a>
     </div>
-  </header>
 
-  <!-- Main Workspace -->
-  <main class="max-w-6xl w-full mx-auto flex-1 p-6">
+    <div class="mt-16 text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400">
+      v0.1 // SBWK
+    </div>
+  </section>
 
-    <!-- TAB 1: SETUP -->
-    <section id="tab-setup" class="space-y-6">
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+  <!-- ─────────── HOW IT WORKS ─────────── -->
+  <section id="how" class="py-20 sm:py-28 scroll-mt-24">
+    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-4">// How it works</div>
+    <h2 class="text-3xl sm:text-5xl font-bold uppercase tracking-tighter leading-none mb-14">The pipeline</h2>
 
-        <!-- Step 01: Gateway -->
-        <div class="card p-5 rounded">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold text-[#8b775f]">STEP 01</span>
-            <span id="gw-status" class="text-xs px-2 py-0.5 rounded bg-[#f0ece2]">UNCHECKED</span>
+    <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div class="bg-neutral-100 p-8">
+        <div class="text-[11px] font-bold tracking-[0.25em] text-neutral-400 mb-8">01</div>
+        <h3 class="text-base font-bold uppercase mb-3">Intercept</h3>
+        <p class="text-xs font-bold text-neutral-600 leading-relaxed">
+          A container takes inbound traffic and forwards it to your server, Cloudflare-style.
+          Nothing reaches the app unread.
+        </p>
+      </div>
+
+      <div class="bg-neutral-100 p-8">
+        <div class="text-[11px] font-bold tracking-[0.25em] text-neutral-400 mb-8">02</div>
+        <h3 class="text-base font-bold uppercase mb-3">Detect</h3>
+        <p class="text-xs font-bold text-neutral-600 leading-relaxed">
+          A built-in detector flags anomalies. 404s, 500s, slow responses — anything unusual
+          gets dispatched to the core agent.
+        </p>
+      </div>
+
+      <div class="bg-neutral-100 p-8">
+        <div class="text-[11px] font-bold tracking-[0.25em] text-neutral-400 mb-8">03</div>
+        <h3 class="text-base font-bold uppercase mb-3">Diagnose</h3>
+        <p class="text-xs font-bold text-neutral-600 leading-relaxed">
+          The agent pulls logs from your auth and database providers, then reads your codebase
+          and compares it to recent commits.
+        </p>
+      </div>
+
+      <div class="bg-neutral-100 p-8">
+        <div class="text-[11px] font-bold tracking-[0.25em] text-neutral-400 mb-8">04</div>
+        <h3 class="text-base font-bold uppercase mb-3">Escalate</h3>
+        <p class="text-xs font-bold text-neutral-600 leading-relaxed">
+          It proposes a fix. If confidence drops below your threshold, it stops and wakes
+          the human engineer.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─────────── STEP 01 ─────────── -->
+  <article id="step-01" class="wizard-step py-20 sm:py-28 scroll-mt-20">
+    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-5">
+      // Step 01 <span class="text-neutral-300">/ 04</span>
+    </div>
+    <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold uppercase tracking-tighter leading-none mb-10">
+      Network<br>Gateway
+    </h2>
+
+    <div class="max-w-3xl space-y-8">
+      <p class="text-lg sm:text-xl font-bold leading-snug">
+        Sleepy Bot sits between the client and the server. It receives all traffic.
+      </p>
+      <p class="text-base font-bold leading-relaxed text-neutral-600">
+        Point your DNS at the Sleepy Bot edge container. Your server stops receiving traffic
+        directly — every request passes through the agent first.
+      </p>
+
+      <div class="bg-black text-white p-7 sm:p-10">
+        <div class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-6">
+          // Configuration required
+        </div>
+        <form class="space-y-5" onsubmit="return false;">
+          <div>
+            <label for="gateway-target" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">Target URL</label>
+            <input id="gateway-target" type="text" class="field" placeholder="https://your-production-app.com">
           </div>
-          <h2 class="font-bold text-base mb-1">Gateway Target</h2>
-          <p class="text-xs text-[#8b775f] mb-4">Point the reverse-proxy middleware at your upstream application server.</p>
-          <label class="block text-xs mb-1">Target Server URL</label>
-          <input id="gw-url" type="text" placeholder="http://localhost:8000" class="w-full px-3 py-2 rounded text-xs mb-3">
-          <div class="flex gap-2">
-            <button onclick="saveGateway()" class="btn-primary px-3 py-1.5 rounded text-xs">Save Target</button>
-            <button onclick="checkGateway()" class="btn-outline px-3 py-1.5 rounded text-xs">Check Reachability</button>
+          <div>
+            <label for="gateway-port" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">Edge port</label>
+            <input id="gateway-port" type="number" class="field" placeholder="8080" value="8080">
           </div>
-          <p id="gw-msg" class="text-xs text-[#8b775f] mt-2"></p>
+          <div class="flex flex-wrap gap-3 pt-2">
+            <button type="button" id="btn-gateway-save" class="btn btn-invert">Save target</button>
+            <button type="button" id="btn-gateway-check" class="btn btn-invert">Check reachability</button>
+            <button type="button" id="btn-gateway" class="btn">Next</button>
+          </div>
+        </form>
+
+        <div class="mt-8">
+          <div class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-2">
+            // Edge status
+          </div>
+          <div id="status-gateway-badge" class="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400 mb-4">UNCHECKED</div>
+          <div class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-4">
+            // Diagnostic
+          </div>
+          <div id="status-gateway" class="text-xs sm:text-sm leading-loose font-mono font-bold text-white">
+            &gt; awaiting configuration
+          </div>
+        </div>
+      </div>
+    </div>
+  </article>
+
+  <!-- ─────────── STEP 02 ─────────── -->
+  <article id="step-02" class="wizard-step py-20 sm:py-28 scroll-mt-20">
+    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-5">
+      // Step 02 <span class="text-neutral-300">/ 04</span>
+    </div>
+    <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold uppercase tracking-tighter leading-none mb-10">
+      External<br>Access
+    </h2>
+
+    <div class="max-w-3xl space-y-8">
+      <p class="text-lg sm:text-xl font-bold leading-snug">
+        The agent needs logs from your external services — authentication and database.
+      </p>
+      <p class="text-base font-bold leading-relaxed text-neutral-600">
+        Provide read-only credentials only. The agent must never have write access.
+      </p>
+
+      <form class="space-y-6" onsubmit="return false;">
+        <div>
+          <label for="auth-endpoint" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
+            Auth provider endpoint
+          </label>
+          <input id="auth-endpoint" type="text" class="field" placeholder="https://auth.your-app.com/logs">
+        </div>
+        <div>
+          <label for="api-key" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
+            Read-only API key
+          </label>
+          <input id="api-key" type="password" class="field" placeholder="••••••••••••••••••••">
+        </div>
+        <div>
+          <label for="db-endpoint" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
+            Database provider endpoint
+          </label>
+          <input id="db-endpoint" type="text" class="field" placeholder="mongodb+srv://readonly@cluster.mongodb.net">
         </div>
 
-        <!-- Step 02: External Dependencies -->
-        <div class="card p-5 rounded">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold text-[#8b775f]">STEP 02</span>
-            <span id="ext-status" class="text-xs px-2 py-0.5 rounded bg-[#f0ece2]">OPTIONAL</span>
-          </div>
-          <h2 class="font-bold text-base mb-1">External Diagnostics</h2>
-          <p class="text-xs text-[#8b775f] mb-4">Configure read-only health/log endpoints for auth and database services.</p>
-          <label class="block text-xs mb-1">Auth Diagnostic URL</label>
-          <input id="ext-auth" type="text" placeholder="http://localhost:8000/health" class="w-full px-3 py-2 rounded text-xs mb-2">
-          <label class="block text-xs mb-1">Database Diagnostic URL / URI</label>
-          <input id="ext-db" type="text" placeholder="http://localhost:8000/users" class="w-full px-3 py-2 rounded text-xs mb-3">
-          <div class="flex gap-2">
-            <button onclick="saveExternal()" class="btn-primary px-3 py-1.5 rounded text-xs">Save</button>
-            <button onclick="testExternal()" class="btn-outline px-3 py-1.5 rounded text-xs">Test Connections</button>
-          </div>
-          <p id="ext-msg" class="text-xs text-[#8b775f] mt-2"></p>
-        </div>
-
-        <!-- Step 03: Git Codebase (Optional) -->
-        <div class="card p-5 rounded">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold text-[#8b775f]">STEP 03 // NON-COMPULSORY</span>
-            <span id="git-status" class="text-xs px-2 py-0.5 rounded bg-[#f0ece2]">OPTIONAL</span>
-          </div>
-          <h2 class="font-bold text-base mb-1">Git Repository Context (Optional)</h2>
-          <p class="text-xs text-[#8b775f] mb-4">Link a GitHub repo to correlate recent commits, or leave blank to rely solely on local codebase inspection.</p>
-          <label class="block text-xs mb-1">GitHub Repo (owner/repo or URL)</label>
-          <input id="git-repo" type="text" placeholder="Optional: e.g. octocat/Hello-World" class="w-full px-3 py-2 rounded text-xs mb-2">
-          <label class="block text-xs mb-1">Personal Access Token (optional for public repos)</label>
-          <input id="git-token" type="password" placeholder="ghp_..." class="w-full px-3 py-2 rounded text-xs mb-3">
-          <div class="flex gap-2">
-            <button onclick="saveCodebase(false)" class="btn-primary px-3 py-1.5 rounded text-xs">Link Repo</button>
-            <button onclick="saveCodebase(true)" class="btn-outline px-3 py-1.5 rounded text-xs">Skip / Clear Git</button>
-          </div>
-          <p id="git-msg" class="text-xs text-[#8b775f] mt-2"></p>
-        </div>
-
-        <!-- Step 04: Safety Policy -->
-        <div class="card p-5 rounded">
-          <div class="flex items-center justify-between mb-2">
-            <span class="text-xs font-bold text-[#8b775f]">STEP 04</span>
-            <span class="text-xs px-2 py-0.5 rounded bg-[#f0ece2]">READ-ONLY GUARD</span>
-          </div>
-          <h2 class="font-bold text-base mb-1">Safety &amp; Escalation</h2>
-          <p class="text-xs text-[#8b775f] mb-4">Configure dry-run enforcement and confidence thresholds for waking engineers.</p>
-          <div class="space-y-2 text-xs mb-3">
-            <label class="flex items-center gap-2">
-              <input id="safe-dry" type="checkbox" checked>
-              <span>Dry-Run Mode (AI suggests diffs only, never mutates code)</span>
-            </label>
-            <label class="flex items-center gap-2">
-              <input id="safe-rollback" type="checkbox" checked>
-              <span>Auto-Rollback Guard</span>
-            </label>
-            <div>
-              <label class="block mb-1">Escalation Confidence Threshold (0.0 - 1.0)</label>
-              <input id="safe-thresh" type="number" step="0.05" min="0" max="1" value="0.8" class="w-28 px-2 py-1 rounded text-xs">
+        <div class="pt-4">
+          <div class="wizard-actions">
+            <button type="button" class="btn btn-invert" onclick="goToStep(1)">Back</button>
+            <div class="flex flex-wrap gap-3">
+              <button type="button" id="btn-test-save" class="btn btn-invert">Save</button>
+              <button type="button" id="btn-test" class="btn">Test &amp; next</button>
             </div>
           </div>
-          <button onclick="saveSafety()" class="btn-primary px-3 py-1.5 rounded text-xs">Apply Safety Policy</button>
-          <p id="safe-msg" class="text-xs text-[#8b775f] mt-2"></p>
+          <div class="mt-5">
+            <span id="status-test" class="text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">
+              // awaiting input
+            </span>
+          </div>
         </div>
+      </form>
+    </div>
+  </article>
 
-      </div>
-    </section>
+  <!-- ─────────── STEP 03 ─────────── -->
+  <article id="step-03" class="wizard-step py-20 sm:py-28 scroll-mt-20">
+    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-5">
+      // Step 03 <span class="text-neutral-300">/ 04</span>
+    </div>
+    <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold uppercase tracking-tighter leading-none mb-10">
+      Codebase<br>Link
+    </h2>
 
-    <!-- TAB 2: LOGS (All Passing Client -> Server Requests) -->
-    <section id="tab-logs" class="hidden space-y-4">
-      <div class="card p-4 rounded flex flex-wrap items-center justify-between gap-3">
+    <div class="max-w-3xl space-y-8">
+      <p class="text-lg sm:text-xl font-bold leading-snug">
+        The agent reads your source code to find the root cause.
+      </p>
+      <p class="text-base font-bold leading-relaxed text-neutral-600">
+        Connect the repository. The agent reads the last five commits and correlates them
+        with the failing requests. <span class="text-neutral-400">Optional — skip to rely on local inspection only.</span>
+      </p>
+
+      <form class="space-y-6" onsubmit="return false;">
         <div>
-          <h2 class="font-bold text-sm">PASSING CLIENT &rarr; SERVER REQUEST LOGS</h2>
-          <p class="text-xs text-[#8b775f]">Every inbound request proxied through the middleware (:8080) to the target server.</p>
+          <label for="repo-url" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
+            Repository URL
+          </label>
+          <input id="repo-url" type="text" class="field" placeholder="https://github.com/your-org/your-repo">
         </div>
-        <div class="flex items-center gap-2">
-          <input id="logFilterInput" oninput="renderLogs()" type="text" placeholder="Filter path or status..." class="px-3 py-1.5 rounded text-xs">
-          <button onclick="fetchLogs()" class="btn-outline px-3 py-1.5 rounded text-xs">Refresh</button>
-          <button onclick="clearLogs()" class="btn-outline px-3 py-1.5 rounded text-xs">Clear</button>
-        </div>
-      </div>
-
-      <div class="card rounded overflow-x-auto">
-        <table class="w-full text-left text-xs border-collapse">
-          <thead>
-            <tr class="border-b border-[#e4dbcc] bg-[#f0ece2] text-[#57432f]">
-              <th class="p-3">TIME</th>
-              <th class="p-3">METHOD</th>
-              <th class="p-3">PATH</th>
-              <th class="p-3">STATUS</th>
-              <th class="p-3">LATENCY</th>
-              <th class="p-3">CLIENT</th>
-              <th class="p-3">FLAG</th>
-              <th class="p-3">SAMPLE / AI</th>
-            </tr>
-          </thead>
-          <tbody id="logsTableBody" class="divide-y divide-[#e4dbcc]">
-            <tr><td colspan="8" class="p-4 text-center text-[#8b775f]">No passing requests recorded yet. Send traffic through port 8080.</td></tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- TAB 3: AI ACTIVITY & DIFFS -->
-    <section id="tab-ai" class="hidden space-y-4">
-      <div class="card p-4 rounded flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h2 class="font-bold text-sm">AI DIAGNOSTIC LOG, SUGGESTIONS &amp; DIFFS</h2>
-          <p class="text-xs text-[#8b775f]">What Agent Core investigated, root-cause reasoning, dependency signals, and proposed code diffs.</p>
+          <label for="repo-token" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
+            Personal access token
+          </label>
+          <input id="repo-token" type="password" class="field" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
         </div>
-        <button onclick="fetchIncidents()" class="btn-outline px-3 py-1.5 rounded text-xs">Refresh AI Feed</button>
+
+        <div class="pt-4">
+          <div class="wizard-actions">
+            <button type="button" class="btn btn-invert" onclick="goToStep(2)">Back</button>
+            <div class="flex flex-wrap gap-3">
+              <button type="button" id="btn-repo-skip" class="btn btn-invert">Skip</button>
+              <button type="button" id="btn-repo" class="btn">Link &amp; next</button>
+            </div>
+          </div>
+          <div class="mt-5">
+            <span id="status-repo" class="text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">
+              // not connected
+            </span>
+            <div id="repo-commits" class="mt-6 space-y-2"></div>
+          </div>
+        </div>
+      </form>
+    </div>
+  </article>
+
+  <!-- ─────────── STEP 04 ─────────── -->
+  <article id="step-04" class="wizard-step py-20 sm:py-28 scroll-mt-20">
+    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-5">
+      // Step 04 <span class="text-neutral-300">/ 04</span>
+    </div>
+    <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold uppercase tracking-tighter leading-none mb-10">
+      Safety<br>Limits
+    </h2>
+
+    <div class="max-w-3xl">
+      <p class="text-lg sm:text-xl font-bold leading-snug mb-12">
+        The agent acts automatically. Set the limits before it does.
+      </p>
+
+      <div class="space-y-12">
+        <div class="flex items-start justify-between gap-8">
+          <div>
+            <div class="text-base font-bold uppercase mb-2">Dry-run mode</div>
+            <p class="text-xs font-bold text-neutral-500 leading-relaxed max-w-sm">
+              The agent suggests actions. It does not execute them. You approve manually.
+            </p>
+          </div>
+          <button id="toggle-dryrun" class="toggle" role="switch" aria-checked="true" aria-label="Dry-run mode">
+            <span class="knob"></span>
+          </button>
+        </div>
+
+        <div class="flex items-start justify-between gap-8">
+          <div>
+            <div class="text-base font-bold uppercase mb-2">Auto-rollback on failure</div>
+            <p class="text-xs font-bold text-neutral-500 leading-relaxed max-w-sm">
+              If a fix fails to resolve the error within 60 seconds, revert the change.
+            </p>
+          </div>
+          <button id="toggle-rollback" class="toggle" role="switch" aria-checked="true" aria-label="Auto-rollback on failure">
+            <span class="knob"></span>
+          </button>
+        </div>
+
+        <div class="flex items-start justify-between gap-8">
+          <div>
+            <div class="text-base font-bold uppercase mb-2">Escalation window</div>
+            <p class="text-xs font-bold text-neutral-500 leading-relaxed max-w-sm">
+              Below 80% confidence, the agent stops and wakes the human engineer.
+            </p>
+          </div>
+          <button id="toggle-escalation" class="toggle" role="switch" aria-checked="true" aria-label="Escalation window">
+            <span class="knob"></span>
+          </button>
+        </div>
       </div>
 
-      <div id="aiFeedContainer" class="space-y-4">
-        <div class="card p-6 rounded text-center text-xs text-[#8b775f]">
-          No AI investigations triggered yet. Trigger a 5xx or slow request through the middleware to see AI analysis and diffs.
-        </div>
+      <div class="wizard-actions justify-start">
+        <button type="button" class="btn btn-invert" onclick="goToStep(3)">Back</button>
       </div>
-    </section>
 
-  </main>
+      <!-- FINAL ACTION -->
+      <div class="bg-black text-white p-8 sm:p-12 mt-20">
+        <div class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-500 mb-6">
+          // Final step
+        </div>
+        <h3 class="text-2xl sm:text-3xl font-bold uppercase tracking-tight mb-4">Initialize agent</h3>
+        <p class="text-sm font-bold text-neutral-400 leading-relaxed max-w-md mb-9">
+          All steps complete. The agent is ready to watch. It will not sleep.
+        </p>
+        <button id="btn-start" class="btn btn-invert">Go</button>
+        <div id="status-monitor" class="mt-6 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">// monitoring inactive</div>
+        <div id="incident-feed" class="mt-6 space-y-3"></div>
+      </div>
+    </div>
+  </article>
 
-  <script>
-    let currentTab = 'setup';
-    let cachedLogs = [];
-    let cachedIncidents = [];
-    let monitoringActive = true;
+  <!-- ─────────── FOOTER ─────────── -->
+  <footer class="py-16 sm:py-20 text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400
+                 flex flex-col sm:flex-row justify-between gap-6">
+    <div>Sleepy Bot // SBWK — EG Software, 2026</div>
+    <a href="#top" class="hover:text-black w-fit">[ top of page ]</a>
+  </footer>
 
-    function esc(str) {
-      return String(str ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;');
-    }
+</div>
+</main>
 
-    function switchTab(tab) {
-      currentTab = tab;
-      for (const name of ['setup', 'logs', 'ai']) {
-        document.getElementById(`tab-${name}`).classList.toggle('hidden', name !== tab);
-        document.getElementById(`tab-btn-${name}`).classList.toggle('active', name === tab);
-      }
-      if (tab === 'logs') fetchLogs();
-      if (tab === 'ai') fetchIncidents();
-    }
+<script>
+  /* ---------- API WIRING (same endpoints as control plane, no fake timeouts) ---------- */
+  const $ = id => document.getElementById(id);
+  const api = async (path, body) => {
+    const res = await fetch(path, body
+      ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+      : undefined);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok || data.success === false) throw new Error(data.error || ('HTTP ' + res.status));
+    return data;
+  };
+  const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const setStatus = (el, text, ok) => { el.textContent = text; el.classList.toggle('text-neutral-400', !ok); el.classList.toggle('text-black', ok); };
 
-    async function api(path, method = 'GET', body = undefined) {
-      const res = await fetch(path, {
-        method,
-        headers: body ? { 'Content-Type': 'application/json' } : {},
-        body: body ? JSON.stringify(body) : undefined
-      });
-      return res.json();
-    }
+  /* ---------- WIZARD ---------- */
+  const wizardTitles = ['Network Gateway', 'External Access', 'Codebase Link', 'Safety Limits'];
+  function goToStep(step) {
+    const steps = document.querySelectorAll('.wizard-step');
+    if (step < 1 || step > steps.length) return;
+    document.body.classList.add('is-wizard');
+    $('wizardProgress').hidden = false;
+    steps.forEach((article, index) => article.classList.toggle('is-current', index === step - 1));
+    $('wizardStepLabel').textContent = `Step ${step} of ${steps.length} / ${wizardTitles[step - 1]}`;
+    const progress = step / steps.length * 100;
+    $('wizardProgressBar').style.width = `${progress}%`;
+    $('wizardProgressBar').parentElement.setAttribute('aria-valuenow', String(Math.round(progress)));
+    document.querySelectorAll('#sidebarNav .nav-link').forEach((link, i) => link.classList.toggle('is-active', i === step - 1));
+    requestAnimationFrame(() => steps[step - 1].scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
 
-    async function loadState() {
-      try {
-        const data = await api('/api/state');
-        if (!data.success) return;
-        const { state, services } = data;
+  function toggleMobileNav() { $('mobileNav').classList.toggle('hidden'); document.body.classList.toggle('overflow-hidden'); }
+  $('btn-begin').addEventListener('click', () => goToStep(1));
 
-        // Service health badges
-        for (const [k, v] of Object.entries(services || {})) {
-          const el = document.getElementById(`svc-${k}`);
-          if (el) el.textContent = String(v).toUpperCase();
-        }
+  /* STEP 01 — Gateway: save config + real reachability healthcheck */
+  async function saveGateway() {
+    const targetUrl = $('gateway-target').value.trim(), port = $('gateway-port').value.trim();
+    if (!targetUrl) throw new Error('enter a target URL');
+    await api('/api/gateway', { targetUrl, port });
+    return targetUrl;
+  }
 
-        // Populate inputs if empty
-        const gwInput = document.getElementById('gw-url');
-        if (!gwInput.value && state.gateway?.targetUrl) gwInput.value = state.gateway.targetUrl;
-        if (state.gateway?.lastCheck) {
-          document.getElementById('gw-status').textContent = state.gateway.lastCheck.reachable ? 'REACHABLE' : 'UNREACHABLE';
-        }
+  $('btn-gateway-save').addEventListener('click', async () => {
+    const btn = $('btn-gateway-save'), s = $('status-gateway'), badge = $('status-gateway-badge');
+    btn.disabled = true; s.textContent = '> saving target…';
+    try {
+      const targetUrl = await saveGateway();
+      s.textContent = `> [OK] TARGET SAVED: ${targetUrl}`;
+      setStatus(badge, 'SAVED', true);
+    } catch (e) { s.textContent = '> [ERROR] ' + e.message; }
+    finally { btn.disabled = false; }
+  });
 
-        const authInput = document.getElementById('ext-auth');
-        const dbInput = document.getElementById('ext-db');
-        if (!authInput.value && state.external?.authEndpoint) authInput.value = state.external.authEndpoint;
-        if (!dbInput.value && state.external?.databaseEndpoint) dbInput.value = state.external.databaseEndpoint;
-
-        const gitInput = document.getElementById('git-repo');
-        if (!gitInput.value && state.codebase?.repoUrl) gitInput.value = state.codebase.repoUrl;
-        document.getElementById('git-status').textContent = state.codebase?.fullName ? `LINKED: ${state.codebase.fullName}` : 'OPTIONAL (LOCAL ONLY)';
-
-        if (state.safety) {
-          document.getElementById('safe-dry').checked = Boolean(state.safety.dryRun);
-          document.getElementById('safe-rollback').checked = Boolean(state.safety.autoRollback);
-          document.getElementById('safe-thresh').value = state.safety.escalationThreshold ?? 0.8;
-        }
-
-        monitoringActive = Boolean(state.monitoring?.active);
-        updateMonitoringButton();
-      } catch { /* ignore */ }
-    }
-
-    function updateMonitoringButton() {
-      const btn = document.getElementById('toggleMonitoringBtn');
-      btn.textContent = `MONITORING: ${monitoringActive ? 'ON' : 'PAUSED'}`;
-    }
-
-    async function toggleMonitoring() {
-      const endpoint = monitoringActive ? '/api/monitoring/stop' : '/api/monitoring/start';
-      const r = await api(endpoint, 'POST', {});
-      if (r.success) {
-        monitoringActive = Boolean(r.monitoring?.active);
-        updateMonitoringButton();
-      }
-    }
-
-    async function saveGateway() {
-      const targetUrl = document.getElementById('gw-url').value.trim();
-      const r = await api('/api/gateway', 'POST', { targetUrl });
-      document.getElementById('gw-msg').textContent = r.success ? `Saved & applied target: ${r.gateway.targetUrl}` : `Error: ${r.error}`;
-    }
-
-    async function checkGateway() {
+  $('btn-gateway-check').addEventListener('click', async () => {
+    const btn = $('btn-gateway-check'), s = $('status-gateway'), badge = $('status-gateway-badge');
+    btn.disabled = true; s.textContent = '> checking edge reachability…';
+    try {
       await saveGateway();
-      const r = await api('/api/gateway/check', 'POST', {});
-      if (r.success && r.check) {
-        document.getElementById('gw-status').textContent = r.check.reachable ? `HTTP ${r.check.status} (${r.check.latencyMs}ms)` : 'UNREACHABLE';
-        document.getElementById('gw-msg').textContent = r.check.reachable ? `Target responded in ${r.check.latencyMs}ms.` : `Unreachable: ${r.check.error}`;
-      }
-    }
+      const { check } = await api('/api/gateway/check', {});
+      s.textContent = check.reachable
+        ? `> [OK] EDGE CONNECTED. SERVER REACHABLE (${check.method === 'http' ? 'HTTP ' + check.status : check.method}, ${check.latencyMs}ms)`
+        : `> [FAIL] SERVER UNREACHABLE: ${check.error}`;
+      setStatus(badge, check.reachable ? `HTTP ${check.status} (${check.latencyMs}ms)` : 'UNREACHABLE', check.reachable);
+    } catch (e) { s.textContent = '> [ERROR] ' + e.message; setStatus(badge, 'ERROR', false); }
+    finally { btn.disabled = false; }
+  });
 
-    async function saveExternal() {
-      const authEndpoint = document.getElementById('ext-auth').value.trim();
-      const databaseEndpoint = document.getElementById('ext-db').value.trim();
-      const r = await api('/api/external', 'POST', { authEndpoint, databaseEndpoint });
-      document.getElementById('ext-msg').textContent = r.success ? 'External endpoints saved.' : `Error: ${r.error}`;
-    }
+  $('btn-gateway').addEventListener('click', async () => {
+    const btn = $('btn-gateway'), s = $('status-gateway'), badge = $('status-gateway-badge');
+    btn.disabled = true; s.textContent = '> saving + checking edge…';
+    try {
+      await saveGateway();
+      const { check } = await api('/api/gateway/check', {});
+      s.textContent = check.reachable
+        ? `> [OK] EDGE CONNECTED. SERVER REACHABLE (${check.method === 'http' ? 'HTTP ' + check.status : check.method}, ${check.latencyMs}ms)`
+        : `> [FAIL] SERVER UNREACHABLE: ${check.error}`;
+      setStatus(badge, check.reachable ? `HTTP ${check.status} (${check.latencyMs}ms)` : 'UNREACHABLE', check.reachable);
+      goToStep(2);
+    } catch (e) { s.textContent = '> [ERROR] ' + e.message; }
+    finally { btn.disabled = false; }
+  });
 
-    async function testExternal() {
+  /* STEP 02 — External: save endpoints + real connection tests */
+  async function saveExternal() {
+    await api('/api/external', {
+      authEndpoint: $('auth-endpoint').value.trim(),
+      apiKey: $('api-key').value,
+      databaseEndpoint: $('db-endpoint').value.trim()
+    });
+  }
+
+  $('btn-test-save').addEventListener('click', async () => {
+    const btn = $('btn-test-save'), s = $('status-test');
+    btn.disabled = true; setStatus(s, '> saving…', false);
+    try { await saveExternal(); setStatus(s, '> [OK] EXTERNAL ENDPOINTS SAVED', true); }
+    catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
+    finally { btn.disabled = false; }
+  });
+
+  $('btn-test').addEventListener('click', async () => {
+    const btn = $('btn-test'), s = $('status-test');
+    btn.disabled = true; setStatus(s, '> validating…', false);
+    try {
       await saveExternal();
-      const r = await api('/api/external/test', 'POST', {});
-      if (r.success) {
-        document.getElementById('ext-status').textContent = `${r.reachable}/${r.total} REACHABLE`;
-        document.getElementById('ext-msg').textContent = `Auth: ${r.auth?.reachable ? 'OK' : (r.auth?.error || 'N/A')} | DB: ${r.database?.reachable ? 'OK' : (r.database?.error || 'N/A')}`;
-      }
-    }
+      const r = await api('/api/external/test', {});
+      const detail = `auth:${r.auth?.reachable ? 'OK' : 'FAIL'} db:${r.database?.reachable ? 'OK' : 'FAIL'}`;
+      setStatus(s, `> [${r.reachable === r.total ? 'OK' : 'WARN'}] ${r.reachable}/${r.total} SERVICES REACHABLE (${detail})`, r.reachable > 0);
+      goToStep(3);
+    } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
+    finally { btn.disabled = false; }
+  });
 
-    async function saveCodebase(skip = false) {
-      if (skip) document.getElementById('git-repo').value = '';
-      const repoUrl = skip ? '' : document.getElementById('git-repo').value.trim();
-      const token = skip ? '' : document.getElementById('git-token').value.trim();
-      const r = await api('/api/codebase', 'POST', { repoUrl, token });
-      if (!r.success) {
-        document.getElementById('git-msg').textContent = `Error: ${r.error}`;
+  /* STEP 03 — Codebase: real GitHub repo metadata + last commits (skippable) */
+  function renderCommits(commits) {
+    const box = $('repo-commits');
+    if (!commits || !commits.length) { box.innerHTML = ''; return; }
+    box.innerHTML = '<div class="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">// last ' + commits.length + ' commits</div>' +
+      commits.map(c => `<div class="bg-neutral-100 p-3 text-xs font-bold"><span class="text-neutral-400">${escapeHtml((c.sha || '').slice(0, 7))}</span> ${escapeHtml((c.message || '').split('\n')[0])}<div class="text-[10px] text-neutral-400 mt-1">${escapeHtml(c.author || '')} · ${escapeHtml(c.date || '')}</div></div>`).join('');
+  }
+
+  $('btn-repo').addEventListener('click', async () => {
+    const btn = $('btn-repo'), s = $('status-repo');
+    btn.disabled = true; setStatus(s, '> cloning metadata…', false); $('repo-commits').innerHTML = '';
+    try {
+      const r = await api('/api/codebase', { repoUrl: $('repo-url').value.trim(), token: $('repo-token').value });
+      setStatus(s, `> [OK] REPOSITORY LINKED — ${r.codebase.fullName} (${r.codebase.commits.length} commits)`, true);
+      renderCommits(r.codebase.commits);
+      goToStep(4);
+    } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
+    finally { btn.disabled = false; }
+  });
+
+  $('btn-repo-skip').addEventListener('click', async () => {
+    const btn = $('btn-repo-skip'), s = $('status-repo');
+    btn.disabled = true; setStatus(s, '> clearing git link…', false);
+    try {
+      $('repo-url').value = ''; $('repo-token').value = ''; $('repo-commits').innerHTML = '';
+      const r = await api('/api/codebase', { repoUrl: '', token: '' });
+      setStatus(s, r.skipped ? '> [SKIPPED] GIT CLEARED — LOCAL INSPECTION ONLY' : '> [OK] REPOSITORY LINKED', true);
+      goToStep(4);
+    } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
+    finally { btn.disabled = false; }
+  });
+
+  /* STEP 04 — Safety: persist toggles to the agent */
+  const safetyPayload = () => ({
+    dryRun: $('toggle-dryrun').getAttribute('aria-checked') === 'true',
+    autoRollback: $('toggle-rollback').getAttribute('aria-checked') === 'true',
+    escalationThreshold: $('toggle-escalation').getAttribute('aria-checked') === 'true' ? 0.8 : 0
+  });
+  async function pushSafety() { try { await api('/api/safety', safetyPayload()); } catch (e) { console.error(e); } }
+  ['toggle-dryrun', 'toggle-rollback', 'toggle-escalation'].forEach(id => {
+    $(id).addEventListener('click', function () {
+      const on = this.getAttribute('aria-checked') === 'true';
+      this.setAttribute('aria-checked', on ? 'false' : 'true');
+      pushSafety();
+    });
+  });
+
+  /* Monitoring: real start + live incident feed */
+  function formatDiff(diffText) {
+    if (!diffText) return '';
+    const lines = String(diffText).split('\n').map(line => {
+      const cls = (line.startsWith('+++') || line.startsWith('---') || line.startsWith('@@')) ? 'diff-hdr'
+        : line.startsWith('+') ? 'diff-add'
+        : line.startsWith('-') ? 'diff-del' : '';
+      return `<div class="line ${cls}">${escapeHtml(line) || ' '}</div>`;
+    }).join('');
+    return `<div class="diff-view mt-2 text-[11px] overflow-x-auto leading-relaxed">${lines}</div>`;
+  }
+
+  async function refreshIncidents() {
+    try {
+      const r = await api('/api/incidents?limit=10');
+      const feed = $('incident-feed');
+      if (!r.incidents || !r.incidents.length) {
+        feed.innerHTML = '<div class="text-[11px] font-bold text-neutral-500 p-3">// no incidents yet — trigger one via the edge (e.g. /status/500)</div>';
         return;
       }
-      if (r.skipped) {
-        document.getElementById('git-status').textContent = 'SKIPPED (LOCAL ONLY)';
-        document.getElementById('git-msg').textContent = 'Git integration skipped. Agent Core will inspect local files only.';
-      } else {
-        document.getElementById('git-status').textContent = `LINKED: ${r.codebase.fullName}`;
-        document.getElementById('git-msg').textContent = `Connected ${r.codebase.fullName} (${r.codebase.commits.length} recent commits synced).`;
-      }
-    }
-
-    async function saveSafety() {
-      const dryRun = document.getElementById('safe-dry').checked;
-      const autoRollback = document.getElementById('safe-rollback').checked;
-      const escalationThreshold = Number(document.getElementById('safe-thresh').value);
-      const r = await api('/api/safety', 'POST', { dryRun, autoRollback, escalationThreshold });
-      document.getElementById('safe-msg').textContent = r.success ? 'Safety policy updated.' : `Error: ${r.error}`;
-    }
-
-    // Logs Tab
-    async function fetchLogs() {
-      try {
-        const r = await api('/api/logs?limit=200');
-        if (r.success) {
-          cachedLogs = r.logs || [];
-          document.getElementById('logCountBadge').textContent = cachedLogs.length;
-          renderLogs();
-        }
-      } catch { /* ignore */ }
-    }
-
-    async function clearLogs() {
-      await api('/api/logs', 'DELETE');
-      cachedLogs = [];
-      document.getElementById('logCountBadge').textContent = '0';
-      renderLogs();
-    }
-
-    function renderLogs() {
-      const tbody = document.getElementById('logsTableBody');
-      const filter = (document.getElementById('logFilterInput')?.value || '').toLowerCase().trim();
-      const rows = cachedLogs.filter(l => {
-        if (!filter) return true;
-        return `${l.method} ${l.path} ${l.statusCode} ${l.category}`.toLowerCase().includes(filter);
-      });
-
-      if (!rows.length) {
-        tbody.innerHTML = `<tr><td colspan="8" class="p-4 text-center text-[#8b775f]">No matching requests found.</td></tr>`;
-        return;
-      }
-
-      tbody.innerHTML = rows.map(l => {
-        const time = l.timestamp ? new Date(l.timestamp).toLocaleTimeString() : '-';
-        const statusColor = l.statusCode >= 500 ? 'text-red-700 font-bold' : (l.statusCode >= 400 ? 'text-amber-700 font-bold' : 'text-green-800');
-        const badge = l.anomaly
-          ? `<span class="px-2 py-0.5 rounded bg-red-100 text-red-800 font-bold">${esc(l.category)}</span>`
-          : `<span class="px-2 py-0.5 rounded bg-[#f0ece2] text-[#57432f]">PASS</span>`;
-        const sample = l.responseSample ? esc(l.responseSample.slice(0, 90)) : '-';
-        const aiBtn = l.incidentId
-          ? `<button onclick="switchTab('ai')" class="underline text-[#76583b] font-bold ml-2">View AI Fix</button>`
-          : '';
-        return `
-          <tr class="hover:bg-[#f0ece2]/60">
-            <td class="p-3 whitespace-nowrap">${esc(time)}</td>
-            <td class="p-3 font-bold">${esc(l.method)}</td>
-            <td class="p-3 font-mono">${esc(l.path)}</td>
-            <td class="p-3 ${statusColor}">${esc(l.statusCode)}</td>
-            <td class="p-3 whitespace-nowrap">${esc(l.durationMs)}ms</td>
-            <td class="p-3 text-[#8b775f]">${esc(l.clientIp || 'local')}</td>
-            <td class="p-3">${badge}</td>
-            <td class="p-3 max-w-xs truncate">${sample} ${aiBtn}</td>
-          </tr>
-        `;
-      }).join('');
-    }
-
-    // Format unified diff with line coloring
-    function formatDiff(diffText) {
-      if (!diffText) return '';
-      const lines = String(diffText).split('\n').map(line => {
-        if (line.startsWith('+++') || line.startsWith('---') || line.startsWith('@@')) {
-          return `<div class="diff-hdr px-2">${esc(line)}</div>`;
-        }
-        if (line.startsWith('+')) {
-          return `<div class="diff-add px-2">${esc(line)}</div>`;
-        }
-        if (line.startsWith('-')) {
-          return `<div class="diff-del px-2">${esc(line)}</div>`;
-        }
-        return `<div class="px-2">${esc(line)}</div>`;
-      }).join('');
-      return `<pre class="mt-2 p-2 rounded bg-[#f0ece2] border border-[#e4dbcc] text-[11px] overflow-x-auto leading-relaxed">${lines}</pre>`;
-    }
-
-    // AI Activity & Diffs Tab
-    async function fetchIncidents() {
-      try {
-        const r = await api('/api/incidents?limit=25');
-        if (r.success) {
-          cachedIncidents = r.incidents || [];
-          document.getElementById('aiCountBadge').textContent = cachedIncidents.length;
-          renderIncidents();
-        }
-      } catch { /* ignore */ }
-    }
-
-    function renderIncidents() {
-      const container = document.getElementById('aiFeedContainer');
-      if (!cachedIncidents.length) {
-        container.innerHTML = `
-          <div class="card p-6 rounded text-center text-xs text-[#8b775f]">
-            No AI investigations triggered yet. Trigger a 5xx or slow request through the middleware (:8080) to see AI analysis and diffs.
-          </div>`;
-        return;
-      }
-
-      container.innerHTML = cachedIncidents.map(rec => {
+      feed.innerHTML = r.incidents.map(rec => {
         const inc = rec.incident || {};
-        const an = rec.analysis;
-        const time = inc.detectedAt ? new Date(inc.detectedAt).toLocaleTimeString() : '';
+        const a = rec.analysis;
+        const when = inc.detectedAt ? new Date(inc.detectedAt).toLocaleTimeString() : '';
 
-        if (!an) {
-          return `
-            <div class="card p-5 rounded">
-              <div class="flex items-center justify-between text-xs mb-2">
-                <span class="font-bold">${esc(inc.method)} ${esc(inc.path)} &rarr; HTTP ${esc(inc.statusCode)}</span>
-                <span class="px-2 py-0.5 rounded bg-[#f0ece2]">${esc(rec.status || 'investigating').toUpperCase()}</span>
-              </div>
-              <p class="text-xs text-[#8b775f]">Detected at ${esc(time)} — Reason: ${esc(inc.reason)}</p>
+        if (!a) {
+          return `<div class="bg-white text-black p-4 text-xs font-bold">
+            <div class="flex justify-between gap-4">
+              <span>${escapeHtml(inc.method)} ${escapeHtml(inc.path)} → ${escapeHtml(inc.statusCode)}</span>
+              <span>${escapeHtml((rec.status || 'investigating').toUpperCase())}</span>
             </div>
-          `;
+            <div class="mt-1 text-neutral-500 text-[10px]">detected ${escapeHtml(when)} — ${escapeHtml(inc.reason)}</div>
+          </div>`;
         }
 
-        const sevColor = an.severity === 'critical' || an.severity === 'high'
-          ? 'bg-red-100 text-red-800'
-          : 'bg-[#f0ece2] text-[#57432f]';
+        const sevCls = (a.severity === 'critical' || a.severity === 'high') ? 'sev-high' : 'sev-low';
+        const deps = (a.dependencyFindings || []).map(d =>
+          `<span class="px-2 py-0.5 rounded bg-[#f0ece2] text-[10px] font-bold">${escapeHtml(d.service)}: ${escapeHtml(d.status)}</span>`).join(' ');
+        const fixes = (a.suggestedFixes || []).map(f => `
+          <div class="p-3 rounded bg-[#fbfaf7] border border-[#e4dbcc] mt-2">
+            <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
+              <span class="font-bold">${escapeHtml(f.title)}</span>
+              <span class="px-2 py-0.5 rounded bg-[#f0ece2] text-[10px] uppercase">${escapeHtml(f.kind)}${f.file ? ' // ' + escapeHtml(f.file) : ''}</span>
+            </div>
+            <p class="text-[11px] text-[#8b775f] mt-1">${escapeHtml(f.description)}</p>
+            ${formatDiff(f.diff)}
+          </div>`).join('');
 
-        const depBadges = (an.dependencyFindings || []).map(d =>
-          `<span class="px-2 py-0.5 rounded bg-[#f0ece2] text-[11px]">${esc(d.service)}: <strong>${esc(d.status)}</strong>${d.signals?.length ? ` (${esc(d.signals.join(', '))})` : ''}</span>`
-        ).join(' ');
-
-        const codeSnippets = (an.codeFindings || []).map(cf => `
-          <div class="mt-2 p-2 rounded bg-[#f0ece2] border border-[#e4dbcc] text-[11px]">
-            <div class="font-bold text-[#57432f]">${esc(cf.file)}:${esc(cf.line)} — <span class="font-normal text-[#8b775f]">${esc(cf.reason)}</span></div>
-            <pre class="mt-1 overflow-x-auto">${esc(cf.snippet)}</pre>
+        return `<div class="bg-white text-black p-4 text-xs font-bold">
+          <div class="flex flex-wrap justify-between gap-2 border-b border-[#e4dbcc] pb-2">
+            <span>${escapeHtml(inc.method)} ${escapeHtml(inc.path)} → ${escapeHtml(inc.statusCode)} <span class="text-neutral-400">(${Math.round(inc.durationMs || 0)}ms)</span></span>
+            <span class="flex flex-wrap gap-1">
+              <span class="px-2 py-0.5 rounded text-[10px] uppercase ${sevCls}">${escapeHtml(a.severity)}</span>
+              <span class="px-2 py-0.5 rounded bg-[#f0ece2] text-[10px]">${Math.round((a.confidence || 0) * 100)}% CONF</span>
+              ${a.escalate ? '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-900 text-[10px]">ESCALATED</span>' : ''}
+            </span>
           </div>
-        `).join('');
-
-        const fixesHtml = (an.suggestedFixes || []).map(f => `
-          <div class="p-3 rounded bg-[#fbfaf7] border border-[#e4dbcc]">
-            <div class="flex items-center justify-between gap-2 text-xs">
-              <span class="font-bold">${esc(f.title)}</span>
-              <span class="px-2 py-0.5 rounded bg-[#f0ece2] text-[10px] uppercase">${esc(f.kind)}${f.file ? ` // ${esc(f.file)}` : ''}</span>
-            </div>
-            <p class="text-xs text-[#8b775f] mt-1">${esc(f.description)}</p>
-            ${f.diff ? formatDiff(f.diff) : ''}
-          </div>
-        `).join('');
-
-        return `
-          <div class="card p-5 rounded space-y-3">
-            <div class="flex flex-wrap items-center justify-between gap-2 border-b border-[#e4dbcc] pb-3">
-              <div>
-                <span class="text-xs text-[#8b775f]">${esc(time)}</span>
-                <span class="font-bold text-sm ml-2">${esc(inc.method)} ${esc(inc.path)}</span>
-                <span class="text-xs font-bold text-red-700 ml-2">HTTP ${esc(inc.statusCode)} (${esc(Math.round(inc.durationMs || 0))}ms)</span>
-              </div>
-              <div class="flex items-center gap-2 text-xs">
-                <span class="px-2 py-0.5 rounded font-bold uppercase ${sevColor}">SEVERITY: ${esc(an.severity)}</span>
-                <span class="px-2 py-0.5 rounded bg-[#f0ece2]">CONFIDENCE: ${Math.round((an.confidence || 0) * 100)}%</span>
-                <span class="px-2 py-0.5 rounded bg-[#f0ece2]">MODE: ${esc(an.mode).toUpperCase()}</span>
-                ${an.escalate ? `<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-900 font-bold">ESCALATED</span>` : ''}
-              </div>
-            </div>
-
-            <div class="text-xs space-y-1">
-              <div><strong>AI Summary:</strong> ${esc(an.summary)}</div>
-              <div><strong>Root Cause:</strong> ${esc(an.rootCause?.summary)}</div>
-              <div class="text-[#8b775f]"><strong>AI Reasoning Log:</strong> ${esc(an.reasoning)}</div>
-              ${an.escalationReason ? `<div class="text-amber-800"><strong>Escalation Reason:</strong> ${esc(an.escalationReason)}</div>` : ''}
-            </div>
-
-            ${depBadges ? `<div class="flex flex-wrap gap-2 pt-1">${depBadges}</div>` : ''}
-
-            ${codeSnippets ? `<div><div class="text-xs font-bold mt-2">Inspected Codebase Context:</div>${codeSnippets}</div>` : ''}
-
-            <div class="space-y-2 pt-1">
-              <div class="text-xs font-bold">Suggested Fixes &amp; Proposed Diffs:</div>
-              <div class="space-y-2">${fixesHtml}</div>
-            </div>
-          </div>
-        `;
+          <div class="mt-2">${escapeHtml(a.summary)}</div>
+          <div class="mt-1 text-neutral-600">Root cause: ${escapeHtml(a.rootCause?.summary)}</div>
+          ${a.reasoning ? `<div class="mt-1 text-[10px] text-neutral-400">${escapeHtml(a.reasoning)}</div>` : ''}
+          ${a.escalationReason ? `<div class="mt-1 text-[10px] text-amber-800">${escapeHtml(a.escalationReason)}</div>` : ''}
+          ${deps ? `<div class="flex flex-wrap gap-1 mt-2">${deps}</div>` : ''}
+          ${fixes}
+        </div>`;
       }).join('');
-    }
+    } catch (e) { /* backend not reachable yet */ }
+  }
 
-    // Initial load + background poll for badges and active tab
-    loadState();
-    fetchLogs();
-    fetchIncidents();
-    setInterval(() => {
-      loadState();
-      fetchLogs();
-      fetchIncidents();
-    }, 3000);
-  </script>
+  let feedTimer = null;
+  $('btn-start').addEventListener('click', async () => {
+    const btn = $('btn-start'), s = $('status-monitor');
+    btn.disabled = true; s.textContent = '> starting…';
+    try {
+      await pushSafety();
+      await api('/api/monitoring/start', {});
+      btn.textContent = 'Monitoring active'; s.textContent = '> [OK] AGENT WATCHING. IT WILL NOT SLEEP.';
+      await refreshIncidents();
+      if (!feedTimer) feedTimer = setInterval(refreshIncidents, 4000);
+    } catch (e) { s.textContent = '> [ERROR] ' + e.message; btn.disabled = false; }
+  });
+
+  /* Load real state + link nav to wizard */
+  document.addEventListener('DOMContentLoaded', async () => {
+    const links = document.querySelectorAll('#sidebarNav .nav-link');
+    links.forEach((link, index) => link.addEventListener('click', event => { event.preventDefault(); goToStep(index + 1); }));
+    document.querySelectorAll('#mobileNav nav a').forEach((link, index) => link.addEventListener('click', event => {
+      event.preventDefault(); toggleMobileNav(); goToStep(index + 1);
+    }));
+
+    try {
+      const { state } = await api('/api/state');
+      if (state.gateway?.targetUrl) $('gateway-target').value = state.gateway.targetUrl;
+      if (state.gateway?.port) $('gateway-port').value = state.gateway.port;
+      if (state.gateway?.lastCheck) {
+        const lc = state.gateway.lastCheck;
+        setStatus($('status-gateway-badge'), lc.reachable ? `HTTP ${lc.status} (${lc.latencyMs}ms)` : 'UNREACHABLE', Boolean(lc.reachable));
+      }
+      if (state.external?.authEndpoint) $('auth-endpoint').value = state.external.authEndpoint;
+      if (state.external?.databaseEndpoint) $('db-endpoint').value = state.external.databaseEndpoint;
+      if (state.codebase?.repoUrl) $('repo-url').value = state.codebase.repoUrl;
+      if (state.codebase?.commits?.length) renderCommits(state.codebase.commits);
+      if (state.safety) {
+        $('toggle-dryrun').setAttribute('aria-checked', String(Boolean(state.safety.dryRun)));
+        $('toggle-rollback').setAttribute('aria-checked', String(Boolean(state.safety.autoRollback)));
+        $('toggle-escalation').setAttribute('aria-checked', String(Number(state.safety.escalationThreshold) > 0));
+      }
+      if (state.monitoring?.active) {
+        $('btn-start').textContent = 'Monitoring active';
+        $('status-monitor').textContent = '> [OK] AGENT WATCHING.';
+        refreshIncidents();
+        feedTimer = setInterval(refreshIncidents, 4000);
+      }
+    } catch (e) { /* backend not reachable yet */ }
+  });
+</script>
 </body>
 </html>
