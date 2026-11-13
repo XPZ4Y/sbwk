@@ -15,3 +15,6 @@ data/
 
 # OS / editor
 .DS_Store
+
+# Context_files
+2026*context.md

@@ -1,6 +1,6 @@
 // Zero-dependency SBWK edge middleware: native node:http reverse proxy +
 // anomaly detection (status, slow responses, upstream failures) + fire-and-forget
-// dispatch to Agent Core. Target/detection are runtime-configurable by the control plane.
+// dispatch to Agent Core + full request log ring buffer.
 import http from "node:http";
 import https from "node:https";
 import { randomUUID, timingSafeEqual } from "node:crypto";
@@ -26,6 +26,15 @@ function storeCounts() {
   return { total: recent.length, dispatched: recent.filter(r => r.dispatched).length, byCategory };
 }
 
+// Ring buffer for all passing client -> server requests.
+const MAX_REQUEST_LOGS = 500;
+const requestLogs = [];
+function logRequestAdd(entry) {
+  requestLogs.push(entry);
+  if (requestLogs.length > MAX_REQUEST_LOGS) requestLogs.shift();
+  return entry;
+}
+
 async function dispatchIncident(incident) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), config.DISPATCH_TIMEOUT_MS);
@@ -48,6 +57,7 @@ function recordAndDispatch(incident) {
   const entry = storeAdd({ incident, dispatched: dispatch });
   log("warn", "anomaly_detected", { incidentId: incident.id, requestId: incident.requestId, method: incident.method, path: incident.path, statusCode: incident.statusCode, category: incident.category, dispatched: dispatch });
   if (dispatch) dispatchIncident(incident).then(ok => { entry.dispatchOk = ok; });
+  return incident.id;
 }
 
 function sendJson(res, status, obj) { res.writeHead(status, { "Content-Type": "application/json" }); res.end(JSON.stringify(obj)); }
@@ -79,11 +89,19 @@ async function handleAdmin(req, res, url) {
   if (!adminAuthed(req)) return sendJson(res, 401, { success: false, error: { code: "UNAUTHORIZED", message: "Valid middleware admin bearer token required" } });
 
   if (url.pathname === "/_sbwk/status") {
-    return sendJson(res, 200, { success: true, service: "middleware", target: config.TARGET_SERVER_URL, agentCore: config.AGENT_CORE_URL, detection: { minStatus: config.DETECT_STATUS_MIN, slowMs: config.DETECT_SLOW_MS, upstreamErrors: config.DETECT_UPSTREAM_ERRORS, cooldownMs: config.DISPATCH_COOLDOWN_MS }, incidents: storeCounts() });
+    return sendJson(res, 200, { success: true, service: "middleware", target: config.TARGET_SERVER_URL, agentCore: config.AGENT_CORE_URL, detection: { minStatus: config.DETECT_STATUS_MIN, slowMs: config.DETECT_SLOW_MS, upstreamErrors: config.DETECT_UPSTREAM_ERRORS, cooldownMs: config.DISPATCH_COOLDOWN_MS }, incidents: storeCounts(), totalRequests: requestLogs.length });
   }
   if (url.pathname === "/_sbwk/incidents") {
     const limit = Math.min(Number(url.searchParams.get("limit")) || 50, config.MAX_RECENT_INCIDENTS);
     return sendJson(res, 200, { success: true, incidents: recent.slice(-limit).reverse() });
+  }
+  if (url.pathname === "/_sbwk/logs" && req.method === "GET") {
+    const limit = Math.min(Number(url.searchParams.get("limit")) || 100, MAX_REQUEST_LOGS);
+    return sendJson(res, 200, { success: true, logs: requestLogs.slice(-limit).reverse() });
+  }
+  if (url.pathname === "/_sbwk/logs" && req.method === "DELETE") {
+    requestLogs.length = 0;
+    return sendJson(res, 200, { success: true, logs: [] });
   }
   // Runtime configuration from the control plane (onboarding Step 01).
   if (url.pathname === "/_sbwk/config" && req.method === "POST") {
@@ -123,20 +141,35 @@ const server = http.createServer((req, res) => {
     const chunks = []; let size = 0;
     proxyRes.on("data", c => { if (size < max) { chunks.push(c); size += c.length; } });
     proxyRes.on("end", () => {
-      const durationMs = elapsed();
+      const durationMs = Math.round(elapsed() * 100) / 100;
       let decision = statusDecision;
       if (!decision.detect && config.DETECT_SLOW_MS > 0 && durationMs > config.DETECT_SLOW_MS) {
         decision = { detect: true, category: "slow_response", reason: `Response took ${Math.round(durationMs)}ms (threshold ${config.DETECT_SLOW_MS}ms)` };
       }
-      log("info", "http_request_proxied", { requestId, method: req.method, path: req.url, statusCode: status, durationMs: Math.round(durationMs * 100) / 100, anomaly: decision.detect });
+      const sample = max > 0 ? Buffer.concat(chunks).subarray(0, 512).toString("utf8") : undefined;
+      let incidentId = null;
       if (decision.detect) {
-        const sample = max > 0 && decision.category !== "slow_response" ? Buffer.concat(chunks).subarray(0, max).toString("utf8") : undefined;
-        recordAndDispatch(buildIncident({
+        incidentId = recordAndDispatch(buildIncident({
           id: randomUUID(), requestId, method: req.method, url: req.url, statusCode: status, durationMs,
           upstream: config.TARGET_SERVER_URL, category: decision.category, reason: decision.reason,
           responseSample: sample, clientIp: clientIp(req), userAgent: req.headers["user-agent"]
         }));
       }
+      logRequestAdd({
+        id: requestId,
+        timestamp: new Date().toISOString(),
+        method: req.method,
+        path: req.url,
+        statusCode: status,
+        durationMs,
+        upstream: config.TARGET_SERVER_URL,
+        clientIp: clientIp(req),
+        anomaly: decision.detect,
+        category: decision.detect ? decision.category : "normal",
+        incidentId,
+        responseSample: sample
+      });
+      log("info", "http_request_proxied", { requestId, method: req.method, path: req.url, statusCode: status, durationMs, anomaly: decision.detect });
     });
   });
 
@@ -145,17 +178,34 @@ const server = http.createServer((req, res) => {
   proxyReq.on("error", err => {
     const isTimeout = err.code === "ETIMEDOUT" || err.code === "ESOCKETTIMEDOUT" || /timeout/i.test(err.message);
     const status = isTimeout ? 504 : 502;
+    const durationMs = Math.round(elapsed() * 100) / 100;
     log("error", "upstream_error", { requestId, method: req.method, path: req.url, code: err.code || "CONNECTION_FAILED", message: err.message });
     if (!res.headersSent) sendJson(res, status, { success: false, error: { code: isTimeout ? "GATEWAY_TIMEOUT" : "BAD_GATEWAY", message: "Upstream server is unavailable" } });
     else res.end();
+    let incidentId = null;
+    const category = categoryForUpstreamError(isTimeout ? "TIMEOUT" : "CONNECTION_FAILED");
     if (config.DETECT_UPSTREAM_ERRORS) {
-      recordAndDispatch(buildIncident({
-        id: randomUUID(), requestId, method: req.method, url: req.url, statusCode: status, durationMs: elapsed(),
-        upstream: config.TARGET_SERVER_URL, category: categoryForUpstreamError(isTimeout ? "TIMEOUT" : "CONNECTION_FAILED"),
+      incidentId = recordAndDispatch(buildIncident({
+        id: randomUUID(), requestId, method: req.method, url: req.url, statusCode: status, durationMs,
+        upstream: config.TARGET_SERVER_URL, category,
         reason: isTimeout ? "Upstream server timed out" : "Upstream server could not be reached",
         clientIp: clientIp(req), userAgent: req.headers["user-agent"], error: { code: err.code || "CONNECTION_FAILED", message: err.message }
       }));
     }
+    logRequestAdd({
+      id: requestId,
+      timestamp: new Date().toISOString(),
+      method: req.method,
+      path: req.url,
+      statusCode: status,
+      durationMs,
+      upstream: config.TARGET_SERVER_URL,
+      clientIp: clientIp(req),
+      anomaly: Boolean(config.DETECT_UPSTREAM_ERRORS),
+      category,
+      incidentId,
+      responseSample: err.message
+    });
   });
 
   req.pipe(proxyReq);
