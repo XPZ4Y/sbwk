@@ -523,14 +523,71 @@ export async function groqReason(input, cfg = defaultConfig) {
   }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Mode policy
+//   AGENT_MODE=mock  (non-API runtime)  → hardcoded heuristics are the expected
+//                                          reasoner. No warning.
+//   AGENT_MODE=live  (API-tethered)     → the reasoning model is the ONLY
+//                                          permitted diagnosis source. Hardcoded
+//                                          heuristics are disabled. If the LLM
+//                                          fails or is unconfigured, a degraded,
+//                                          explicitly-warned result is returned
+//                                          and the incident is escalated.
+// ─────────────────────────────────────────────────────────────────────────────
+
+export const AI_UNAVAILABLE_WARNING = {
+  code: "NON_API_FALLBACK",
+  severity: "warn",
+  message:
+    "The AI reasoning API was unavailable or returned an unusable answer. " +
+    "Hardcoded heuristics are disabled in API-tethered mode, so no automated " +
+    "root cause is asserted. The incident is escalated for human review."
+};
+
+function aiUnavailableResult() {
+  return {
+    mode: "degraded",
+    degraded: true,
+    severity: "medium",
+    summary: "Automated AI diagnosis unavailable; escalated for human review.",
+    rootCause: {
+      summary:
+        "No automated root cause was asserted. Dependency and code evidence " +
+        "collected before reasoning is attached for the engineer.",
+      confidence: 0
+    },
+    suggestedFixes: [],
+    confidence: 0,
+    reasoning:
+      "This application is API-tethered (AGENT_MODE=live), so the reasoning model " +
+      "is the only permitted diagnosis source. The LLM call failed or returned an " +
+      "unparseable answer. The hardcoded heuristic path is reserved for non-API " +
+      "runtime (AGENT_MODE=mock).",
+    warnings: [AI_UNAVAILABLE_WARNING]
+  };
+}
+
 export async function reason(input, cfg = defaultConfig) {
-  if (cfg.AGENT_MODE === "live" && cfg.GROQ_API_KEY) {
-    const live = await groqReason(input, cfg);
-    if (live) return live;
-    log("warn", "llm_fallback_to_heuristic", {
-      incidentId: input.incident?.id,
-      path: input.incident?.path
-    });
+  if (cfg.AGENT_MODE === "live") {
+    if (cfg.GROQ_API_KEY) {
+      const live = await groqReason(input, cfg);
+      if (live) return { ...live, warnings: [] };
+      log("warn", "ai_reasoning_unavailable", {
+        incidentId: input.incident?.id,
+        path: input.incident?.path,
+        fallback: "degraded"
+      });
+    } else {
+      log("warn", "ai_reasoning_unavailable", {
+        incidentId: input.incident?.id,
+        path: input.incident?.path,
+        reason: "AGENT_MODE=live but GROQ_API_KEY is not set",
+        fallback: "degraded"
+      });
+    }
+    return aiUnavailableResult();
   }
-  return heuristicReason(input);
+
+  // Non-API runtime: hardcoded heuristics are expected and carry no warning.
+  return { ...heuristicReason(input), mode: "mock", warnings: [] };
 }

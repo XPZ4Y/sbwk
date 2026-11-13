@@ -984,6 +984,25 @@ legend {
 const $ = id => document.getElementById(id);
 const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
+const rawLog = [];
+function rawDebug(path, status, text) {
+  const at = new Date().toISOString();
+  rawLog.push({ at, path, status, text });
+  if (rawLog.length > 50) rawLog.shift();
+  console.debug('[api raw]', path, status, text);           // DevTools too
+
+  const panel = document.getElementById('raw-debug');
+  const body  = document.getElementById('raw-debug-body');
+  if (!panel || !body) return;
+  panel.style.display = 'block';
+  const div = document.createElement('div');
+  div.style.cssText = 'border-top:1px solid #222;padding:6px 0;';
+  div.textContent = `${at}  ${status}  ${path}\n${text}`;
+  body.prepend(div);
+  while (body.children.length > 30) body.lastChild.remove();
+}
+window.__rawApi = rawLog;                                   // inspectable in console
+
 async function api(path, body) {
   const res = await fetch(path, body ? {
     method: 'POST',
@@ -991,7 +1010,13 @@ async function api(path, body) {
     body: JSON.stringify(body)
   } : undefined);
   if (res.status === 401) { location.href = '/login'; throw new Error('session expired'); }
-  const data = await res.json().catch(() => ({}));
+
+  const text = await res.text();
+  let data = {};
+  try { data = text ? JSON.parse(text) : {}; } catch { /* non-JSON or empty */ }
+
+  rawDebug(path, res.status, text);          // <-- capture the raw, unparsed body
+
   if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
 }
@@ -1619,5 +1644,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   setInterval(() => refreshHealth().catch(() => {}), 30000);
 });
 </script>
+
+<!-- DEBUG: raw API responses -->
+<details id="raw-debug" open
+  style="display:none;position:fixed;bottom:8px;right:8px;width:min(100px,45vw);max-height:45vh;
+         overflow:auto;background:#0a0a0a;color:#e6ffd5;font:11px/1.4 var(--mono);
+         padding:8px 10px;z-index:9999;border:1px solid #333;">
+  <summary style="cursor:pointer;font-weight:700;letter-spacing:.1em;text-transform:uppercase;">
+    raw api responses
+  </summary>
+  <div id="raw-debug-body" style="white-space:pre-wrap;word-break:break-all;margin-top:8px;"></div>
+</details>
+
 </body>
 </html>

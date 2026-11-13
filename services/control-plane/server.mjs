@@ -7,6 +7,7 @@ import { config } from "./config.mjs";
 import * as store from "./store.mjs";
 import { checkReachability, fetchGitHubRepo } from "./checks.mjs";
 import { applyGateway, applyExternal, applyCodebase, applySafety, applyMonitoring, serviceHealth } from "./apply.mjs";
+import { saveConfig } from "./config-service.mjs";
 import { initAuth, verifyPassword, createSession, destroySession, sessionFromRequest, sessionCookie, clearCookie } from "./auth.mjs";
 
 store.load();
@@ -103,8 +104,10 @@ const server = http.createServer(async (req, res) => {
     if (p === "/api/state" && req.method === "GET") {
       return ok(res, { state: store.redacted(), services: await serviceHealth() });
     }
-
-    // STEP 01 — Gateway
+    if (p === "/api/config" && req.method === "POST") {
+      const result = await saveConfig(await readJson(req));
+      return sendJson(res, result.status, result.body);
+    }    // STEP 01 — Gateway
     if (p === "/api/gateway" && req.method === "POST") {
       const body = await readJson(req);
       if (!body.targetUrl) return fail(res, 400, "targetUrl is required");
