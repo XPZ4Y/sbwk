@@ -500,6 +500,110 @@ legend {
 .save-status.ok { color: var(--ok); }
 .save-status.bad { color: var(--bad); }
 
+/* ── agent tab ───────────────────────────────────────────── */
+.agent-feed {
+  padding: 20px 32px 48px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 1040px;
+}
+.agent-card { border: 2px solid var(--line); background: var(--bg); }
+.agent-card-head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--hair); flex-wrap: wrap;
+}
+.agent-card-title { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.agent-card-title code { font-family: var(--mono); font-weight: 700; }
+.agent-card-time {
+  font-size: 10px; color: var(--fg-mid); text-transform: uppercase;
+  letter-spacing: 0.08em; white-space: nowrap;
+}
+.agent-card-meta {
+  display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 14px;
+  font-size: 11px; color: var(--fg-mid); border-bottom: 1px solid var(--hair);
+  background: rgba(10,10,10,0.02);
+}
+.agent-card-body { padding: 14px; font-size: 12px; }
+.agent-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px 20px; padding-bottom: 12px; border-bottom: 1px solid var(--hair);
+}
+.agent-grid .k {
+  color: var(--fg-mid); text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 10px; margin-right: 8px;
+}
+.agent-grid code { font-family: var(--mono); }
+.agent-section { padding-top: 12px; border-top: 1px solid var(--hair); margin-top: 12px; }
+.agent-section:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+.agent-section-head {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--fg-mid); margin-bottom: 6px;
+}
+.agent-section p { font-size: 12px; line-height: 1.55; }
+.agent-muted { color: var(--fg-dim); font-style: italic; font-size: 11px; }
+.agent-reasoning { color: var(--fg-mid); }
+.agent-escalate { color: var(--accent); font-weight: 700; }
+.agent-pending { color: var(--fg-dim); font-style: italic; }
+.agent-empty {
+  padding: 40px 12px; text-align: center;
+  color: var(--fg-dim); font-style: italic;
+}
+
+.sev {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; padding: 2px 8px;
+  border: 1px solid var(--line); text-transform: uppercase;
+}
+.sev-low      { background: rgba(0,122,90,0.1);  border-color: var(--ok);     color: var(--ok); }
+.sev-medium   { background: rgba(230,74,25,0.08); border-color: var(--accent); color: var(--accent); }
+.sev-high     { background: rgba(183,28,28,0.1); border-color: var(--bad);    color: var(--bad); }
+.sev-critical { background: var(--bad); border-color: var(--bad); color: #fff; }
+
+.dep-row {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 4px 0; font-size: 11px; flex-wrap: wrap;
+}
+.dep-service { font-weight: 700; }
+.dep-signals { color: var(--fg-mid); }
+.dep-status {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  padding: 1px 6px; border: 1px solid; text-transform: uppercase;
+}
+.dep-healthy   { color: var(--ok);     border-color: var(--ok); }
+.dep-degraded  { color: var(--accent); border-color: var(--accent); }
+.dep-unhealthy,
+.dep-unreachable { color: var(--bad);  border-color: var(--bad); }
+.dep-unknown   { color: var(--fg-dim); border-color: var(--fg-dim); }
+
+.code-finding { border: 1px solid var(--hair); margin-bottom: 8px; }
+.code-file {
+  font-size: 11px; font-weight: 700; padding: 4px 8px;
+  border-bottom: 1px solid var(--hair); background: rgba(10,10,10,0.03);
+}
+.code-snippet {
+  margin: 0; padding: 8px; font: 11px/1.45 var(--mono);
+  overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+}
+
+.fix-list { list-style: none; padding: 0; margin: 0; }
+.fix-item { padding: 8px 0; border-top: 1px solid var(--hair); }
+.fix-item:first-child { border-top: 0; padding-top: 0; }
+.fix-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.fix-title { font-weight: 700; font-size: 12px; }
+.fix-kind {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 1px 6px;
+  border: 1px solid var(--line); color: var(--fg-mid);
+}
+.fix-desc { font-size: 11px; color: var(--fg-mid); margin-top: 3px; }
+.fix-file { font-size: 10px; color: var(--fg-dim); margin-top: 2px; font-family: var(--mono); }
+
+@media (max-width: 900px) {
+  .agent-feed { padding-left: 16px; padding-right: 16px; }
+}
+
+
 /* ── about tab ───────────────────────────────────────────── */
 .prose {
   padding: 24px 32px 64px;
@@ -582,6 +686,7 @@ legend {
 
     <ol class="tabs" role="tablist">
       <li role="presentation"><button type="button" role="tab" class="tab-btn is-active" data-tab="requests" aria-selected="true">Requests</button></li>
+			<li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="agent" aria-selected="false">Agent</button></li>
       <li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="config" aria-selected="false">Config</button></li>
       <li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="about" aria-selected="false">About</button></li>
     </ol>
@@ -636,6 +741,34 @@ legend {
           <tr class="empty"><td colspan="7">// no requests yet</td></tr>
         </tbody>
       </table>
+    </section>
+
+    <!-- ─── AGENT ─────────────────────────────────────────── -->
+    <section id="tab-agent" class="tab-panel" role="tabpanel">
+      <header class="panel-head">
+        <h1>Agent</h1>
+        <div class="meta">
+          <span id="agent-count">0</span> analyses ·
+          <span id="agent-escalated">0</span> escalated
+        </div>
+      </header>
+
+      <div class="toolbar">
+        <label><input type="checkbox" id="agent-filter-escalated"> escalated only</label>
+        <select id="agent-filter-severity">
+          <option value="">any severity</option>
+          <option value="critical">critical</option>
+          <option value="high">high</option>
+          <option value="medium">medium</option>
+          <option value="low">low</option>
+        </select>
+        <button type="button" id="agent-refresh">Refresh</button>
+        <span class="feed-state" id="agent-state">live</span>
+      </div>
+
+      <div class="agent-feed" id="agent-feed">
+        <div class="agent-empty">// loading…</div>
+      </div>
     </section>
 
     <!-- ─── CONFIG ────────────────────────────────────────── -->
@@ -996,6 +1129,186 @@ $('btn-pause').addEventListener('click', () => {
   else { restartFeed(100); }
 });
 
+/* ─── AGENT ───────────────────────────────────────────────── */
+let agentTimer = null;
+let agentBackoff = 0;
+let lastIncidents = [];
+let lastContext = {};
+
+function severityClass(sev) {
+  return ['critical', 'high', 'medium', 'low'].includes(sev) ? `sev-${sev}` : 'sev-medium';
+}
+
+function renderIncident(record) {
+  const inc = record.incident || {};
+  const a = record.analysis;
+  const when = a?.createdAt || record.createdAt || inc.detectedAt;
+  const time = when ? new Date(when).toLocaleString() : '';
+  const catCls = (inc.category === 'server_error' || inc.category === 'timeout') ? 'cat-bad'
+               : inc.category === 'normal' ? '' : 'cat-warn';
+
+  let body;
+  if (!a) {
+    body = `<div class="agent-pending">Investigation ${escapeHtml(record.status || 'pending')}…</div>`;
+  } else {
+    const conf     = Math.round((a.confidence || 0) * 100);
+    const rootConf = Math.round((a.rootCause?.confidence || 0) * 100);
+
+    const deps = (a.dependencyFindings || []).length
+      ? a.dependencyFindings.map(f => `
+          <div class="dep-row">
+            <span class="dep-status dep-${escapeHtml(f.status || 'unknown')}">${escapeHtml(f.status || 'unknown')}</span>
+            <span class="dep-service">${escapeHtml(f.service || '')}</span>
+            ${(f.signals && f.signals.length)
+              ? `<span class="dep-signals">${f.signals.map(escapeHtml).join(' · ')}</span>`
+              : ''}
+          </div>`).join('')
+      : '<div class="agent-muted">no dependency findings</div>';
+
+    const codes = (a.codeFindings || []).length
+      ? a.codeFindings.map(f => `
+          <div class="code-finding">
+            <div class="code-file">${escapeHtml(f.file || '')}${f.line ? `:${f.line}` : ''}</div>
+            <pre class="code-snippet">${escapeHtml(f.snippet || '')}</pre>
+          </div>`).join('')
+      : '<div class="agent-muted">no relevant code located</div>';
+
+    const fixes = (a.suggestedFixes || []).length
+      ? a.suggestedFixes.map(fx => `
+          <li class="fix-item">
+            <div class="fix-head">
+              <span class="fix-kind">${escapeHtml(fx.kind || 'other')}</span>
+              <span class="fix-title">${escapeHtml(fx.title || '')}</span>
+            </div>
+            <div class="fix-desc">${escapeHtml(fx.description || '')}</div>
+            ${fx.file ? `<div class="fix-file">${escapeHtml(fx.file)}</div>` : ''}
+          </li>`).join('')
+      : '<li class="agent-muted">no suggested fixes</li>';
+
+    const escalation = a.escalate
+      ? `<div class="agent-section">
+          <div class="agent-section-head">Escalation</div>
+          <p class="agent-escalate">${escapeHtml(a.escalationReason || 'escalated to engineer')}</p>
+          ${record.notification
+            ? `<div class="agent-muted">notification: ${escapeHtml(record.notification.channel || 'log')} · ${record.notification.sent ? 'sent' : 'failed'}${record.notification.reason ? ` · ${escapeHtml(record.notification.reason)}` : ''}</div>`
+            : ''}
+        </div>`
+      : `<div class="agent-section">
+          <div class="agent-section-head">Escalation</div>
+          <div class="agent-muted">not escalated</div>
+        </div>`;
+
+    body = `
+      <div class="agent-grid">
+        <div><span class="k">severity</span><span class="sev ${severityClass(a.severity)}">${escapeHtml((a.severity || 'medium').toUpperCase())}</span></div>
+        <div><span class="k">confidence</span><code>${conf}%</code></div>
+        <div><span class="k">root cause</span><code>${rootConf}%</code></div>
+        <div><span class="k">mode</span><code>${escapeHtml(a.mode || '—')}</code></div>
+        <div><span class="k">recurring</span><code>${a.recurring ?? 0}</code></div>
+        <div><span class="k">dry run</span><code>${a.policy?.dryRun ? 'on' : 'off'}</code></div>
+      </div>
+      <div class="agent-section">
+        <div class="agent-section-head">Summary</div>
+        <p>${escapeHtml(a.summary || '—')}</p>
+      </div>
+      <div class="agent-section">
+        <div class="agent-section-head">Root cause</div>
+        <p>${escapeHtml(a.rootCause?.summary || '—')}</p>
+      </div>
+      ${escalation}
+      <div class="agent-section">
+        <div class="agent-section-head">Dependencies</div>
+        ${deps}
+      </div>
+      <div class="agent-section">
+        <div class="agent-section-head">Code findings</div>
+        ${codes}
+      </div>
+      <div class="agent-section">
+        <div class="agent-section-head">Suggested fixes</div>
+        <ol class="fix-list">${fixes}</ol>
+      </div>
+      <div class="agent-section">
+        <div class="agent-section-head">Reasoning</div>
+        <p class="agent-reasoning">${escapeHtml(a.reasoning || '—')}</p>
+      </div>
+    `;
+  }
+
+  return `<article class="agent-card" data-incident="${escapeHtml(inc.id || '')}">
+    <header class="agent-card-head">
+      <div class="agent-card-title">
+        <span class="sev ${a ? severityClass(a.severity) : 'sev-medium'}">${a ? escapeHtml((a.severity || 'medium').toUpperCase()) : '…'}</span>
+        <code>${escapeHtml(inc.method || '')} ${escapeHtml(inc.path || '')} → ${escapeHtml(String(inc.statusCode ?? ''))}</code>
+      </div>
+      <div class="agent-card-time">${escapeHtml(time)}</div>
+    </header>
+    <div class="agent-card-meta">
+      <span class="${catCls}">${escapeHtml(inc.category || '')}</span>
+      <span>${escapeHtml(inc.reason || '')}</span>
+      ${inc.durationMs != null ? `<span>${Math.round(inc.durationMs)}ms</span>` : ''}
+      <span>id ${escapeHtml(inc.id || '')}</span>
+    </div>
+    <div class="agent-card-body">${body}</div>
+  </article>`;
+}
+
+function applyIncidentFilters() {
+  const onlyEsc = $('agent-filter-escalated').checked;
+  const sev     = $('agent-filter-severity').value;
+  let list = lastIncidents;
+  if (onlyEsc) list = list.filter(r => r.analysis?.escalate);
+  if (sev)     list = list.filter(r => (r.analysis?.severity || '') === sev);
+
+  const feed = $('agent-feed');
+  if (!list.length) {
+    feed.innerHTML = lastIncidents.length
+      ? '<div class="agent-empty">// no analyses match current filters</div>'
+      : '<div class="agent-empty">// no agent analyses yet — anomalies dispatched from the edge will appear here</div>';
+    return;
+  }
+  feed.innerHTML = list.map(renderIncident).join('');
+}
+
+async function fetchIncidents() {
+  try {
+    const r = await api('/api/incidents?limit=25');
+    agentBackoff = 0;
+    const stateEl = $('agent-state');
+    if (r.unreachable) {
+      stateEl.textContent = 'agent-core unreachable';
+      stateEl.className = 'feed-state warn';
+      if (!lastIncidents.length) {
+        $('agent-feed').innerHTML = `<div class="agent-empty">// agent-core unreachable: ${escapeHtml(r.error || 'unknown error')}</div>`;
+      }
+      return;
+    }
+    stateEl.textContent = 'live';
+    stateEl.className = 'feed-state';
+    lastIncidents = r.incidents || [];
+    lastContext = r.context || {};
+    $('agent-count').textContent = String(lastIncidents.length);
+    $('agent-escalated').textContent = String(lastIncidents.filter(x => x.analysis?.escalate).length);
+    applyIncidentFilters();
+  } catch (e) {
+    agentBackoff = Math.min(agentBackoff + 1, 5);
+    const stateEl = $('agent-state');
+    stateEl.textContent = 'error — retrying';
+    stateEl.className = 'feed-state bad';
+    restartAgentFeed(Math.min(4000 * 2 ** agentBackoff, 60000));
+  }
+}
+
+function restartAgentFeed(delay = 8000) {
+  clearTimeout(agentTimer);
+  agentTimer = setTimeout(() => { fetchIncidents(); restartAgentFeed(8000); }, delay);
+}
+
+['agent-filter-escalated', 'agent-filter-severity'].forEach(id => {
+  $(id).addEventListener('change', applyIncidentFilters);
+});
+$('agent-refresh').addEventListener('click', () => fetchIncidents());
+
 /* ─── CONFIG ──────────────────────────────────────────────── */
 let services = [];
 let currentState = null;
@@ -1244,6 +1557,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadState();
   fetchLogs();
   restartFeed(4000);
+  fetchIncidents();      // ← new
+  restartAgentFeed(8000); // ← new
   setInterval(() => refreshHealth().catch(() => {}), 30000);
 });
 </script>

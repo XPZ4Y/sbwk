@@ -1,5 +1,7 @@
-// Reasoning: dependency findings + deterministic heuristic + optional Groq LLM.
+// services/agent-core/reason.mjs
+// Reasoning: dependency findings + deterministic heuristic + optional Groq LLM with tool calling.
 import { config as defaultConfig } from "./config.mjs";
+import { inspectCodebase } from "./codebase.mjs";
 
 const STATUS_RANK = { healthy: 0, unknown: 1, degraded: 2, unhealthy: 3, unreachable: 4 };
 const worst = (a, b) => (STATUS_RANK[a] >= STATUS_RANK[b] ? a : b);
@@ -187,9 +189,126 @@ export function heuristicReason(input) {
   return { mode: "mock", severity, summary, rootCause: { summary: rootCause, confidence }, suggestedFixes: fixes, confidence, reasoning: narrative.join(" ") };
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Tool definitions exposed to Groq (mirror the Agent Connector's tools + codebase)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const SERVICE_CHECKS = {
+  database: ["health", "metrics", "logs"],
+  auth: ["health", "metrics", "logs"],
+  external_api: ["health", "metrics", "logs"]
+};
+
+const TOOL_DESCRIPTIONS = {
+  "database.health": "Inspect database availability and connection health.",
+  "database.metrics": "Read database connection-pool and query-performance metrics.",
+  "database.logs": "Read recent database diagnostic logs.",
+  "auth.health": "Inspect authentication service and identity-store health.",
+  "auth.metrics": "Read authentication throughput, failures and latency metrics.",
+  "auth.logs": "Read recent authentication diagnostic logs.",
+  "external_api.health": "Inspect configured third-party API availability.",
+  "external_api.metrics": "Read third-party API latency, timeout and error metrics.",
+  "external_api.logs": "Read recent third-party API integration logs."
+};
+
+function buildToolDefinitions() {
+  const tools = [];
+  for (const [service, checks] of Object.entries(SERVICE_CHECKS)) {
+    for (const check of checks) {
+      tools.push({
+        type: "function",
+        function: {
+          name: `inspect_${service}_${check}`,
+          description: `${TOOL_DESCRIPTIONS[`${service}.${check}`]} Read-only.`,
+          parameters: { type: "object", properties: {}, additionalProperties: false, strict: true }
+        }
+      });
+    }
+  }
+  tools.push({
+    type: "function",
+    function: {
+      name: "search_codebase",
+      description: "Find relevant source files in the linked codebase by keyword. Read-only. Returns up to 5 matches with file path, line number, and snippet.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Keyword or phrase to search for (e.g. 'connection pool', 'auth token', 'timeout')." }
+        },
+        required: ["query"],
+        additionalProperties: false
+      }
+    }
+  });
+  return tools;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Tool execution (read-only)
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function executeConnectorTool(name, cfg) {
+  const url = new URL("/connector/execute", cfg.CONNECTOR_URL);
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), cfg.REQUEST_TIMEOUT_MS);
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cfg.CONNECTOR_API_TOKEN}`
+      },
+      body: JSON.stringify({ tool: name }),
+      signal: controller.signal
+    });
+    if (!res.ok) return { error: `connector HTTP ${res.status}` };
+    const data = await res.json();
+    return data.result || { error: "no result" };
+  } catch (e) {
+    return { error: e.name === "AbortError" ? "connector timeout" : (e.message || "connector unreachable") };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function executeTool(name, args, input, cfg) {
+  if (name.startsWith("inspect_")) {
+    return executeConnectorTool(name, cfg);
+  }
+
+  if (name === "search_codebase") {
+    // Build an incident-shaped object so inspectCodebase derives useful keywords.
+    const query = String(args?.query || "").slice(0, 200);
+    const incidentForSearch = {
+      path: input.incident.path,
+      error: input.incident.error,
+      responseSample: query || input.incident.responseSample
+    };
+    try {
+      const findings = await inspectCodebase(incidentForSearch);
+      return findings.slice(0, 5);
+    } catch (e) {
+      return { error: e.message || "codebase search failed" };
+    }
+  }
+
+  return { error: `unknown tool: ${name}` };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Groq agent loop
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MAX_TOOL_ITERATIONS = 6;
+
 const SYSTEM_PROMPT = [
   "You are SBWK Agent Core, a read-only site-reliability assistant.",
-  "You diagnose production incidents using ONLY the evidence provided.",
+  "You diagnose production incidents by calling read-only diagnostic tools.",
+  "Call tools to gather evidence first. Do not guess.",
+  "Available tools: inspect_database_health/metrics/logs, inspect_auth_health/metrics/logs,",
+  "inspect_external_api_health/metrics/logs, and search_codebase.",
+  "Start by checking the dependencies most likely to be involved based on the incident.",
+  "After you have enough evidence, return the final JSON diagnosis WITHOUT any tool calls.",
   "Do not invent facts about dependencies that are reported healthy.",
   "You suggest fixes but NEVER execute, deploy, restart or remediate anything.",
   "Respond with ONLY a JSON object (no markdown) with keys:",
@@ -199,33 +318,151 @@ const SYSTEM_PROMPT = [
   "reasoning (string). Prefer dependency root causes when a dependency is unhealthy."
 ].join(" ");
 
+function parseFinalAnswer(content) {
+  if (!content) return null;
+  let parsed;
+  try {
+    // Tolerate markdown fences if the model adds them despite instructions.
+    const cleaned = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    parsed = JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+  if (!parsed.severity || !parsed.rootCause || typeof parsed.confidence !== "number" || !Array.isArray(parsed.suggestedFixes)) {
+    return null;
+  }
+  return {
+    mode: "live",
+    severity: parsed.severity,
+    summary: String(parsed.summary || ""),
+    rootCause: {
+      summary: String(parsed.rootCause.summary || ""),
+      confidence: Number(parsed.rootCause.confidence) || 0
+    },
+    suggestedFixes: parsed.suggestedFixes.slice(0, 8),
+    confidence: Number(parsed.confidence),
+    reasoning: String(parsed.reasoning || "")
+  };
+}
+
 export async function groqReason(input, cfg = defaultConfig) {
   if (!cfg.GROQ_API_KEY) return null;
-  const evidence = {
-    incident: { method: input.incident.method, path: input.incident.path, statusCode: input.incident.statusCode, category: input.incident.category, reason: input.incident.reason, responseSample: input.incident.responseSample?.slice(0, 800), error: input.incident.error },
-    dependencies: deriveDependencyFindings(input.dependency),
-    connectorError: input.dependency.error,
-    codeFindings: input.codeFindings.map(f => ({ file: f.file, line: f.line, snippet: f.snippet.slice(0, 600), reason: f.reason })),
-    recurringFailuresOnPath: input.recurring,
-    repository: input.repoUrl,
-    recentCommits: (input.recentCommits || []).map(c => ({ sha: (c.sha || "").slice(0, 7), message: (c.message || "").split("\n")[0], author: c.author, date: c.date }))
-  };
+
+  const messages = [
+    { role: "system", content: SYSTEM_PROMPT },
+    {
+      role: "user",
+      content: `Diagnose this incident.\n\nINCIDENT:\n${JSON.stringify({
+        incident: {
+          method: input.incident.method,
+          path: input.incident.path,
+          statusCode: input.incident.statusCode,
+          category: input.incident.category,
+          reason: input.incident.reason,
+          responseSample: input.incident.responseSample?.slice(0, 800),
+          error: input.incident.error
+        },
+        recurring: input.recurring,
+        repoUrl: input.repoUrl,
+        recentCommits: (input.recentCommits || []).map(c => ({
+          sha: (c.sha || "").slice(0, 7),
+          message: (c.message || "").split("\n")[0]
+        })),
+        // Seed context the model already has (still encourage tool use for more).
+        initialDependencyFindings: deriveDependencyFindings(input.dependency),
+        initialCodeFindings: (input.codeFindings || []).slice(0, 3).map(f => ({
+          file: f.file,
+          line: f.line,
+          snippet: f.snippet.slice(0, 400)
+        }))
+      })}`
+    }
+  ];
+
+  const tools = buildToolDefinitions();
+  const baseUrl = cfg.GROQ_BASE_URL.replace(/\/$/, "");
+
+  for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), cfg.LLM_TIMEOUT_MS);
+    let data;
+    try {
+      const res = await fetch(`${baseUrl}/chat/completions`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${cfg.GROQ_API_KEY}`
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: cfg.GROQ_MODEL,
+          messages,
+          tools,
+          tool_choice: "auto",
+          temperature: 0.2,
+          max_tokens: 1400
+        })
+      });
+      if (!res.ok) return null;
+      data = await res.json();
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const msg = data.choices?.[0]?.message;
+    if (!msg) return null;
+
+    // Append the assistant message (may include tool_calls).
+    messages.push(msg);
+
+    if (!msg.tool_calls || msg.tool_calls.length === 0) {
+      return parseFinalAnswer(msg.content);
+    }
+
+    // Execute tool calls in order; append each result with matching tool_call_id.
+    for (const call of msg.tool_calls) {
+      let args = {};
+      try {
+        args = JSON.parse(call.function?.arguments || "{}");
+      } catch { /* keep {} */ }
+      const result = await executeTool(call.function?.name || "", args, input, cfg);
+      messages.push({
+        role: "tool",
+        tool_call_id: call.id,
+        content: JSON.stringify(result)
+      });
+    }
+  }
+
+  // Hit iteration limit — force a final answer without tools.
+  messages.push({
+    role: "user",
+    content: "Stop calling tools. Return the final JSON diagnosis now using the evidence you have gathered."
+  });
+
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), cfg.LLM_TIMEOUT_MS);
   try {
-    const res = await fetch(`${cfg.GROQ_BASE_URL.replace(/\/$/, "")}/chat/completions`, {
+    const res = await fetch(`${baseUrl}/chat/completions`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.GROQ_API_KEY}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${cfg.GROQ_API_KEY}`
+      },
       signal: controller.signal,
-      body: JSON.stringify({ model: cfg.GROQ_MODEL, temperature: 0.2, max_tokens: 1400, response_format: { type: "json_object" }, messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: `Diagnose this incident and return the JSON object.\n\nEVIDENCE:\n${JSON.stringify(evidence)}` }] })
+      body: JSON.stringify({
+        model: cfg.GROQ_MODEL,
+        messages,
+        temperature: 0.2,
+        max_tokens: 1400,
+        response_format: { type: "json_object" }
+      })
     });
     if (!res.ok) return null;
     const data = await res.json();
-    const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
-    const v = JSON.parse(content);
-    if (!v.severity || !v.rootCause || typeof v.confidence !== "number" || !Array.isArray(v.suggestedFixes)) return null;
-    return { mode: "live", severity: v.severity, summary: String(v.summary || ""), rootCause: { summary: String(v.rootCause.summary || ""), confidence: Number(v.rootCause.confidence) || 0 }, suggestedFixes: v.suggestedFixes.slice(0, 8), confidence: Number(v.confidence), reasoning: String(v.reasoning || "") };
+    return parseFinalAnswer(data.choices?.[0]?.message?.content);
   } catch {
     return null;
   } finally {

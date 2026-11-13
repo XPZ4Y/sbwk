@@ -14,3 +14,5 @@ services/control-plane/public/index.html
 docker-*.yml
 package.json
 README.md
+
+.env.example
