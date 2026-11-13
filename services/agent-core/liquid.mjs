@@ -45,6 +45,25 @@ export const DEFAULT_QUESTIONS = {
 };
 
 /**
+ * Questions used by the *batch* gate (see batch.mjs). This is deliberately a
+ * separate constant: `DEFAULT_QUESTIONS` stays byte-for-byte what the
+ * per-incident router sends, so nothing about the existing pipeline changes
+ * when the batch stage is enabled.
+ *
+ * The gate only needs one boolean: "do these logs look anomalous?" A `noul`
+ * question returns a calibrated probability for "yes", which is all the policy
+ * needs to decide whether the pattern is worth a real LLM call.
+ */
+export const BATCH_QUESTIONS = {
+  looks_anomalous: {
+    type: "noul",
+    instructions:
+      "Do these aggregated error logs look like a real anomaly that deserves an engineering investigation, " +
+      "rather than ordinary background noise (a few unrelated 4xx, routine retries, expected client mistakes)?"
+  }
+};
+
+/**
  * How d1's answers become a routing decision. Pure data, so it can be tuned
  * from the UI/env without touching code.
  */
@@ -237,10 +256,13 @@ export async function liquidTriage(input, cfg = {}, deps = {}) {
   }
 
   const url = `${String(cfg.LIQUID_BASE_URL || "https://api.liquid.ai").replace(/\/$/, "")}${cfg.LIQUID_DECISIONS_PATH || LIQUID_PATH}`;
+  // The batch gate passes its own `state` (a log digest, not an incident) and
+  // `questions` (BATCH_QUESTIONS). Both are optional and unset on the existing
+  // per-incident path, which keeps that request byte-for-byte identical.
   const body = {
     model: cfg.LIQUID_MODEL || "d1",
-    state: buildLiquidState(input, cfg.LIQUID_MAX_STATE_CHARS || 6000),
-    questions: cfg.LIQUID_QUESTIONS || DEFAULT_QUESTIONS
+    state: deps.state !== undefined ? deps.state : buildLiquidState(input, cfg.LIQUID_MAX_STATE_CHARS || 6000),
+    questions: deps.questions || cfg.LIQUID_QUESTIONS || DEFAULT_QUESTIONS
   };
   const headers = { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" };
   const timeoutMs = cfg.LIQUID_TIMEOUT_MS || 8000;

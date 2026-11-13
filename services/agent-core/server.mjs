@@ -7,7 +7,8 @@ import { inspectCodebase } from "./codebase.mjs";
 import { reason } from "./reason.mjs";
 import { notifyEngineer } from "./notify.mjs";
 import { createInvestigator, makeConnectorClient } from "./investigate.mjs";
-import { liquidTriage, DEFAULT_QUESTIONS, DEFAULT_ROUTE_POLICY } from "./liquid.mjs";
+import { liquidTriage, DEFAULT_QUESTIONS, DEFAULT_ROUTE_POLICY, BATCH_QUESTIONS } from "./liquid.mjs";
+import { createBatchGate } from "./batch.mjs";
 import { listProfiles, resolvePromptSettings, PROMPT_PROFILES } from "./prompts.mjs";
 
 const log = (level, event, fields = {}) =>
@@ -35,6 +36,18 @@ const testInvestigator = createInvestigator({
   ...investigatorDeps,
   store: testStore,
   notifyEngineer: async () => ({ channel: "test-run", sent: false, reason: "test run — notification suppressed" })
+});
+
+// Lazy two-stage gate (stage two). The middleware buffers bad requests and only
+// calls us when a pattern forms; this gate asks Liquid d1 whether that pattern
+// is worth a real LLM call at all. Uses the SAME investigator as `POST /incidents`
+// once it decides to investigate, and the same Liquid client for the gate call.
+const batchGate = createBatchGate({
+  store,
+  investigator,
+  config,
+  maxIncidents: config.BATCH_MAX_INCIDENTS,
+  liquidGate: state => liquidTriage({}, config, { state, questions: BATCH_QUESTIONS })
 });
 
 function sendJson(res, status, obj) { res.writeHead(status, { "Content-Type": "application/json" }); res.end(JSON.stringify(obj)); }
@@ -94,7 +107,14 @@ function publicConfig() {
       userPromptTemplate: prompt.userPromptTemplate,
       profiles: listProfiles()
     },
-    aiDebug: config.AI_DEBUG
+    aiDebug: config.AI_DEBUG,
+    // Lazy two-stage gate (middleware buffers; Liquid decides if it matters).
+    batch: {
+      threshold: config.BATCH_LIQUID_ANOMALY_THRESHOLD,
+      fallback: config.LIQUID_BATCH_FALLBACK,
+      maxIncidents: config.BATCH_MAX_INCIDENTS,
+      questions: Object.keys(BATCH_QUESTIONS)
+    }
   };
 }
 
@@ -231,6 +251,23 @@ const server = http.createServer(async (req, res) => {
       if (url.searchParams.get("wait") === "true") return sendJson(res, 200, { success: true, incident: await completion });
       completion.catch(() => {});
       return sendJson(res, 202, { success: true, incident: { id: record.incident.id, status: record.status }, statusUrl: `/incidents/${record.incident.id}` });
+    }
+
+    // ── lazy two-stage gate: one compact batch from the middleware ─────────
+    // Body: { batchId, batch:{reason,minBad,windowMs}, digest:{...}, incidents:[...] }
+    // Liquid d1 answers a single noul question about the digest:
+    //   not anomalous → every incident stored `skipped` (no Groq, no notify)
+    //   anomalous     → each incident runs through the existing investigator
+    //   Liquid down   → LIQUID_BATCH_FALLBACK (investigate | skip)
+    if (path === "/incidents/batch" && req.method === "POST") {
+      const body = await readJson(req, 512 * 1024);
+      const awaitIt = url.searchParams.get("wait") === "true";
+      const result = await batchGate.process(body, { awaitInvestigations: awaitIt });
+      return sendJson(res, awaitIt ? 200 : 202, { success: true, batch: result });
+    }
+
+    if (path === "/incidents/batch" && req.method === "GET") {
+      return sendJson(res, 200, { success: true, settings: batchGate.settings(), recent: batchGate.recent() });
     }
 
     if (path === "/incidents" && req.method === "GET") {

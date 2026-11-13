@@ -1469,6 +1469,7 @@ function renderRouting(a) {
   let cls = 'route-default';
   let label = 'ROUTER UNKNOWN';
   if (r.route === 'engineer') { cls = 'route-liquid-engineer'; label = `LIQUID ${model} → HUMAN ENGINEER`; }
+  else if (r.route === 'skip') { cls = 'route-default'; label = `LIQUID ${model} → BATCH SKIPPED (NOISE)`; }
   else if (r.skipped) { cls = 'route-default'; label = 'LIQUID NOT CONFIGURED → GROQ AI'; }
   else if (!r.ok) { cls = 'route-fallback'; label = 'LIQUID FAILED → GROQ AI FALLBACK'; }
   else if (r.route === 'groq') { cls = 'route-liquid-groq'; label = `LIQUID ${model} → GROQ AI`; }
@@ -1476,10 +1477,11 @@ function renderRouting(a) {
   const d = r.decision || {};
   const detail = [];
   if (d.department) detail.push(`dept ${d.department}`);
+  if (typeof d.anomalyProbability === 'number') detail.push(`anomaly ${Math.round(d.anomalyProbability * 100)}%`);
   if (typeof d.urgencyProbability === 'number') detail.push(`urgency ${Math.round(d.urgencyProbability * 100)}%`);
   if (typeof d.frustrationScore === 'number') detail.push(`frustration ${d.frustrationScore.toFixed(2)}${d.frustrationLabel ? ` (${d.frustrationLabel})` : ''}`);
   if (typeof r.latencyMs === 'number' && r.latencyMs > 0) detail.push(`${Math.round(r.latencyMs)}ms`);
-  detail.push(`answer from ${a.mode === 'live' ? 'Groq AI' : a.mode === 'engineer' ? 'hand-off' : 'heuristic'}`);
+  detail.push(`answer from ${a.mode === 'live' ? 'Groq AI' : a.mode === 'engineer' ? 'hand-off' : a.mode === 'skipped' ? 'batch gate (no LLM)' : 'heuristic'}`);
 
   const reasons = (r.reasons || []).length
     ? `<ul class="route-reasons">${r.reasons.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>`
