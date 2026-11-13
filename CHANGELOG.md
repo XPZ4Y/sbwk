@@ -4,6 +4,24 @@ All notable changes to SBWK (Sleepy Bot with Keys). Newest first.
 
 ---
 
+## v2.3.0 — Resend.com fault emails, Git Branches tab, last-4 diffs & agent rollback
+
+### Added
+- **Zero-dependency Resend.com fault notifications (`services/agent-core/notify.mjs`, `services/agent-core/config.mjs`, `services/agent-core/investigate.mjs`)**:
+  - Configurable via `.env`: `RESEND_API_KEY`, `DEVELOPER_EMAIL`, `RESEND_FROM_EMAIL` (defaults to `onboarding@resend.dev`), and `RESEND_NOTIFY_ALL_INCIDENTS` (defaults to `true`).
+  - Uses Node's built-in `fetch` to `https://api.resend.com/emails` with HTML + plain-text fault summaries, suggested fixes, and rollback recommendations.
+  - Added unit tests in `services/agent-core/test/notify.test.mjs`.
+- **Git Branches tab (`services/control-plane/git-service.mjs`, `services/control-plane/server.mjs`, `services/control-plane/public/index.html`, `services/control-plane/app.js`)**:
+  - Automatically appears in the Control Plane UI when a GitHub PAT & repository are configured.
+  - Displays repository branches, last 4 commit diffs (expandable file patches), a **Feed Last 4 Diffs to Agent** button (`POST /api/git/feed-agent` → `POST /git-context` on `agent-core`), and per-commit **Rollback to Parent** (`POST /api/git/rollback`).
+- **Agent rollback decision (`services/agent-core/server.mjs`, `services/agent-core/reason.mjs`)**:
+  - `POST /git-context` and `GET /git-context` endpoints on `agent-core` store the last 4 commit diffs in `config.codebase.diffs`.
+  - `buildPromptVariables` includes recent git diffs in the LLM evidence, and `parseModelResponse` normalizes `rollbackDecision: { shouldRollback, targetCommitSha, reason }`.
+- **Environment documentation (`.env.example`)**:
+  - Added documented examples for `RESEND_API_KEY`, `DEVELOPER_EMAIL`, `RESEND_FROM_EMAIL`, and `RESEND_NOTIFY_ALL_INCIDENTS`.
+
+---
+
 ## v2.2.2 — onboarding saves work on a fresh volume (EACCES on /data)
 
 **Bug:** every save from the onboarding UI failed with

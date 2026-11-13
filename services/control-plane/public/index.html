@@ -900,6 +900,7 @@ legend {
       <li role="presentation"><button type="button" role="tab" class="tab-btn is-active" data-tab="requests" aria-selected="true">Requests</button></li>
       <li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="agent" aria-selected="false">Agent</button></li>
       <li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="config" aria-selected="false">Config</button></li>
+      <li role="presentation" id="tab-btn-git-wrap" style="display:none"><button type="button" role="tab" class="tab-btn" data-tab="git" aria-selected="false">Git Branches</button></li>
       <li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="about" aria-selected="false">About</button></li>
     </ol>
 
@@ -1169,6 +1170,25 @@ legend {
     </section>
 
     <!-- ─── ABOUT ─────────────────────────────────────────── -->
+    <!-- ══ GIT BRANCHES TAB ══════════════════════════════════════════════════ -->
+    <section id="tab-git" class="tab-panel" role="tabpanel">
+      <div class="card">
+        <div class="card-head">
+          <div>
+            <h2>Git Branches &amp; Recent Diffs</h2>
+            <p class="muted" id="git-repo-meta">Repository status, branches, and last 4 commit diffs for agent diagnosis &amp; rollback.</p>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button type="button" class="btn" id="git-refresh-btn">Refresh</button>
+            <button type="button" class="btn primary" id="git-feed-agent-btn">Feed Last 4 Diffs to Agent</button>
+          </div>
+        </div>
+        <div id="git-status-msg" class="muted" style="margin-bottom:12px;"></div>
+        <div id="git-branches-list" style="margin-bottom:16px;"></div>
+        <div id="git-diffs-list"></div>
+      </div>
+    </section>
+
     <section id="tab-about" class="tab-panel" role="tabpanel">
       <header class="panel-head">
         <h1>About</h1>
