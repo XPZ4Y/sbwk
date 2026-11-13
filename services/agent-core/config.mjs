@@ -31,7 +31,7 @@ export const config = {
   AGENT_CORE_TOKEN: str(env.AGENT_CORE_TOKEN, "development-only-change-this-agent-token-123456"),
   AGENT_MODE: env.AGENT_MODE === "live" ? "live" : "mock",
   GROQ_API_KEY: str(env.GROQ_API_KEY, undefined),
-  GROQ_MODEL: str(env.GROQ_MODEL, "llama-3.3-70b-versatile"),
+  GROQ_MODEL: str(env.GROQ_MODEL, "openai/gpt-oss-20b"),
   GROQ_BASE_URL: str(env.GROQ_BASE_URL, "https://api.groq.com/openai/v1"),
   LLM_TIMEOUT_MS: num(env.LLM_TIMEOUT_MS, 20000),
 

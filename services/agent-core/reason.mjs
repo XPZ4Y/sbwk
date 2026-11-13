@@ -430,7 +430,14 @@ async function postChat(baseUrl, cfg, body, debug) {
   const timeout = setTimeout(() => controller.abort(), cfg.LLM_TIMEOUT_MS);
   const started = Date.now();
   try {
-    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: controller.signal });
+    // Change 2: reasoning-model parameters for openai/gpt-oss-* models.
+    // Ignored by Groq for non-reasoning models, but gated here to be explicit.
+    const isReasoningModel = /gpt-oss/i.test(cfg.GROQ_MODEL || "");
+    const requestBody = isReasoningModel
+      ? { ...body, reasoning_effort: "low", include_reasoning: false }
+      : body;
+
+    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(requestBody), signal: controller.signal });
     const text = await res.text();
     const durationMs = Date.now() - started;
 
@@ -439,7 +446,7 @@ async function postChat(baseUrl, cfg, body, debug) {
       provider: "groq",
       ok: res.ok,
       durationMs,
-      request: { method: "POST", url, headers, body },
+      request: { method: "POST", url, headers, body: requestBody },
       response: { status: res.status, body: text },
       error: res.ok ? undefined : `HTTP ${res.status}`
     });
@@ -447,8 +454,26 @@ async function postChat(baseUrl, cfg, body, debug) {
     if (debug) debug.push(record);
 
     if (!res.ok) {
-      log("warn", "llm_http_error", { status: res.status, body: text.slice(0, 300) });
-      return { ok: false, error: `HTTP ${res.status}`, body: text.slice(0, 300), durationMs };
+      // Change 3: classify the error so the UI/logs distinguish retryable from fatal.
+      const retryable = [408, 429, 500, 502, 503, 504].includes(res.status);
+      const kind =
+        res.status === 401 ? "invalid_api_key" :
+        res.status === 403 ? "forbidden" :
+        res.status === 404 ? "model_not_found" :
+        res.status === 429 ? "rate_limited" :
+        res.status >= 500  ? "provider_error" :
+                             "bad_request";
+
+      log("warn", "llm_http_error", { status: res.status, kind, retryable, body: text.slice(0, 300) });
+      return {
+        ok: false,
+        error: `HTTP ${res.status} (${kind})`,
+        kind,
+        retryable,
+        status: res.status,
+        body: text.slice(0, 300),
+        durationMs
+      };
     }
     try {
       return { ok: true, data: JSON.parse(text), durationMs };

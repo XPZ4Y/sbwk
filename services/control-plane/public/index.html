@@ -6,47 +6,44 @@
 <title>Sleepy Bot · Control Plane</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
-  --bg: #ffffff;
+  --bg: #f5f3ee;
   --fg: #0a0a0a;
-  --fg-mid: #6b6b6b;
-  --fg-dim: #a3a3a3;
-  --panel: #f4f4f4;
-  --panel-deep: #e5e5e5;
-  --accent: #ff2b2b;
-  --accent-soft: rgba(255,43,43,0.10);
-  --ok: #0a0a0a;
-  --bad: #c81e1e;
-  --glow: 0 0 24px rgba(255,43,43,.50), 0 0 80px rgba(255,43,43,.22);
-  --glow-sm: 0 0 20px rgba(255,43,43,.35), 0 0 60px rgba(255,43,43,.15);
-  --mono: 'Space Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --fg-mid: #4a4a4a;
+  --fg-dim: #888;
+  --line: #0a0a0a;
+  --hair: rgba(10,10,10,0.12);
+  --accent: #e64a19;
+  --ok: #007a5a;
+  --bad: #b71c1c;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
 }
 
 html, body { height: 100%; }
 body {
-  font: 15px/1.7 var(--mono);
+  font: 13px/1.5 var(--mono);
   background: var(--bg);
   color: var(--fg);
   -webkit-font-smoothing: antialiased;
-  -webkit-tap-highlight-color: transparent;
 }
 a { color: inherit; }
 button { font: inherit; }
 ::selection { background: var(--fg); color: var(--bg); }
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
 
 .shell {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 200px 1fr;
   min-height: 100vh;
 }
 
 /* ── rail ─────────────────────────────────────────────────── */
 .rail {
+  border-right: 2px solid var(--line);
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -54,86 +51,77 @@ button { font: inherit; }
   top: 0;
   height: 100vh;
   overflow: hidden;
-  padding: 8px 0;
 }
 .rail-head {
-  padding: 32px 28px 36px;
+  padding: 20px 16px 16px;
+  border-bottom: 2px solid var(--line);
 }
 .brand {
-  font-size: 20px;
+  font-size: 15px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
   text-transform: uppercase;
-  line-height: 1;
 }
 .brand-sub {
   font-size: 10px;
-  color: var(--fg-dim);
+  color: var(--fg-mid);
   text-transform: uppercase;
-  letter-spacing: 0.28em;
-  margin-top: 8px;
-  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-top: 2px;
 }
 .tabs {
   list-style: none;
   flex: 1;
-  padding: 0;
+  padding: 8px 0;
 }
 .tabs button {
   display: block;
   width: 100%;
-  padding: 18px 28px;
+  padding: 12px 16px;
   border: 0;
+  border-left: 4px solid transparent;
   background: transparent;
-  color: var(--fg-dim);
+  color: var(--fg-mid);
   font-weight: 700;
-  font-size: 13px;
+  font-size: 11px;
   text-align: left;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.1em;
   cursor: pointer;
-  transition: background-color .25s ease, color .25s ease, box-shadow .3s ease;
 }
-.tabs button:hover {
-  color: var(--fg);
-  background: var(--panel);
-  box-shadow: var(--glow-sm);
-}
+.tabs button:hover { color: var(--fg); }
 .tabs button.is-active {
-  color: var(--bg);
-  background: var(--fg);
+  color: var(--fg);
+  border-left-color: var(--fg);
+  background: rgba(10,10,10,0.04);
 }
 .rail-foot {
-  padding: 24px 28px;
+  border-top: 2px solid var(--line);
+  padding: 14px 16px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  font-size: 11px;
+  gap: 8px;
+  font-size: 10px;
   color: var(--fg-mid);
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-weight: 700;
 }
-.status-line { display: flex; align-items: center; gap: 10px; }
+.status-line { display: flex; align-items: center; gap: 8px; }
 .dot {
-  width: 10px; height: 10px;
+  width: 8px; height: 8px;
   background: var(--fg-dim);
   border-radius: 50%;
   flex: none;
 }
-.dot.ok { background: var(--fg); }
+.dot.ok { background: var(--ok); }
 .dot.warn { background: var(--accent); }
 .dot.bad { background: var(--bad); }
 .rail-foot a {
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.1em;
   text-decoration: none;
   color: var(--fg-mid);
-  font-size: 11px;
-  font-weight: 700;
-  transition: color .2s ease, text-shadow .25s ease;
+  font-size: 10px;
 }
-.rail-foot a:hover { color: var(--fg); text-shadow: 0 0 14px rgba(255,43,43,.7); }
+.rail-foot a:hover { color: var(--fg); }
 
 /* ── content ─────────────────────────────────────────────── */
 main { min-width: 0; }
@@ -141,91 +129,78 @@ main { min-width: 0; }
 .tab-panel.is-active { display: block; }
 
 .panel-head {
-  padding: 64px 48px 40px;
+  padding: 24px 32px 20px;
+  border-bottom: 2px solid var(--line);
   display: flex;
-  align-items: flex-end;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 24px;
+  gap: 16px;
   flex-wrap: wrap;
 }
 .panel-head h1 {
-  font-size: 64px;
+  font-size: 26px;
   font-weight: 700;
-  letter-spacing: -0.04em;
-  line-height: 0.9;
+  letter-spacing: -0.02em;
   text-transform: uppercase;
 }
 .panel-head .meta {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--fg-mid);
   text-transform: uppercase;
-  letter-spacing: 0.16em;
-  font-weight: 700;
+  letter-spacing: 0.1em;
 }
 
 /* ── requests tab ────────────────────────────────────────── */
 .toolbar {
-  padding: 0 48px 32px;
+  padding: 10px 32px;
+  border-bottom: 1px solid var(--hair);
   display: flex;
-  gap: 28px;
+  gap: 20px;
   align-items: center;
-  font-size: 12px;
+  font-size: 11px;
   flex-wrap: wrap;
 }
 .toolbar label {
   display: flex;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
   cursor: pointer;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  font-weight: 700;
-  color: var(--fg-mid);
-  transition: color .2s ease;
+  letter-spacing: 0.05em;
 }
-.toolbar label:hover { color: var(--fg); }
 .toolbar input[type="checkbox"] {
   appearance: none;
-  width: 18px; height: 18px;
-  border: 0;
-  background: var(--panel);
+  width: 14px; height: 14px;
+  border: 1px solid var(--line);
+  background: var(--bg);
   cursor: pointer;
   position: relative;
-  flex: none;
-  transition: background-color .2s ease, box-shadow .3s ease;
 }
-.toolbar input[type="checkbox"]:hover { box-shadow: var(--glow-sm); }
 .toolbar input[type="checkbox"]:checked { background: var(--fg); }
 .toolbar input[type="checkbox"]:checked::after {
   content: "";
   position: absolute;
-  inset: 4px;
+  inset: 3px;
   background: var(--bg);
 }
 .toolbar select, .toolbar button {
   font: inherit;
-  font-size: 12px;
-  font-weight: 700;
-  padding: 9px 16px;
-  border: 0;
-  background: var(--panel);
+  font-size: 11px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
   color: var(--fg);
   cursor: pointer;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  transition: background-color .2s ease, box-shadow .3s ease;
+  letter-spacing: 0.05em;
 }
-.toolbar button:hover, .toolbar select:hover {
-  background: var(--panel-deep);
-  box-shadow: var(--glow-sm);
-}
+.toolbar button:hover, .toolbar select:hover { background: rgba(10,10,10,0.05); }
 .feed-state {
   margin-left: auto;
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.16em;
-  color: var(--fg);
+  letter-spacing: 0.1em;
+  color: var(--ok);
 }
 .feed-state.warn { color: var(--accent); }
 .feed-state.bad { color: var(--bad); }
@@ -233,91 +208,84 @@ main { min-width: 0; }
 .log-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 14px;
+  font-size: 12px;
 }
 .log-table thead th {
   text-align: left;
   font-weight: 700;
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
-  padding: 14px 24px;
-  background: var(--fg);
-  color: var(--bg);
+  letter-spacing: 0.1em;
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--line);
+  color: var(--fg-mid);
   position: sticky;
   top: 0;
-  z-index: 2;
-  white-space: nowrap;
+  background: var(--bg);
 }
 .log-table tbody td {
-  padding: 18px 24px;
-  vertical-align: middle;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hair);
+  vertical-align: top;
 }
-.log-table tr.log-row {
-  cursor: pointer;
-  transition: background-color .15s ease;
-}
-.log-table tr.log-row:hover { background: var(--panel); }
+.log-table tr.log-row { cursor: pointer; }
+.log-table tr.log-row:hover { background: rgba(10,10,10,0.03); }
 .log-table tr.log-row.is-anomaly td:first-child {
-  box-shadow: inset 6px 0 0 var(--accent);
+  box-shadow: inset 4px 0 0 var(--accent);
 }
-.col-time { white-space: nowrap; color: var(--fg-mid); font-size: 12px; }
+.col-time { white-space: nowrap; color: var(--fg-mid); font-size: 11px; }
 .col-method { font-weight: 700; }
 .col-status { font-weight: 700; }
-.col-inc { text-align: right; width: 88px; }
-.cell-4xx { color: #8a5a00; }
+.col-inc { text-align: right; width: 60px; }
+.cell-4xx { color: #a05600; }
 .cell-5xx { color: var(--bad); }
-.cat-bad { color: var(--bad); font-weight: 700; }
-.cat-warn { color: #8a5a00; }
+.cat-bad { color: var(--bad); }
+.cat-warn { color: #a05600; }
 
 .link-btn {
-  border: 0;
-  background: var(--panel);
+  border: 1px solid var(--line);
+  background: var(--bg);
   color: var(--fg);
-  padding: 4px 12px;
+  padding: 0 6px;
   font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
   cursor: pointer;
-  transition: background-color .2s ease, color .2s ease;
 }
 .link-btn:hover { background: var(--fg); color: var(--bg); }
 
 .log-detail td {
-  background: var(--panel);
-  padding: 24px 24px 28px 40px;
+  background: rgba(10,10,10,0.04);
+  padding: 12px 12px 14px 24px;
 }
 .detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px 24px;
-  font-size: 13px;
+  gap: 6px 20px;
+  font-size: 11px;
 }
 .detail-grid .k {
   color: var(--fg-mid);
   text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-right: 10px;
+  letter-spacing: 0.05em;
+  margin-right: 6px;
   font-size: 10px;
-  font-weight: 700;
 }
 .detail-grid code {
   font-family: var(--mono);
   word-break: break-all;
 }
 pre.sample {
-  margin-top: 18px;
-  padding: 18px;
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--hair);
   background: var(--bg);
-  font-size: 12px;
+  font-size: 11px;
   overflow-x: auto;
-  max-height: 320px;
+  max-height: 280px;
   white-space: pre-wrap;
   word-break: break-all;
 }
 tr.empty td {
-  padding: 88px 24px;
+  padding: 40px 12px;
   text-align: center;
   color: var(--fg-dim);
   font-style: italic;
@@ -325,358 +293,464 @@ tr.empty td {
 
 /* ── config tab ──────────────────────────────────────────── */
 #config-form {
-  padding: 0 48px 80px;
-  max-width: 1100px;
+  padding: 24px 32px 32px;
+  max-width: 1040px;
 }
 fieldset {
-  border: 0;
-  padding: 0;
-  margin: 0 0 56px;
+  border: 2px solid var(--line);
+  padding: 16px 20px 18px;
+  margin-bottom: 20px;
 }
 legend {
-  padding: 0;
-  margin-bottom: 28px;
+  padding: 0 8px;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.1em;
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
 .btn-micro {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 7px 16px;
-  border: 0;
-  background: var(--panel);
+  font-size: 10px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
   color: var(--fg);
   cursor: pointer;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  transition: background-color .2s ease, color .2s ease, box-shadow .3s ease;
+  letter-spacing: 0.05em;
+  font-weight: 700;
 }
 .btn-micro:hover { background: var(--fg); color: var(--bg); }
 
 .field-row {
   display: grid;
-  grid-template-columns: 1fr 200px;
-  gap: 20px;
+  grid-template-columns: 1fr 160px;
+  gap: 16px;
 }
 .field-row.equal { grid-template-columns: 1fr 1fr; }
-.field { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .field label {
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.1em;
   color: var(--fg-mid);
 }
 .field input, .field select {
   font: inherit;
-  font-size: 15px;
-  font-weight: 700;
-  padding: 15px 18px;
-  background: var(--panel);
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--bg);
   color: var(--fg);
-  border: 0;
+  border: 1px solid var(--line);
   width: 100%;
-  transition: background-color .2s ease, box-shadow .3s ease;
-}
-.field input::placeholder, .field select::placeholder {
-  color: var(--fg-dim);
-  font-weight: 400;
-}
-.field input:hover, .field select:hover {
-  box-shadow: var(--glow-sm);
 }
 .field input:focus, .field select:focus {
-  outline: none;
-  background: var(--bg);
-  box-shadow: 0 0 26px rgba(255,43,43,.55), 0 0 70px rgba(255,43,43,.25);
+  outline: 2px solid var(--fg);
+  outline-offset: -2px;
 }
 .field .hint {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--fg-dim);
-  min-height: 14px;
-  font-weight: 400;
+  min-height: 12px;
 }
 .field .hint.warn { color: var(--accent); }
 .field .hint.error { color: var(--bad); }
-.inline { display: flex; align-items: stretch; gap: 0; }
+.inline { display: flex; align-items: stretch; }
 .inline input { flex: 1; }
 .inline .suffix {
-  padding: 15px 18px;
-  border: 0;
-  background: var(--panel-deep);
-  font-size: 14px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left: 0;
+  background: rgba(10,10,10,0.05);
+  font-size: 12px;
 }
 
 .service-row {
   display: grid;
-  grid-template-columns: 160px 140px 1fr 220px 44px;
-  gap: 16px;
-  padding: 24px 0;
+  grid-template-columns: 140px 120px 1fr 200px 36px;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid var(--hair);
   align-items: start;
 }
+.service-row:first-child { border-top: 0; padding-top: 0; }
 .services-empty {
-  padding: 28px 0;
+  padding: 16px 0;
   color: var(--fg-dim);
   font-style: italic;
-  font-size: 14px;
+  font-size: 12px;
 }
 .btn-remove {
-  font-size: 20px;
-  width: 44px;
-  height: 44px;
-  border: 0;
-  background: var(--panel);
+  font-size: 16px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  background: var(--bg);
   color: var(--fg);
   cursor: pointer;
   align-self: end;
-  margin-top: 20px;
-  transition: background-color .2s ease, color .2s ease;
+  margin-top: 16px;
 }
-.btn-remove:hover { background: var(--bad); color: #fff; }
+.btn-remove:hover { background: var(--bad); color: #fff; border-color: var(--bad); }
 
 .opt-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 26px 0;
-  gap: 24px;
+  padding: 14px 0;
+  border-top: 1px solid var(--hair);
+  gap: 16px;
 }
+.opt-row:first-of-type { border-top: 0; padding-top: 0; }
 .opt-label .key {
   display: block;
   font-weight: 700;
-  font-size: 14px;
-  letter-spacing: 0.08em;
+  font-size: 12px;
+  letter-spacing: 0.05em;
 }
 .opt-label .desc {
   display: block;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--fg-mid);
-  margin-top: 4px;
-  font-weight: 400;
 }
 .toggle {
-  position: relative;
-  width: 64px; height: 32px;
-  border: 0;
-  padding: 0;
-  background: var(--panel-deep);
+  width: 52px; height: 26px;
+  border: 2px solid var(--line);
+  background: var(--bg);
   cursor: pointer;
+  position: relative;
   flex: none;
-  transition: background-color .25s ease, box-shadow .3s ease;
+  padding: 0;
 }
 .toggle::after {
   content: "";
   position: absolute;
-  top: 4px; left: 4px;
-  width: 24px; height: 24px;
+  top: 2px; left: 2px;
+  width: 18px; height: 18px;
   background: var(--fg);
-  transition: left .25s ease, right .25s ease, background-color .25s ease;
 }
 .toggle[aria-checked="true"] { background: var(--fg); }
 .toggle[aria-checked="true"]::after {
-  left: auto; right: 4px;
+  left: auto; right: 2px;
   background: var(--bg);
 }
-.toggle:hover { box-shadow: var(--glow); }
 
 .warn-bar {
-  margin: 0 48px 28px;
-  padding: 22px 26px;
-  background: var(--accent-soft);
-  max-width: 1100px;
-  font-size: 13px;
-  font-weight: 700;
+  margin: 16px 32px 0;
+  border: 2px solid var(--accent);
+  padding: 10px 14px;
+  background: rgba(230,74,25,0.05);
+  font-size: 12px;
+  max-width: 1040px;
 }
 .warn-bar[hidden] { display: none; }
-.warn-line { padding: 5px 0; }
+.warn-line { padding: 3px 0; }
 .warn-key {
   font-weight: 700;
   font-size: 10px;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.08em;
   color: var(--accent);
-  margin-right: 10px;
+  margin-right: 8px;
 }
 
 .form-actions {
   display: flex;
-  gap: 16px;
+  gap: 12px;
   align-items: center;
-  padding: 36px 0 0;
-  margin-top: 12px;
+  padding: 16px 0 0;
+  border-top: 2px solid var(--line);
+  margin-top: 24px;
   flex-wrap: wrap;
 }
 .btn-primary {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  padding: 18px 36px;
+  padding: 10px 22px;
   background: var(--fg);
   color: var(--bg);
-  border: 0;
+  border: 2px solid var(--fg);
   cursor: pointer;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  transition: box-shadow .3s ease, opacity .2s ease;
+  letter-spacing: 0.08em;
 }
-.btn-primary:hover { box-shadow: var(--glow); }
+.btn-primary:hover { background: var(--bg); color: var(--fg); }
 .btn-primary:disabled { opacity: 0.4; cursor: wait; }
 .btn-ghost {
-  font-size: 13px;
-  font-weight: 700;
-  padding: 18px 36px;
-  background: var(--panel);
+  font-size: 12px;
+  padding: 10px 22px;
+  background: transparent;
   color: var(--fg);
-  border: 0;
+  border: 2px solid var(--line);
   cursor: pointer;
   text-transform: uppercase;
-  letter-spacing: 0.14em;
-  transition: background-color .2s ease, box-shadow .3s ease;
+  letter-spacing: 0.08em;
 }
-.btn-ghost:hover { background: var(--panel-deep); box-shadow: var(--glow-sm); }
+.btn-ghost:hover { background: rgba(10,10,10,0.05); }
 .save-status {
   font-size: 11px;
   color: var(--fg-mid);
   margin-left: auto;
   text-transform: uppercase;
-  letter-spacing: 0.12em;
-  font-weight: 700;
+  letter-spacing: 0.08em;
 }
-.save-status.ok { color: var(--fg); }
+.save-status.ok { color: var(--ok); }
 .save-status.bad { color: var(--bad); }
 
 /* ── agent tab ───────────────────────────────────────────── */
 .agent-feed {
-  padding: 0 48px 80px;
+  padding: 20px 32px 48px;
   display: flex;
   flex-direction: column;
-  gap: 28px;
-  max-width: 1100px;
+  gap: 18px;
+  max-width: 1040px;
 }
-.agent-card { background: var(--panel); }
+.agent-card { border: 2px solid var(--line); background: var(--bg); }
 .agent-card-head {
   display: flex; justify-content: space-between; align-items: center;
-  gap: 14px; padding: 20px 24px; flex-wrap: wrap;
-  background: var(--fg); color: var(--bg);
+  gap: 12px; padding: 10px 14px; border-bottom: 1px solid var(--hair); flex-wrap: wrap;
 }
-.agent-card-title { display: flex; align-items: center; gap: 14px; font-size: 13px; font-weight: 700; }
+.agent-card-title { display: flex; align-items: center; gap: 10px; font-size: 12px; }
 .agent-card-title code { font-family: var(--mono); font-weight: 700; }
 .agent-card-time {
-  font-size: 11px; color: var(--fg-dim); text-transform: uppercase;
-  letter-spacing: 0.1em; white-space: nowrap; font-weight: 700;
+  font-size: 10px; color: var(--fg-mid); text-transform: uppercase;
+  letter-spacing: 0.08em; white-space: nowrap;
 }
 .agent-card-meta {
-  display: flex; flex-wrap: wrap; gap: 18px; padding: 16px 24px;
-  font-size: 12px; color: var(--fg-mid); font-weight: 700;
-  background: var(--bg);
+  display: flex; flex-wrap: wrap; gap: 12px; padding: 8px 14px;
+  font-size: 11px; color: var(--fg-mid); border-bottom: 1px solid var(--hair);
+  background: rgba(10,10,10,0.02);
 }
-.agent-card-body { padding: 24px; font-size: 14px; }
+.agent-card-body { padding: 14px; font-size: 12px; }
 .agent-grid {
-  display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-  gap: 14px 24px; padding-bottom: 22px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px 20px; padding-bottom: 12px; border-bottom: 1px solid var(--hair);
 }
 .agent-grid .k {
-  color: var(--fg-mid); text-transform: uppercase; letter-spacing: 0.1em;
-  font-size: 10px; margin-right: 10px; font-weight: 700;
+  color: var(--fg-mid); text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 10px; margin-right: 8px;
 }
-.agent-grid code { font-family: var(--mono); font-weight: 700; }
-.agent-section { padding-top: 22px; margin-top: 22px; }
-.agent-section:first-of-type { margin-top: 0; padding-top: 0; }
+.agent-grid code { font-family: var(--mono); }
+.agent-section { padding-top: 12px; border-top: 1px solid var(--hair); margin-top: 12px; }
+.agent-section:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
 .agent-section-head {
-  font-size: 11px; font-weight: 700; text-transform: uppercase;
-  letter-spacing: 0.18em; color: var(--fg-mid); margin-bottom: 12px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.1em; color: var(--fg-mid); margin-bottom: 6px;
 }
-.agent-section p { font-size: 14px; line-height: 1.75; }
-.agent-muted { color: var(--fg-dim); font-style: italic; font-size: 13px; }
+.agent-section p { font-size: 12px; line-height: 1.55; }
+.agent-muted { color: var(--fg-dim); font-style: italic; font-size: 11px; }
 .agent-reasoning { color: var(--fg-mid); }
 .agent-escalate { color: var(--accent); font-weight: 700; }
 .agent-pending { color: var(--fg-dim); font-style: italic; }
 .agent-empty {
-  padding: 80px 24px; text-align: center;
+  padding: 40px 12px; text-align: center;
   color: var(--fg-dim); font-style: italic;
-  background: var(--panel);
-  font-size: 14px;
 }
 
 .sev {
   display: inline-block; font-size: 10px; font-weight: 700;
-  letter-spacing: 0.1em; padding: 4px 12px;
-  text-transform: uppercase;
+  letter-spacing: 0.08em; padding: 2px 8px;
+  border: 1px solid var(--line); text-transform: uppercase;
 }
-.sev-low      { background: var(--panel-deep); color: var(--fg); }
-.sev-medium   { background: #ffe0d0; color: #8a2a00; }
-.sev-high     { background: #ffb3b3; color: #7a0000; }
-.sev-critical { background: var(--accent); color: #fff; }
+.sev-low      { background: rgba(0,122,90,0.1);  border-color: var(--ok);     color: var(--ok); }
+.sev-medium   { background: rgba(230,74,25,0.08); border-color: var(--accent); color: var(--accent); }
+.sev-high     { background: rgba(183,28,28,0.1); border-color: var(--bad);    color: var(--bad); }
+.sev-critical { background: var(--bad); border-color: var(--bad); color: #fff; }
 
 .dep-row {
-  display: flex; align-items: baseline; gap: 14px;
-  padding: 10px 0; font-size: 13px; flex-wrap: wrap;
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 4px 0; font-size: 11px; flex-wrap: wrap;
 }
 .dep-service { font-weight: 700; }
 .dep-signals { color: var(--fg-mid); }
 .dep-status {
-  font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
-  padding: 3px 9px; text-transform: uppercase;
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  padding: 1px 6px; border: 1px solid; text-transform: uppercase;
 }
-.dep-healthy   { background: var(--fg); color: var(--bg); }
-.dep-degraded  { background: #ffe0d0; color: #8a2a00; }
+.dep-healthy   { color: var(--ok);     border-color: var(--ok); }
+.dep-degraded  { color: var(--accent); border-color: var(--accent); }
 .dep-unhealthy,
-.dep-unreachable { background: var(--bad); color: #fff; }
-.dep-unknown   { background: var(--panel-deep); color: var(--fg-mid); }
+.dep-unreachable { color: var(--bad);  border-color: var(--bad); }
+.dep-unknown   { color: var(--fg-dim); border-color: var(--fg-dim); }
 
-.code-finding { margin-bottom: 14px; background: var(--bg); }
+.code-finding { border: 1px solid var(--hair); margin-bottom: 8px; }
 .code-file {
-  font-size: 11px; font-weight: 700; padding: 10px 14px;
-  background: var(--fg); color: var(--bg);
-  letter-spacing: 0.05em;
+  font-size: 11px; font-weight: 700; padding: 4px 8px;
+  border-bottom: 1px solid var(--hair); background: rgba(10,10,10,0.03);
 }
 .code-snippet {
-  margin: 0; padding: 16px; font: 12px/1.55 var(--mono);
+  margin: 0; padding: 8px; font: 11px/1.45 var(--mono);
   overflow-x: auto; white-space: pre-wrap; word-break: break-word;
 }
 
 .fix-list { list-style: none; padding: 0; margin: 0; }
-.fix-item { padding: 16px 0; }
-.fix-item:first-child { padding-top: 0; }
-.fix-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.fix-title { font-weight: 700; font-size: 14px; }
+.fix-item { padding: 8px 0; border-top: 1px solid var(--hair); }
+.fix-item:first-child { border-top: 0; padding-top: 0; }
+.fix-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.fix-title { font-weight: 700; font-size: 12px; }
 .fix-kind {
-  font-size: 9px; font-weight: 700; letter-spacing: 0.08em;
-  text-transform: uppercase; padding: 3px 9px;
-  background: var(--panel-deep); color: var(--fg);
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 1px 6px;
+  border: 1px solid var(--line); color: var(--fg-mid);
 }
-.fix-desc { font-size: 12px; color: var(--fg-mid); margin-top: 6px; }
-.fix-file { font-size: 11px; color: var(--fg-dim); margin-top: 4px; font-family: var(--mono); }
+.fix-desc { font-size: 11px; color: var(--fg-mid); margin-top: 3px; }
+.fix-file { font-size: 10px; color: var(--fg-dim); margin-top: 2px; font-family: var(--mono); }
 
 @media (max-width: 900px) {
-  .agent-feed { padding-left: 24px; padding-right: 24px; }
+  .agent-feed { padding-left: 16px; padding-right: 16px; }
 }
+
+
+/* ── AI provider warnings (red = an API call failed) ─────── */
+.ai-warn {
+  margin: 0 32px 4px;
+  max-width: 1040px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ai-warn[hidden] { display: none; }
+.ai-warn-error {
+  border: 2px solid var(--bad);
+  background: rgba(183,28,28,0.10);
+  color: var(--bad);
+  padding: 10px 14px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.ai-warn-notice {
+  border: 2px solid var(--accent);
+  background: rgba(230,74,25,0.06);
+  color: var(--accent);
+  padding: 10px 14px;
+  font-size: 12px;
+}
+.ai-warn-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  margin-bottom: 5px;
+}
+.ai-warn ul { list-style: none; margin: 0; padding: 0; }
+.ai-warn li { padding: 2px 0; font-weight: 500; word-break: break-word; }
+.ai-warn li code { font-weight: 700; margin-right: 6px; }
+.ai-warn-close {
+  border: 0; background: none; color: inherit; cursor: pointer;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 700; text-decoration: underline; padding: 0;
+}
+
+/* ── AI routing badge + per-incident warnings ────────────── */
+.route-line { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 11px; }
+.route-chip {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 2px 7px; border: 1px solid var(--line);
+}
+.route-chip.route-liquid-groq { background: rgba(0,122,90,0.10); border-color: var(--ok); color: var(--ok); }
+.route-chip.route-liquid-engineer { background: rgba(183,28,28,0.10); border-color: var(--bad); color: var(--bad); }
+.route-chip.route-fallback { background: rgba(183,28,28,0.10); border-color: var(--bad); color: var(--bad); }
+.route-chip.route-default { background: rgba(230,74,25,0.08); border-color: var(--accent); color: var(--accent); }
+.route-detail { color: var(--fg-mid); }
+.route-reasons { margin: 6px 0 0; padding-left: 16px; color: var(--fg-mid); font-size: 11px; }
+.route-reasons li { padding: 1px 0; }
+
+.card-warn {
+  margin-top: 8px; padding: 8px 10px;
+  border-left: 3px solid var(--bad); background: rgba(183,28,28,0.07);
+  color: var(--bad); font-size: 11px; font-weight: 700;
+}
+.card-warn.notice { border-left-color: var(--accent); background: rgba(230,74,25,0.06); color: var(--accent); font-weight: 500; }
+.card-warn .warn-detail { color: var(--fg-mid); font-weight: 400; margin-top: 3px; word-break: break-word; }
+
+/* ── rendered unified diffs: - red, + green ──────────────── */
+.diff {
+  margin: 8px 0 0;
+  border: 1px solid var(--hair);
+  background: #fbfaf7;
+  font: 11px/1.55 var(--mono);
+  overflow-x: auto;
+  padding: 4px 0;
+}
+.diff-line { display: block; padding: 0 10px; white-space: pre; }
+.diff-line.diff-add {
+  background: rgba(0,122,90,0.15);
+  color: #055c3d;
+  box-shadow: inset 3px 0 0 var(--ok);
+}
+.diff-line.diff-del {
+  background: rgba(183,28,28,0.14);
+  color: #8d1515;
+  box-shadow: inset 3px 0 0 var(--bad);
+}
+.diff-line.diff-hunk { background: rgba(10,10,10,0.06); color: var(--fg-mid); font-weight: 700; }
+.diff-line.diff-file { background: rgba(10,10,10,0.09); color: var(--fg); font-weight: 700; }
+.diff-line.diff-ctx { color: var(--fg-mid); }
+
+/* ── AI call debug (console.log mirror) ──────────────────── */
+.ai-debug { margin-top: 12px; border-top: 1px solid var(--hair); padding-top: 10px; }
+.ai-debug summary {
+  cursor: pointer; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--fg-mid);
+}
+.ai-debug summary:hover { color: var(--fg); }
+.ai-debug pre {
+  margin: 8px 0 0; padding: 10px; border: 1px solid var(--hair);
+  background: #fbfaf7; font: 10px/1.5 var(--mono);
+  overflow-x: auto; max-height: 320px; white-space: pre-wrap; word-break: break-word;
+}
+
+/* ── AI settings form (Config tab) ───────────────────────── */
+#ai-form { padding: 0 32px 48px; max-width: 1040px; }
+#ai-form textarea {
+  font: inherit; font-size: 12px; line-height: 1.5;
+  padding: 8px 10px; background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); width: 100%; resize: vertical;
+  font-family: var(--mono);
+}
+#ai-form textarea:focus { outline: 2px solid var(--fg); outline-offset: -2px; }
+#ai-form .field { margin-bottom: 12px; }
+.ai-status-line {
+  font-size: 11px; padding: 8px 10px; margin-bottom: 14px;
+  border-left: 3px solid var(--ok); background: rgba(0,122,90,0.07); color: var(--ok);
+}
+.ai-status-line.bad { border-left-color: var(--bad); background: rgba(183,28,28,0.08); color: var(--bad); font-weight: 700; }
+.ai-status-line.warn { border-left-color: var(--accent); background: rgba(230,74,25,0.06); color: var(--accent); }
+.ai-test-result { margin-top: 18px; }
+.ai-test-result:empty { display: none; }
+
+@media (max-width: 900px) {
+  .ai-warn { margin-left: 16px; margin-right: 16px; }
+  #ai-form { padding-left: 16px; padding-right: 16px; }
+}
+
 
 /* ── about tab ───────────────────────────────────────────── */
 .prose {
-  padding: 0 48px 96px;
-  max-width: 820px;
-  font-size: 16px;
-  line-height: 1.8;
+  padding: 24px 32px 64px;
+  max-width: 760px;
+  font-size: 14px;
+  line-height: 1.7;
 }
-.prose .lead { font-size: 22px; font-weight: 700; margin-bottom: 36px; line-height: 1.5; }
+.prose .lead { font-size: 16px; margin-bottom: 24px; }
 .prose h2 {
-  font-size: 12px;
+  font-size: 11px;
   text-transform: uppercase;
-  letter-spacing: 0.2em;
-  margin: 52px 0 18px;
+  letter-spacing: 0.1em;
+  margin: 32px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--line);
 }
-.prose p + p { margin-top: 16px; }
+.prose p + p { margin-top: 12px; }
 .prose ul { list-style: none; padding-left: 0; }
 .prose ul li {
-  padding: 6px 0 6px 30px;
+  padding: 4px 0 4px 22px;
   position: relative;
 }
 .prose ul li::before {
@@ -684,22 +758,22 @@ legend {
   position: absolute;
   left: 0;
   color: var(--fg-mid);
-  font-weight: 700;
 }
 .prose b { font-weight: 700; }
 .prose pre {
-  font: 13px/1.6 var(--mono);
-  padding: 26px;
-  background: var(--panel);
+  font: 12px/1.5 var(--mono);
+  padding: 16px;
+  border: 2px solid var(--line);
+  background: var(--bg);
   overflow-x: auto;
-  margin: 26px 0;
+  margin: 16px 0;
   white-space: pre;
 }
 .prose code {
   font-family: var(--mono);
-  background: var(--panel);
-  padding: 2px 7px;
-  font-size: 14px;
+  background: rgba(10,10,10,0.06);
+  padding: 1px 5px;
+  font-size: 12px;
 }
 
 /* ── responsive ─────────────────────────────────────────── */
@@ -708,27 +782,23 @@ legend {
   .rail {
     position: static;
     height: auto;
-    padding: 0;
+    border-right: 0;
+    border-bottom: 2px solid var(--line);
   }
-  .rail-head { padding: 24px 24px 20px; }
+  .rail-head { padding: 16px; }
   .tabs { display: flex; padding: 0; overflow-x: auto; }
   .tabs button {
+    border-left: 0;
+    border-bottom: 4px solid transparent;
     white-space: nowrap;
-    padding: 16px 22px;
-    width: auto;
+    padding: 10px 16px;
   }
-  .panel-head { padding: 44px 24px 32px; }
-  .panel-head h1 { font-size: 40px; }
-  .toolbar { padding-left: 24px; padding-right: 24px; }
-  #config-form, .prose, .agent-feed { padding-left: 24px; padding-right: 24px; }
-  .warn-bar { margin-left: 24px; margin-right: 24px; }
+  .tabs button.is-active { border-left: 0; border-bottom-color: var(--fg); }
+  .panel-head, .toolbar, #config-form, .prose { padding-left: 16px; padding-right: 16px; }
+  .warn-bar { margin-left: 16px; margin-right: 16px; }
   .field-row, .field-row.equal { grid-template-columns: 1fr; }
-  .service-row { grid-template-columns: 1fr; gap: 14px; }
+  .service-row { grid-template-columns: 1fr; gap: 10px; }
   .btn-remove { margin-top: 0; align-self: start; }
-  .log-table thead th { font-size: 9px; padding: 12px 14px; }
-  .log-table tbody td { padding: 14px; }
-  .agent-card-head { padding: 16px 18px; }
-  .agent-card-body { padding: 18px; }
 }
 </style>
 </head>
@@ -743,7 +813,7 @@ legend {
 
     <ol class="tabs" role="tablist">
       <li role="presentation"><button type="button" role="tab" class="tab-btn is-active" data-tab="requests" aria-selected="true">Requests</button></li>
-      <li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="agent" aria-selected="false">Agent</button></li>
+			<li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="agent" aria-selected="false">Agent</button></li>
       <li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="config" aria-selected="false">Config</button></li>
       <li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="about" aria-selected="false">About</button></li>
     </ol>
@@ -823,6 +893,9 @@ legend {
         <span class="feed-state" id="agent-state">live</span>
       </div>
 
+      <!-- Red banner: shown when an AI provider call failed (Liquid / Groq / agent-core). -->
+      <div class="ai-warn" id="agent-warning" hidden></div>
+
       <div class="agent-feed" id="agent-feed">
         <div class="agent-empty">// loading…</div>
       </div>
@@ -899,7 +972,7 @@ legend {
               <span class="key">ESCALATION_THRESHOLD</span>
               <span class="desc">below this confidence, the agent wakes the human</span>
             </div>
-            <div class="inline" style="width:140px">
+            <div class="inline" style="width:120px">
               <input id="cfg-threshold" type="number" min="0" max="100" step="1" aria-label="Escalation threshold percent">
               <span class="suffix">%</span>
             </div>
@@ -923,6 +996,91 @@ legend {
           <span class="save-status" id="save-status"></span>
         </div>
       </form>
+
+      <!-- ─── AI: Liquid router + Groq prompt engineering ─────────────── -->
+      <form id="ai-form" autocomplete="off">
+        <fieldset>
+          <legend>AI · Liquid d1 router</legend>
+          <div class="ai-status-line" id="ai-liquid-status">checking agent-core…</div>
+          <div class="field-row equal">
+            <div class="field">
+              <label for="ai-liquid-key">LIQUID_API_KEY</label>
+              <input id="ai-liquid-key" type="password" placeholder="(unchanged)">
+              <div class="hint">unset → every incident defaults to Groq AI</div>
+            </div>
+            <div class="field">
+              <label for="ai-liquid-model">LIQUID_MODEL</label>
+              <input id="ai-liquid-model" type="text" placeholder="d1">
+              <div class="hint" id="hint-liquid-model"></div>
+            </div>
+          </div>
+          <div class="opt-row">
+            <div class="opt-label">
+              <span class="key">LIQUID_ENABLED</span>
+              <span class="desc">triage each incident with d1 before the Groq reasoner</span>
+            </div>
+            <button type="button" class="toggle" id="ai-liquid-enabled" role="switch" aria-checked="false" aria-label="Liquid routing enabled"></button>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>AI · Groq prompt engineering</legend>
+          <div class="field-row equal">
+            <div class="field">
+              <label for="ai-profile">PROMPT_PROFILE</label>
+              <select id="ai-profile"></select>
+              <div class="hint" id="hint-profile">built-in strategies — pick one, then tweak the text below</div>
+            </div>
+            <div class="field">
+              <label for="ai-model">GROQ_MODEL</label>
+              <input id="ai-model" type="text" placeholder="llama-3.3-70b-versatile">
+              <div class="hint" id="hint-ai-model"></div>
+            </div>
+          </div>
+          <div class="field-row equal">
+            <div class="field">
+              <label for="ai-temperature">TEMPERATURE</label>
+              <input id="ai-temperature" type="number" min="0" max="2" step="0.05">
+            </div>
+            <div class="field">
+              <label for="ai-max-tokens">MAX_TOKENS</label>
+              <input id="ai-max-tokens" type="number" min="256" max="16000" step="64">
+            </div>
+          </div>
+          <div class="field">
+            <label for="ai-system">SYSTEM_PROMPT</label>
+            <textarea id="ai-system" rows="7" spellcheck="false"></textarea>
+            <div class="hint">override for this profile · empty = profile default</div>
+          </div>
+          <div class="field">
+            <label for="ai-template">USER_PROMPT_TEMPLATE</label>
+            <textarea id="ai-template" rows="9" spellcheck="false"></textarea>
+            <div class="hint">variables: {{incident}} {{evidence}} {{dependencyFindings}} {{codeFindings}} {{recentCommits}} {{recurring}} {{repoUrl}} {{liquid}} {{tools}}</div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>AI · Test an incident</legend>
+          <div class="field-row equal">
+            <div class="field">
+              <label for="ai-test-path">TEST_PATH</label>
+              <input id="ai-test-path" type="text" placeholder="/checkout">
+            </div>
+            <div class="field">
+              <label for="ai-test-status">TEST_STATUS</label>
+              <input id="ai-test-status" type="number" placeholder="500">
+              <div class="hint">runs the real pipeline once — nothing is saved, nobody is paged</div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary" id="ai-save">Save AI settings</button>
+            <button type="button" class="btn-ghost" id="ai-reset">Reset prompt</button>
+            <button type="button" class="btn-ghost" id="ai-test-run">Run test incident</button>
+            <span class="save-status" id="ai-save-status"></span>
+          </div>
+          <div class="ai-test-result" id="ai-test-result"></div>
+        </fieldset>
+      </form>
     </section>
 
     <!-- ─── ABOUT ─────────────────────────────────────────── -->
@@ -943,18 +1101,25 @@ legend {
                    ┌──────────────┐    ┌──────────────┐
                    │ AGENT CORE   │───▶│  CONNECTOR   │
                    │ (reasoning)  │    │  (read-only) │
-                   └──────────────┘    └──────────────┘
+                   └──────┬───────┘    └──────────────┘
                           │
                           ▼
+                   ┌──────────────┐   deliberate?   ┌──────────────┐
+                   │ LIQUID d1    │─── no ─────────▶│   ENGINEER   │
+                   │  (triage)    │                 │  (hand-off)  │
+                   └──────┬───────┘                 └──────────────┘
+                          │ technical
+                          ▼
                    ┌──────────────┐
-                   │  ENGINEER    │
-                   │  (if unsure) │
+                   │  GROQ AI     │  diagnosis + diffs
                    └──────────────┘</pre>
+        <p style="margin-top:12px;font-size:13px;line-height:1.7">Each incident is triaged by Liquid AI's <code>d1</code> decision model first: billing/sales questions and very frustrated reporters go straight to a human, everything technical goes to Groq. No Liquid key configured? Every incident defaults to "call Groq AI". If a provider call fails, the Agent tab shows it in red and the incident still gets analysed.</p>
 
         <h2>What each tab does</h2>
         <ul>
           <li><b>Requests</b> — live view of everything passing through the edge. Rows with a left bar were flagged as anomalies and dispatched to the agent. Click a row to see the request ID, upstream, client IP and a response sample.</li>
-          <li><b>Config</b> — the whole stack in one form: server target, external services, codebase link, safety limits, and the monitoring switch. Warnings appear inline when something will be stored but not monitored, or sent over plaintext.</li>
+          <li><b>Config</b> — the whole stack in one form: server target, external services, codebase link, safety limits, and the monitoring switch. The AI section at the bottom configures the Liquid router and lets you A/B test Groq prompts against a synthetic incident.</li>
+          <li><b>Config → AI</b> — pick a prompt profile (<code>balanced</code>, <code>concise</code>, <code>diff_first</code>, <code>strict_json</code>, <code>sre_checklist</code>), edit the system prompt or user template, then "Run test incident" to see exactly what the AI returns. Warnings appear inline when something will be stored but not monitored, or sent over plaintext.</li>
           <li><b>About</b> — this page.</li>
         </ul>
 
@@ -984,25 +1149,6 @@ legend {
 const $ = id => document.getElementById(id);
 const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 
-const rawLog = [];
-function rawDebug(path, status, text) {
-  const at = new Date().toISOString();
-  rawLog.push({ at, path, status, text });
-  if (rawLog.length > 50) rawLog.shift();
-  console.debug('[api raw]', path, status, text);           // DevTools too
-
-  const panel = document.getElementById('raw-debug');
-  const body  = document.getElementById('raw-debug-body');
-  if (!panel || !body) return;
-  panel.style.display = 'block';
-  const div = document.createElement('div');
-  div.style.cssText = 'border-top:1px solid #222;padding:6px 0;';
-  div.textContent = `${at}  ${status}  ${path}\n${text}`;
-  body.prepend(div);
-  while (body.children.length > 30) body.lastChild.remove();
-}
-window.__rawApi = rawLog;                                   // inspectable in console
-
 async function api(path, body) {
   const res = await fetch(path, body ? {
     method: 'POST',
@@ -1010,13 +1156,7 @@ async function api(path, body) {
     body: JSON.stringify(body)
   } : undefined);
   if (res.status === 401) { location.href = '/login'; throw new Error('session expired'); }
-
-  const text = await res.text();
-  let data = {};
-  try { data = text ? JSON.parse(text) : {}; } catch { /* non-JSON or empty */ }
-
-  rawDebug(path, res.status, text);          // <-- capture the raw, unparsed body
-
+  const data = await res.json().catch(() => ({}));
   if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
 }
@@ -1221,6 +1361,79 @@ function severityClass(sev) {
   return ['critical', 'high', 'medium', 'low'].includes(sev) ? `sev-${sev}` : 'sev-medium';
 }
 
+/* Render a unified diff: removed lines get a red shade, added lines green. */
+function renderDiff(diff) {
+  const lines = String(diff || '').replace(/\r\n/g, '\n').split('\n');
+  const out = lines.map(line => {
+    let cls = 'diff-ctx';
+    if (line.startsWith('+++') || line.startsWith('---')) cls = 'diff-file';
+    else if (line.startsWith('@@')) cls = 'diff-hunk';
+    else if (line.startsWith('+')) cls = 'diff-add';
+    else if (line.startsWith('-')) cls = 'diff-del';
+    const text = line === '' ? '&nbsp;' : escapeHtml(line);
+    return `<span class="diff-line ${cls}">${text}</span>`;
+  }).join('');
+  return `<pre class="diff">${out}</pre>`;
+}
+
+/* Liquid d1 -> Groq / human routing badge for one analysis. */
+function renderRouting(a) {
+  const r = a.routing;
+  if (!r) return '';
+  const model = String(r.model || 'd1').toUpperCase();
+  let cls = 'route-default';
+  let label = 'ROUTER UNKNOWN';
+  if (r.route === 'engineer') { cls = 'route-liquid-engineer'; label = `LIQUID ${model} → HUMAN ENGINEER`; }
+  else if (r.skipped) { cls = 'route-default'; label = 'LIQUID NOT CONFIGURED → GROQ AI'; }
+  else if (!r.ok) { cls = 'route-fallback'; label = 'LIQUID FAILED → GROQ AI FALLBACK'; }
+  else if (r.route === 'groq') { cls = 'route-liquid-groq'; label = `LIQUID ${model} → GROQ AI`; }
+
+  const d = r.decision || {};
+  const detail = [];
+  if (d.department) detail.push(`dept ${d.department}`);
+  if (typeof d.urgencyProbability === 'number') detail.push(`urgency ${Math.round(d.urgencyProbability * 100)}%`);
+  if (typeof d.frustrationScore === 'number') detail.push(`frustration ${d.frustrationScore.toFixed(2)}${d.frustrationLabel ? ` (${d.frustrationLabel})` : ''}`);
+  if (typeof r.latencyMs === 'number' && r.latencyMs > 0) detail.push(`${Math.round(r.latencyMs)}ms`);
+  detail.push(`answer from ${a.mode === 'live' ? 'Groq AI' : a.mode === 'engineer' ? 'hand-off' : 'heuristic'}`);
+
+  const reasons = (r.reasons || []).length
+    ? `<ul class="route-reasons">${r.reasons.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>`
+    : '';
+
+  return `<div class="agent-section">
+      <div class="agent-section-head">AI routing</div>
+      <div class="route-line">
+        <span class="route-chip ${cls}">${escapeHtml(label)}</span>
+        <span class="route-detail">${escapeHtml(detail.join(' · '))}</span>
+      </div>
+      ${reasons}
+    </div>`;
+}
+
+/* Red block for an AI call that failed; amber for "not configured". */
+function renderWarnings(warnings) {
+  return (warnings || []).map(w => {
+    const notice = w.severity !== 'error';
+    const head = notice ? 'Routing notice' : 'AI API WARNING';
+    return `<div class="card-warn${notice ? ' notice' : ''}">
+        <span class="route-chip ${notice ? 'route-default' : 'route-fallback'}">${head}</span>
+        ${escapeHtml(w.message)}
+        ${w.detail ? `<div class="warn-detail">${escapeHtml(String(w.detail).slice(0, 400))}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+/* The debug JSON we also print to console.log on agent-core. */
+function renderAiDebug(aiDebug) {
+  if (!Array.isArray(aiDebug) || !aiDebug.length) return '';
+  let pretty;
+  try { pretty = JSON.stringify(aiDebug, null, 2); } catch { pretty = String(aiDebug); }
+  return `<details class="ai-debug">
+      <summary>AI call debug — ${aiDebug.length} request${aiDebug.length === 1 ? '' : 's'} (JSON)</summary>
+      <pre>${escapeHtml(pretty)}</pre>
+    </details>`;
+}
+
 function renderIncident(record) {
   const inc = record.incident || {};
   const a = record.analysis;
@@ -1264,6 +1477,7 @@ function renderIncident(record) {
             </div>
             <div class="fix-desc">${escapeHtml(fx.description || '')}</div>
             ${fx.file ? `<div class="fix-file">${escapeHtml(fx.file)}</div>` : ''}
+            ${fx.diff ? renderDiff(fx.diff) : ''}
           </li>`).join('')
       : '<li class="agent-muted">no suggested fixes</li>';
 
@@ -1281,6 +1495,7 @@ function renderIncident(record) {
         </div>`;
 
     body = `
+      ${renderWarnings(a.warnings)}
       <div class="agent-grid">
         <div><span class="k">severity</span><span class="sev ${severityClass(a.severity)}">${escapeHtml((a.severity || 'medium').toUpperCase())}</span></div>
         <div><span class="k">confidence</span><code>${conf}%</code></div>
@@ -1297,6 +1512,7 @@ function renderIncident(record) {
         <div class="agent-section-head">Root cause</div>
         <p>${escapeHtml(a.rootCause?.summary || '—')}</p>
       </div>
+      ${renderRouting(a)}
       ${escalation}
       <div class="agent-section">
         <div class="agent-section-head">Dependencies</div>
@@ -1314,6 +1530,7 @@ function renderIncident(record) {
         <div class="agent-section-head">Reasoning</div>
         <p class="agent-reasoning">${escapeHtml(a.reasoning || '—')}</p>
       </div>
+      ${renderAiDebug(a.aiDebug)}
     `;
   }
 
@@ -1352,6 +1569,54 @@ function applyIncidentFilters() {
   feed.innerHTML = list.map(renderIncident).join('');
 }
 
+/* ─── red banner: any AI provider call that failed ─────────── */
+const dismissedWarnings = new Set();
+
+function renderAgentWarnings(incidents, unreachable, error) {
+  const el = $('agent-warning');
+  if (!el) return;
+  const items = [];
+  if (unreachable) {
+    items.push({ severity: 'error', source: 'agent-core', message: `unreachable — ${error || 'no detail'}` });
+  }
+  for (const rec of incidents || []) {
+    const inc = rec.incident || {};
+    const source = `${inc.method || ''} ${inc.path || ''}`.trim() || String(inc.id || 'incident');
+    for (const w of rec.analysis?.warnings || []) {
+      items.push({ severity: w.severity === 'error' ? 'error' : 'notice', source, message: w.message, detail: w.detail });
+    }
+  }
+  const seen = new Set();
+  const unique = [];
+  for (const it of items) {
+    const key = `${it.severity}|${it.message}`;
+    if (seen.has(key) || dismissedWarnings.has(key)) continue;
+    seen.add(key);
+    unique.push(it);
+  }
+  const errors  = unique.filter(i => i.severity === 'error');
+  const notices = unique.filter(i => i.severity !== 'error');
+  if (!errors.length && !notices.length) { el.hidden = true; el.innerHTML = ''; return; }
+
+  const block = (list, cls, title) => !list.length ? '' : `
+    <div class="${cls}">
+      <div class="ai-warn-head">
+        <span>${escapeHtml(title)}</span>
+        <button type="button" class="ai-warn-close" data-dismiss>dismiss</button>
+      </div>
+      <ul>${list.map(i => `<li><code>${escapeHtml(i.source)}</code>${escapeHtml(i.message)}${i.detail ? ` <span class="route-detail">— ${escapeHtml(String(i.detail).slice(0, 180))}</span>` : ''}</li>`).join('')}</ul>
+    </div>`;
+
+  el.hidden = false;
+  el.innerHTML = block(errors, 'ai-warn-error', `⚠ one of the AI APIs did not work (${errors.length})`)
+               + block(notices, 'ai-warn-notice', `AI routing notice (${notices.length})`);
+  el.querySelectorAll('[data-dismiss]').forEach(btn => btn.addEventListener('click', () => {
+    unique.forEach(i => dismissedWarnings.add(`${i.severity}|${i.message}`));
+    el.hidden = true;
+    el.innerHTML = '';
+  }));
+}
+
 async function fetchIncidents() {
   try {
     const r = await api('/api/incidents?limit=25');
@@ -1360,6 +1625,7 @@ async function fetchIncidents() {
     if (r.unreachable) {
       stateEl.textContent = 'agent-core unreachable';
       stateEl.className = 'feed-state warn';
+      renderAgentWarnings([], true, r.error);
       if (!lastIncidents.length) {
         $('agent-feed').innerHTML = `<div class="agent-empty">// agent-core unreachable: ${escapeHtml(r.error || 'unknown error')}</div>`;
       }
@@ -1369,6 +1635,7 @@ async function fetchIncidents() {
     stateEl.className = 'feed-state';
     lastIncidents = r.incidents || [];
     lastContext = r.context || {};
+    renderAgentWarnings(lastIncidents, false, null);
     $('agent-count').textContent = String(lastIncidents.length);
     $('agent-escalated').textContent = String(lastIncidents.filter(x => x.analysis?.escalate).length);
     applyIncidentFilters();
@@ -1634,6 +1901,159 @@ $('config-form').addEventListener('submit', async (e) => {
   }
 });
 
+/* ─── AI settings: Liquid router + Groq prompt engineering ── */
+let aiConfig = null;
+let aiPromptsDirty = false;   // only send the prompt text when the operator edited it
+let aiLoadedPrompts = { systemPrompt: '', userPromptTemplate: '' };
+
+function aiStatus(text, kind) {
+  const el = $('ai-save-status');
+  el.textContent = text;
+  el.className = 'save-status' + (kind ? ' ' + kind : '');
+}
+
+function fillAiForm(config) {
+  if (!config) return;
+  const liquid = config.liquid || {};
+  const llm = config.llm || {};
+
+  const status = $('ai-liquid-status');
+  if (liquid.configured) {
+    status.className = 'ai-status-line';
+    status.textContent = `Liquid ${liquid.model || 'd1'} triage is active · ${liquid.decisionsPath || '/decisions/v1/systemone'} @ ${liquid.baseUrl || 'https://api.liquid.ai'}`;
+  } else if (liquid.hasKey && liquid.enabled === false) {
+    status.className = 'ai-status-line warn';
+    status.textContent = 'Liquid routing is disabled (LIQUID_ENABLED=false) — every incident goes to Groq AI.';
+  } else {
+    status.className = 'ai-status-line bad';
+    status.textContent = 'LIQUID_API_KEY is not set — every incident falls back to "call Groq AI". Add a key below to enable d1 routing.';
+  }
+
+  $('ai-liquid-model').value = liquid.model || '';
+  $('ai-liquid-enabled').setAttribute('aria-checked', String(Boolean(liquid.enabled)));
+
+  const select = $('ai-profile');
+  select.innerHTML = (llm.profiles || []).map(pr =>
+    `<option value="${escapeHtml(pr.id)}">${escapeHtml(pr.label)} — ${escapeHtml(pr.description)}</option>`
+  ).join('') || '<option value="balanced">balanced</option>';
+  select.value = llm.profile || 'balanced';
+
+  $('ai-model').value = llm.model || '';
+  $('ai-temperature').value = llm.temperature ?? '';
+  $('ai-max-tokens').value = llm.maxTokens ?? '';
+  $('ai-system').value = llm.systemPrompt || '';
+  $('ai-template').value = llm.userPromptTemplate || '';
+  aiLoadedPrompts = { systemPrompt: llm.systemPrompt || '', userPromptTemplate: llm.userPromptTemplate || '' };
+  aiPromptsDirty = false;
+
+  $('hint-profile').textContent = llm.isCustom
+    ? 'custom prompt active — edit below, or Reset prompt to return to the profile'
+    : 'built-in strategies — pick one, then tweak the text below';
+  $('hint-ai-model').textContent = llm.hasKey ? '' : 'GROQ_API_KEY is not set on agent-core — live answers will fall back to the heuristic';
+  $('hint-ai-model').className = llm.hasKey ? 'hint' : 'hint error';
+  $('hint-liquid-model').textContent = liquid.hasKey ? 'key configured' : 'no key configured';
+}
+
+async function loadAiConfig() {
+  try {
+    const r = await api('/api/ai');
+    if (r.unreachable) {
+      $('ai-liquid-status').className = 'ai-status-line bad';
+      $('ai-liquid-status').textContent = `agent-core unreachable — cannot read AI settings (${r.error || 'unknown error'})`;
+      return;
+    }
+    aiConfig = r.config || {};
+    fillAiForm(aiConfig);
+  } catch (e) {
+    $('ai-liquid-status').className = 'ai-status-line bad';
+    $('ai-liquid-status').textContent = 'failed to load AI settings — ' + e.message;
+  }
+}
+
+['ai-system', 'ai-template'].forEach(id => $(id).addEventListener('input', () => { aiPromptsDirty = true; }));
+
+$('ai-liquid-enabled').addEventListener('click', () => {
+  const on = $('ai-liquid-enabled').getAttribute('aria-checked') === 'true';
+  $('ai-liquid-enabled').setAttribute('aria-checked', String(!on));
+});
+
+$('ai-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('ai-save');
+  btn.disabled = true;
+  aiStatus('saving…');
+
+  const payload = {
+    llm: {
+      profile: $('ai-profile').value,
+      model: $('ai-model').value.trim(),
+      temperature: Number($('ai-temperature').value),
+      maxTokens: Number($('ai-max-tokens').value)
+    },
+    liquid: {
+      model: $('ai-liquid-model').value.trim(),
+      enabled: $('ai-liquid-enabled').getAttribute('aria-checked') === 'true'
+    }
+  };
+  if (!Number.isFinite(payload.llm.temperature)) delete payload.llm.temperature;
+  if (!Number.isFinite(payload.llm.maxTokens)) delete payload.llm.maxTokens;
+
+  // Only send prompt text when it was edited (or deliberately emptied).
+  if (aiPromptsDirty) {
+    payload.llm.systemPrompt = $('ai-system').value;
+    payload.llm.userPromptTemplate = $('ai-template').value;
+  }
+  const key = $('ai-liquid-key').value.trim();
+  if (key) payload.liquid.apiKey = key;
+
+  try {
+    const r = await api('/api/ai', payload);
+    aiConfig = r.config || aiConfig;
+    $('ai-liquid-key').value = '';
+    fillAiForm(aiConfig);
+    aiStatus('saved ✓', 'ok');
+  } catch (err) {
+    aiStatus('save failed: ' + err.message, 'bad');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$('ai-reset').addEventListener('click', async () => {
+  aiStatus('resetting…');
+  try {
+    const r = await api('/api/ai', { llm: { reset: true } });
+    aiConfig = r.config || aiConfig;
+    fillAiForm(aiConfig);
+    aiStatus('prompt overrides cleared ✓', 'ok');
+  } catch (err) {
+    aiStatus('reset failed: ' + err.message, 'bad');
+  }
+});
+
+$('ai-test-run').addEventListener('click', async () => {
+  const btn = $('ai-test-run');
+  const out = $('ai-test-result');
+  btn.disabled = true;
+  aiStatus('running a real incident through the pipeline…');
+  const statusCode = Number($('ai-test-status').value) || 500;
+  try {
+    const r = await api('/api/ai/test', {
+      path: $('ai-test-path').value.trim() || '/checkout',
+      statusCode,
+      category: statusCode >= 500 ? 'server_error' : 'client_error'
+    });
+    out.innerHTML = `<div class="agent-section-head">Test result · ${escapeHtml(new Date().toLocaleTimeString())} · not saved</div>`
+      + renderIncident(r.incident);
+    aiStatus('test complete ✓', 'ok');
+  } catch (err) {
+    out.innerHTML = `<div class="ai-warn-error"><div class="ai-warn-head"><span>test failed</span></div>${escapeHtml(err.message)}</div>`;
+    aiStatus('test failed', 'bad');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 /* ─── boot ────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
   loadState();
@@ -1641,9 +2061,9 @@ document.addEventListener('DOMContentLoaded', async () => {
   restartFeed(4000);
   fetchIncidents();      // ← new
   restartAgentFeed(8000); // ← new
+  loadAiConfig();        // Liquid router + Groq prompt settings
   setInterval(() => refreshHealth().catch(() => {}), 30000);
 });
 </script>
-
 </body>
 </html>
