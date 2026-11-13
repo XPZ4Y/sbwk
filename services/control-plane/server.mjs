@@ -11,6 +11,7 @@ import { applyGateway, applyExternal, applyCodebase, applySafety, applyMonitorin
 import { saveConfig } from "./config-service.mjs";
 import { initAuth, verifyPassword, createSession, destroySession, sessionFromRequest, sessionCookie, clearCookie } from "./auth.mjs";
 import { getAiConfig, saveAiConfig, runPromptTest } from "./ai.mjs";
+import { getNotificationStatus, saveNotificationConfig, verifyNotifications, sendTestNotification } from "./notifications.mjs";
 import { fetchGitStatus, rollbackToParent } from "./git-service.mjs";
 
 // Make the mounted DATA_DIR usable before anything tries to write to it. The
@@ -376,6 +377,49 @@ const server = http.createServer(async (req, res) => {
         mode: r.incident?.analysis?.mode
       });
       return ok(res, { incident: r.incident });
+    }
+
+    // ── Fault Email Notifications (Resend.com via agent-core) ───────────────
+    if (p === "/api/notifications/status" && req.method === "GET") {
+      const r = await getNotificationStatus();
+      if (!r.ok) {
+        log("warn", "notifications_status_unavailable", { error: r.error });
+        return ok(res, { unreachable: true, error: r.error, notifications: null });
+      }
+      return ok(res, { notifications: r.notifications });
+    }
+    if (p === "/api/notifications/config" && req.method === "POST") {
+      const body = await readJson(req);
+      const r = await saveNotificationConfig(body);
+      if (!r.ok) return fail(res, r.status === 0 ? 502 : r.status, r.error);
+      log("info", "notifications_config_saved", {
+        state: r.notifications?.state,
+        recipientsCount: r.notifications?.recipients?.length || 0,
+        notifyAllIncidents: r.notifications?.notifyAllIncidents
+      });
+      return ok(res, { notifications: r.notifications });
+    }
+    if (p === "/api/notifications/verify" && req.method === "POST") {
+      const body = await readJson(req);
+      const r = await verifyNotifications(body);
+      if (!r.ok) return fail(res, r.status === 0 ? 502 : r.status, r.error);
+      log(r.verification?.ok ? "info" : "warn", "notifications_verified", {
+        ok: r.verification?.ok,
+        code: r.verification?.code || null,
+        keyAccess: r.verification?.keyAccess || null
+      });
+      return ok(res, { verification: r.verification });
+    }
+    if (p === "/api/notifications/test" && req.method === "POST") {
+      const body = await readJson(req);
+      const r = await sendTestNotification(body);
+      if (!r.ok) return fail(res, r.status === 0 ? 502 : r.status, r.error);
+      log(r.result?.sent ? "info" : "warn", "notifications_test_sent", {
+        sent: r.result?.sent,
+        id: r.result?.id || null,
+        code: r.result?.code || null
+      });
+      return ok(res, { result: r.result });
     }
 
     // Live incident & AI analysis feed (proxied from agent-core).

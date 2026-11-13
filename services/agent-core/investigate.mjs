@@ -186,9 +186,38 @@ export function createInvestigator(deps) {
       confidence: analysis.confidence, escalate, route: routing.route, warnings: warnings.length
     });
 
-    const shouldNotifyResend = Boolean(config.RESEND_NOTIFY_ALL_INCIDENTS && config.RESEND_API_KEY && config.DEVELOPER_EMAIL);
+    const mailConfiguredOrPartial = Boolean(
+      (typeof config.RESEND_API_KEY === "string" && config.RESEND_API_KEY.trim()) ||
+      (typeof config.DEVELOPER_EMAIL === "string" && config.DEVELOPER_EMAIL.trim())
+    );
+    const shouldNotifyResend = Boolean(config.RESEND_NOTIFY_ALL_INCIDENTS !== false && mailConfiguredOrPartial);
     if (escalate || shouldNotifyResend) {
-      const notification = await notifyEngineer(incident, analysis, escalationReason || (escalate ? "escalation policy" : "fault detected (Resend notification)"));
+      const triggerReason = escalationReason || (escalate ? "escalation policy" : "fault detected (Resend notification)");
+      let notification;
+      try {
+        notification = await notifyEngineer(incident, analysis, triggerReason, { config });
+      } catch (err) {
+        log("error", "notification_crashed", { incidentId: incident.id, error: err?.message || String(err) });
+        notification = {
+          sent: false,
+          channel: "log",
+          reason: triggerReason,
+          at: new Date().toISOString(),
+          errors: [{ channel: "notification", code: "unexpected_error", message: err?.message || String(err) }]
+        };
+      }
+      if (notification?.email && !notification.email.sent && notification.email.code !== "not_configured") {
+        analysis.warnings = [
+          ...(analysis.warnings || []),
+          {
+            severity: "error",
+            source: "resend",
+            code: notification.email.code || "email_failed",
+            message: `Email alert failed (${notification.email.code || "error"}): ${notification.email.error || notification.email.reason || "delivery failed"}`,
+            ...(notification.email.hint ? { detail: notification.email.hint } : {})
+          }
+        ];
+      }
       store.setNotification(incident.id, notification);
     }
     return store.get(incident.id);

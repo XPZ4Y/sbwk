@@ -88,6 +88,14 @@ services:
       MONITORING_ACTIVE: "true"
       ESCALATION_CONFIDENCE_THRESHOLD: ${ESCALATION_CONFIDENCE_THRESHOLD:-0.8}
       NOTIFICATION_WEBHOOK_URL: ${NOTIFICATION_WEBHOOK_URL:-}
+      # Resend.com fault email notifications
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      DEVELOPER_EMAIL: ${DEVELOPER_EMAIL:-}
+      RESEND_FROM_EMAIL: ${RESEND_FROM_EMAIL:-onboarding@resend.dev}
+      RESEND_NOTIFY_ALL_INCIDENTS: ${RESEND_NOTIFY_ALL_INCIDENTS:-true}
+      RESEND_API_BASE_URL: ${RESEND_API_BASE_URL:-https://api.resend.com}
+      RESEND_TIMEOUT_MS: ${RESEND_TIMEOUT_MS:-10000}
+      RESEND_MAX_RETRIES: ${RESEND_MAX_RETRIES:-2}
       DATA_DIR: /data
     volumes:
       - ${TARGET_CODEBASE_PATH:-./services/dummy-server}:/codebase:ro

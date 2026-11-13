@@ -1,18 +1,69 @@
 // Zero-dependency config. Optionally loads a local .env (KEY=VALUE) if present.
 import fs from "node:fs";
 
-try {
-  const txt = fs.readFileSync(new URL("./.env", import.meta.url), "utf8");
-  for (const line of txt.split("\n")) {
-    const m = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*(.*?)\s*$/);
-    if (m && process.env[m[1]] === undefined) process.env[m[1]] = m[2];
+/**
+ * Parse a .env file into key/value pairs. Handles CRLF, optional `export `
+ * prefix, single/double quoted values, and inline `#` comments on unquoted values.
+ */
+export function parseEnvContent(txt) {
+  const out = {};
+  if (typeof txt !== "string" || !txt) return out;
+  for (const rawLine of txt.split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const m = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
+    if (!m) continue;
+    const key = m[1];
+    let val = m[2].trim();
+    if (val.length >= 2 && ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'")))) {
+      const quote = val[0];
+      val = val.slice(1, -1);
+      if (quote === '"') {
+        val = val.replace(/\\n/g, "\n").replace(/\\r/g, "\r").replace(/\\t/g, "\t").replace(/\\"/g, '"').replace(/\\\\/g, "\\");
+      }
+    } else {
+      // Strip inline comments on unquoted values (only when preceded by whitespace).
+      const hashIdx = val.search(/\s+#/);
+      if (hashIdx !== -1) val = val.slice(0, hashIdx).trim();
+    }
+    out[key] = val;
   }
-} catch { /* no .env */ }
+  return out;
+}
+
+function loadEnvFile(url) {
+  try {
+    const txt = fs.readFileSync(url, "utf8");
+    const parsed = parseEnvContent(txt);
+    for (const [k, v] of Object.entries(parsed)) {
+      if (process.env[k] === undefined) process.env[k] = v;
+    }
+  } catch { /* no .env */ }
+}
+
+// Skip disk .env loading under automated tests so a developer's real .env never
+// leaks credentials or triggers outbound alerts during `node --test`.
+if (process.env.NODE_ENV !== "test" && !process.env.NODE_TEST_CONTEXT) {
+  loadEnvFile(new URL("./.env", import.meta.url));
+  loadEnvFile(new URL("../../.env", import.meta.url));
+}
 
 const env = process.env;
-const num = (v, d) => (Number.isFinite(Number(v)) ? Number(v) : d);
-const str = (v, d) => (v && v.trim() ? v : d);
-const bool = (v, d) => (v === undefined ? d : ["true", "1", "yes", "on"].includes(String(v).toLowerCase()));
+const num = (v, d) => (v !== undefined && v !== null && String(v).trim() !== "" && Number.isFinite(Number(v)) ? Number(v) : d);
+const clampInt = (v, d, min, max) => {
+  const n = num(v, d);
+  if (!Number.isFinite(n)) return d;
+  return Math.max(min, Math.min(max, Math.round(n)));
+};
+const str = (v, d) => {
+  if (v === undefined || v === null) return d;
+  const trimmed = String(v).trim();
+  return trimmed ? trimmed : d;
+};
+const bool = (v, d) => {
+  if (v === undefined || v === null || String(v).trim() === "") return d;
+  return ["true", "1", "yes", "on"].includes(String(v).trim().toLowerCase());
+};
 
 // JSON-from-env helper: bad JSON must not stop the service from booting.
 const json = (v, d) => {
@@ -29,7 +80,7 @@ export const config = {
   NODE_ENV: str(env.NODE_ENV, "development"),
   PORT: num(env.PORT, 4200),
   AGENT_CORE_TOKEN: str(env.AGENT_CORE_TOKEN, "development-only-change-this-agent-token-123456"),
-  AGENT_MODE: env.AGENT_MODE === "live" ? "live" : "mock",
+  AGENT_MODE: str(env.AGENT_MODE, "mock") === "live" ? "live" : "mock",
   GROQ_API_KEY: str(env.GROQ_API_KEY, undefined),
   GROQ_MODEL: str(env.GROQ_MODEL, "openai/gpt-oss-20b"),
   GROQ_BASE_URL: str(env.GROQ_BASE_URL, "https://api.groq.com/openai/v1"),
@@ -83,10 +134,13 @@ export const config = {
   DEVELOPER_EMAIL: str(env.DEVELOPER_EMAIL, undefined),
   RESEND_FROM_EMAIL: str(env.RESEND_FROM_EMAIL, "onboarding@resend.dev"),
   RESEND_NOTIFY_ALL_INCIDENTS: bool(env.RESEND_NOTIFY_ALL_INCIDENTS, true),
+  RESEND_API_BASE_URL: str(env.RESEND_API_BASE_URL, "https://api.resend.com"),
+  RESEND_TIMEOUT_MS: clampInt(env.RESEND_TIMEOUT_MS, 10000, 1000, 60000),
+  RESEND_MAX_RETRIES: clampInt(env.RESEND_MAX_RETRIES, 2, 0, 5),
   // Safety limits (onboarding Step 04). Runtime-mutable via POST /config.
-  DRY_RUN: env.DRY_RUN === undefined ? true : ["true", "1", "yes", "on"].includes(String(env.DRY_RUN).toLowerCase()),
-  AUTO_ROLLBACK: env.AUTO_ROLLBACK === undefined ? true : ["true", "1", "yes", "on"].includes(String(env.AUTO_ROLLBACK).toLowerCase()),
-  MONITORING_ACTIVE: env.MONITORING_ACTIVE === undefined ? true : ["true", "1", "yes", "on"].includes(String(env.MONITORING_ACTIVE).toLowerCase())
+  DRY_RUN: bool(env.DRY_RUN, true),
+  AUTO_ROLLBACK: bool(env.AUTO_ROLLBACK, true),
+  MONITORING_ACTIVE: bool(env.MONITORING_ACTIVE, true)
 };
 
 // Runtime codebase link (onboarding Step 03): GitHub repo metadata + last commits.

@@ -5,7 +5,15 @@ import { config, investigateServices } from "./config.mjs";
 import { IncidentStore } from "./store.mjs";
 import { inspectCodebase } from "./codebase.mjs";
 import { reason } from "./reason.mjs";
-import { notifyEngineer } from "./notify.mjs";
+import {
+  notifyEngineer,
+  validateMailConfig,
+  verifyResendConfig,
+  sendTestEmail,
+  getNotificationStatus,
+  DEFAULT_RESEND_FROM,
+  DEFAULT_RESEND_BASE_URL
+} from "./notify.mjs";
 import { createInvestigator, makeConnectorClient } from "./investigate.mjs";
 import { liquidTriage, DEFAULT_QUESTIONS, DEFAULT_ROUTE_POLICY, BATCH_QUESTIONS } from "./liquid.mjs";
 import { createBatchGate } from "./batch.mjs";
@@ -108,6 +116,8 @@ function publicConfig() {
       profiles: listProfiles()
     },
     aiDebug: config.AI_DEBUG,
+    // Fault notifications (Resend email + optional webhook; API keys are never returned).
+    notifications: getNotificationStatus(config),
     // Lazy two-stage gate (middleware buffers; Liquid decides if it matters).
     batch: {
       threshold: config.BATCH_LIQUID_ANOMALY_THRESHOLD,
@@ -160,11 +170,50 @@ function applyLlmConfig(llm) {
   config.llm = next;
 }
 
+function applyNotificationsConfig(n) {
+  if (!n || typeof n !== "object") return;
+  if (typeof n.resendApiKey === "string") config.RESEND_API_KEY = n.resendApiKey.trim() || undefined;
+  if (typeof n.developerEmail === "string") config.DEVELOPER_EMAIL = n.developerEmail.trim() || undefined;
+  if (typeof n.fromEmail === "string") config.RESEND_FROM_EMAIL = n.fromEmail.trim() || DEFAULT_RESEND_FROM;
+  if (typeof n.notifyAllIncidents === "boolean") config.RESEND_NOTIFY_ALL_INCIDENTS = n.notifyAllIncidents;
+  if (typeof n.webhookUrl === "string") config.NOTIFICATION_WEBHOOK_URL = n.webhookUrl.trim() || undefined;
+  if (typeof n.timeoutMs === "number" && Number.isFinite(n.timeoutMs) && n.timeoutMs >= 1000 && n.timeoutMs <= 60000) {
+    config.RESEND_TIMEOUT_MS = Math.round(n.timeoutMs);
+  }
+  if (typeof n.maxRetries === "number" && Number.isFinite(n.maxRetries) && n.maxRetries >= 0 && n.maxRetries <= 5) {
+    config.RESEND_MAX_RETRIES = Math.round(n.maxRetries);
+  }
+  if (typeof n.apiBaseUrl === "string") {
+    const trimmed = n.apiBaseUrl.trim();
+    if (!trimmed) {
+      config.RESEND_API_BASE_URL = DEFAULT_RESEND_BASE_URL;
+    } else {
+      try {
+        const u = new URL(trimmed);
+        if (u.protocol === "https:" || u.protocol === "http:") config.RESEND_API_BASE_URL = trimmed.replace(/\/+$/, "");
+      } catch {
+        log("warn", "invalid_resend_base_url", { value: trimmed.slice(0, 80) });
+      }
+    }
+  }
+}
+
+function buildTransientMailConfig(body = {}) {
+  const b = body && typeof body === "object" ? body : {};
+  return {
+    ...config,
+    ...(typeof b.resendApiKey === "string" && b.resendApiKey.trim() ? { RESEND_API_KEY: b.resendApiKey.trim() } : {}),
+    ...(typeof b.developerEmail === "string" && b.developerEmail.trim() ? { DEVELOPER_EMAIL: b.developerEmail.trim() } : {}),
+    ...(typeof b.fromEmail === "string" && b.fromEmail.trim() ? { RESEND_FROM_EMAIL: b.fromEmail.trim() } : {})
+  };
+}
+
 function applyConfig(body) {
   if (typeof body.escalationThreshold === "number" && body.escalationThreshold >= 0 && body.escalationThreshold <= 1) config.ESCALATION_CONFIDENCE_THRESHOLD = body.escalationThreshold;
   if (typeof body.aiDebug === "boolean") config.AI_DEBUG = body.aiDebug;
   applyLiquidConfig(body.liquid);
   applyLlmConfig(body.llm);
+  applyNotificationsConfig(body.notifications);
   if (typeof body.dryRun === "boolean") config.DRY_RUN = body.dryRun;
   if (typeof body.autoRollback === "boolean") config.AUTO_ROLLBACK = body.autoRollback;
   if (typeof body.monitoringActive === "boolean") config.MONITORING_ACTIVE = body.monitoringActive;
@@ -243,6 +292,26 @@ const server = http.createServer(async (req, res) => {
       }
     }
 
+    if (path === "/notifications/status" && req.method === "GET") {
+      if (!authed(req)) return err(res, 401, "UNAUTHORIZED", "Valid agent-core bearer token required");
+      return sendJson(res, 200, { success: true, notifications: getNotificationStatus(config) });
+    }
+
+    if (path === "/notifications/verify" && req.method === "POST") {
+      if (!authed(req)) return err(res, 401, "UNAUTHORIZED", "Valid agent-core bearer token required");
+      const body = await readJson(req);
+      const verification = await verifyResendConfig(buildTransientMailConfig(body));
+      return sendJson(res, 200, { success: true, verification });
+    }
+
+    if (path === "/notifications/test" && req.method === "POST") {
+      if (!authed(req)) return err(res, 401, "UNAUTHORIZED", "Valid agent-core bearer token required");
+      const body = await readJson(req);
+      const reason = typeof body.reason === "string" && body.reason.trim() ? body.reason.trim().slice(0, 120) : undefined;
+      const result = await sendTestEmail(buildTransientMailConfig(body), { reason });
+      return sendJson(res, 200, { success: true, result });
+    }
+
     if (!path.startsWith("/incidents")) return err(res, 404, "NOT_FOUND", "Route not found");
     if (!authed(req)) return err(res, 401, "UNAUTHORIZED", "Valid agent-core bearer token required");
 
@@ -311,9 +380,34 @@ const server = http.createServer(async (req, res) => {
         if (!existing) return err(res, 404, "NOT_FOUND", "Incident not found");
         const record = store.setFeedback(id, body.status, body.note);
         if (body.status === "unresolved" && record.analysis) {
-          const notification = await notifyEngineer(record.incident, record.analysis, `engineer marked unresolved${body.note ? `: ${body.note}` : ""}`);
+          const triggerReason = `engineer marked unresolved${body.note ? `: ${body.note}` : ""}`;
+          let notification;
+          try {
+            notification = await notifyEngineer(record.incident, record.analysis, triggerReason, { config });
+          } catch (notifyErr) {
+            log("error", "feedback_notification_crashed", { incidentId: id, error: notifyErr?.message || String(notifyErr) });
+            notification = {
+              sent: false,
+              channel: "log",
+              reason: triggerReason,
+              at: new Date().toISOString(),
+              errors: [{ channel: "notification", code: "unexpected_error", message: notifyErr?.message || String(notifyErr) }]
+            };
+          }
+          if (notification?.email && !notification.email.sent && notification.email.code !== "not_configured") {
+            record.analysis.warnings = [
+              ...(record.analysis.warnings || []),
+              {
+                severity: "error",
+                source: "resend",
+                code: notification.email.code || "email_failed",
+                message: `Email alert failed (${notification.email.code || "error"}): ${notification.email.error || notification.email.reason || "delivery failed"}`,
+                ...(notification.email.hint ? { detail: notification.email.hint } : {})
+              }
+            ];
+          }
           store.setNotification(id, notification);
-          log("warn", "incident_escalated_by_feedback", { incidentId: id });
+          log("warn", "incident_escalated_by_feedback", { incidentId: id, sent: notification.sent, channel: notification.channel });
         }
         return sendJson(res, 200, { success: true, incident: store.get(id) });
       }
@@ -325,7 +419,30 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(config.PORT, () => log("info", "agent_core_listening", { port: config.PORT, mode: config.AGENT_MODE, connector: config.CONNECTOR_URL, codebase: config.CODEBASE_PATH || "(none)", llm: config.AGENT_MODE === "live" && config.GROQ_API_KEY ? config.GROQ_MODEL : "heuristic", liquid: config.LIQUID_API_KEY && config.LIQUID_ENABLED !== false ? `${config.LIQUID_MODEL} triage` : "not configured (Groq default)" }));
+server.listen(config.PORT, () => {
+  const mail = validateMailConfig(config);
+  const emailSummary = mail.state === "ready"
+    ? `resend (${mail.recipients.length} recipient${mail.recipients.length === 1 ? "" : "s"}, from ${mail.from}, notifyAll=${mail.notifyAllIncidents})`
+    : mail.state === "misconfigured"
+      ? `MISCONFIGURED (${mail.errors.map(e => e.code).join(", ")})`
+      : "not configured";
+
+  log("info", "agent_core_listening", {
+    port: config.PORT,
+    mode: config.AGENT_MODE,
+    connector: config.CONNECTOR_URL,
+    codebase: config.CODEBASE_PATH || "(none)",
+    llm: config.AGENT_MODE === "live" && config.GROQ_API_KEY ? config.GROQ_MODEL : "heuristic",
+    liquid: config.LIQUID_API_KEY && config.LIQUID_ENABLED !== false ? `${config.LIQUID_MODEL} triage` : "not configured (Groq default)",
+    email: emailSummary
+  });
+
+  if (mail.state === "misconfigured") {
+    log("warn", "email_alerts_misconfigured", {
+      errors: mail.errors.map(e => ({ code: e.code, field: e.field, message: e.message, hint: e.hint }))
+    });
+  }
+});
 
 function shutdown(signal) {
   log("info", "agent_core_shutdown", { signal });

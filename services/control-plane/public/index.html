@@ -1167,6 +1167,51 @@ legend {
           <div class="ai-test-result" id="ai-test-result"></div>
         </fieldset>
       </form>
+
+      <!-- ─── Notifications: Resend.com fault email alerts ─────────────── -->
+      <form id="mail-form" autocomplete="off" style="padding:0 44px 64px;max-width:1140px;">
+        <fieldset>
+          <legend>Notifications · Resend Fault Emails</legend>
+          <div class="ai-status-line" id="mail-status-line">checking email alert configuration…</div>
+          <div class="field-row equal">
+            <div class="field">
+              <label for="mail-api-key">RESEND_API_KEY</label>
+              <input id="mail-api-key" type="password" placeholder="(unchanged)">
+              <div class="hint" id="hint-mail-key">get a sending-only or full key at resend.com/api-keys</div>
+            </div>
+            <div class="field">
+              <label for="mail-recipients">DEVELOPER_EMAIL</label>
+              <input id="mail-recipients" type="text" placeholder="dev@example.com, ops@example.com">
+              <div class="hint" id="hint-mail-recipients">single address or comma-separated recipient list</div>
+            </div>
+          </div>
+          <div class="field-row equal" style="margin-top:16px;">
+            <div class="field">
+              <label for="mail-from">RESEND_FROM_EMAIL</label>
+              <input id="mail-from" type="text" placeholder="onboarding@resend.dev">
+              <div class="hint" id="hint-mail-from">onboarding@resend.dev delivers only to your Resend account email</div>
+            </div>
+            <div class="field">
+              <label for="mail-last-delivery">LAST DELIVERY</label>
+              <div class="hint" id="mail-last-delivery" style="padding-top:12px;">no email attempts yet</div>
+            </div>
+          </div>
+          <div class="opt-row">
+            <div class="opt-label">
+              <span class="key">RESEND_NOTIFY_ALL_INCIDENTS</span>
+              <span class="desc">email on every detected fault (off = escalations only)</span>
+            </div>
+            <button type="button" class="toggle" id="mail-notify-all" role="switch" aria-checked="true" aria-label="Notify on all incidents"></button>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary" id="mail-save">Save email settings</button>
+            <button type="button" class="btn-ghost" id="mail-verify">Verify token &amp; config</button>
+            <button type="button" class="btn-ghost" id="mail-test">Send test email</button>
+            <span class="save-status" id="mail-save-status"></span>
+          </div>
+          <div class="ai-test-result" id="mail-action-result"></div>
+        </fieldset>
+      </form>
     </section>
 
     <!-- ─── ABOUT ─────────────────────────────────────────── -->
@@ -1588,17 +1633,26 @@ function renderIncident(record) {
           </li>`).join('')
       : '<li class="agent-muted">no suggested fixes</li>';
 
+    const renderNotification = n => {
+      if (!n) return '';
+      const email = n.email;
+      const summaryLine = `<div class="agent-muted">notification: ${escapeHtml(n.channel || 'log')} · ${n.sent ? 'sent' : 'failed'}${n.reason ? ` · ${escapeHtml(n.reason)}` : ''}${email?.id ? ` · Resend id <code>${escapeHtml(email.id)}</code>` : ''}</div>`;
+      if (email && !email.sent && email.code !== 'not_configured') {
+        return summaryLine + `<div class="card-warn"><span class="route-chip route-fallback">EMAIL FAILED · ${escapeHtml(email.code || 'error')}</span> ${escapeHtml(email.error || email.reason || 'Email delivery failed')}${email.hint ? `<div class="warn-detail">${escapeHtml(email.hint)}</div>` : ''}</div>`;
+      }
+      return summaryLine;
+    };
+
     const escalation = a.escalate
       ? `<div class="agent-section">
           <div class="agent-section-head">Escalation</div>
           <p class="agent-escalate">${escapeHtml(a.escalationReason || 'escalated to engineer')}</p>
-          ${record.notification
-            ? `<div class="agent-muted">notification: ${escapeHtml(record.notification.channel || 'log')} · ${record.notification.sent ? 'sent' : 'failed'}${record.notification.reason ? ` · ${escapeHtml(record.notification.reason)}` : ''}</div>`
-            : ''}
+          ${renderNotification(record.notification)}
         </div>`
       : `<div class="agent-section">
           <div class="agent-section-head">Escalation</div>
           <div class="agent-muted">not escalated</div>
+          ${renderNotification(record.notification)}
         </div>`;
 
     body = `
@@ -2237,6 +2291,156 @@ document.getElementById('git-feed-agent-btn')?.addEventListener('click', async (
 });
 document.querySelector('[data-tab="git"]')?.addEventListener('click', loadGitStatus);
 
+/* ─── Fault Email Notifications (Resend.com) ─────────────── */
+function mailStatusMsg(text, kind) {
+  const el = $('mail-save-status');
+  if (!el) return;
+  el.textContent = text;
+  el.className = 'save-status' + (kind ? ' ' + kind : '');
+}
+
+function renderMailStatus(n) {
+  const line = $('mail-status-line');
+  if (!line || !n) return;
+
+  if (n.state === 'ready') {
+    line.className = n.isSandboxFrom ? 'ai-status-line warn' : 'ai-status-line';
+    line.textContent = `Resend ready · key ${n.apiKeyHint || 'set'} · from ${n.from} → ${(n.recipients || []).join(', ')}${n.isSandboxFrom ? ' (sandbox sender)' : ''}`;
+  } else if (n.state === 'misconfigured') {
+    line.className = 'ai-status-line bad';
+    const first = (n.errors || [])[0];
+    line.textContent = `Email alerts misconfigured (${first?.code || 'error'}): ${first?.message || 'check configuration'}${first?.hint ? ' — ' + first.hint : ''}`;
+  } else {
+    line.className = 'ai-status-line warn';
+    line.textContent = 'Email alerts not configured — set RESEND_API_KEY and DEVELOPER_EMAIL below (or in .env) to enable fault emails.';
+  }
+
+  $('mail-recipients').value = (n.recipients || []).join(', ');
+  $('mail-from').value = n.from || 'onboarding@resend.dev';
+  $('mail-notify-all').setAttribute('aria-checked', String(n.notifyAllIncidents !== false));
+  $('hint-mail-key').textContent = n.hasApiKey
+    ? `key stored (${n.apiKeyHint || 'redacted'}) — leave blank to keep`
+    : 'no API key stored · get one at resend.com/api-keys';
+
+  const lastEl = $('mail-last-delivery');
+  const last = n.lastEmailAttempt;
+  if (!last) {
+    lastEl.textContent = `no email attempts yet (sent: ${n.stats?.sent || 0}, failed: ${n.stats?.failed || 0})`;
+    lastEl.className = 'hint';
+  } else if (last.sent) {
+    lastEl.textContent = `✓ sent ${new Date(last.at).toLocaleTimeString()} · id ${last.id || 'n/a'} · ${last.latencyMs ?? 0}ms (total sent: ${n.stats?.sent || 0}, failed: ${n.stats?.failed || 0})`;
+    lastEl.className = 'hint';
+  } else {
+    lastEl.textContent = `✗ failed ${new Date(last.at).toLocaleTimeString()} · ${last.code || 'error'}: ${last.error || 'delivery error'}`;
+    lastEl.className = 'hint error';
+  }
+}
+
+async function loadMailStatus() {
+  try {
+    const r = await api('/api/notifications/status');
+    if (r.unreachable) {
+      $('mail-status-line').className = 'ai-status-line bad';
+      $('mail-status-line').textContent = `agent-core unreachable — cannot read email settings (${r.error || 'unknown error'})`;
+      return;
+    }
+    renderMailStatus(r.notifications);
+  } catch (e) {
+    $('mail-status-line').className = 'ai-status-line bad';
+    $('mail-status-line').textContent = 'failed to load email settings — ' + e.message;
+  }
+}
+
+$('mail-notify-all')?.addEventListener('click', () => {
+  const on = $('mail-notify-all').getAttribute('aria-checked') === 'true';
+  $('mail-notify-all').setAttribute('aria-checked', String(!on));
+});
+
+function buildMailProbePayload() {
+  const payload = {};
+  const key = $('mail-api-key').value.trim();
+  const to = $('mail-recipients').value.trim();
+  const from = $('mail-from').value.trim();
+  if (key) payload.resendApiKey = key;
+  if (to) payload.developerEmail = to;
+  if (from) payload.fromEmail = from;
+  return payload;
+}
+
+$('mail-form')?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('mail-save');
+  btn.disabled = true;
+  mailStatusMsg('saving…');
+  const payload = {
+    developerEmail: $('mail-recipients').value.trim(),
+    fromEmail: $('mail-from').value.trim(),
+    notifyAllIncidents: $('mail-notify-all').getAttribute('aria-checked') === 'true'
+  };
+  const key = $('mail-api-key').value.trim();
+  if (key) payload.resendApiKey = key;
+  try {
+    const r = await api('/api/notifications/config', payload);
+    $('mail-api-key').value = '';
+    renderMailStatus(r.notifications);
+    mailStatusMsg('saved ✓', 'ok');
+  } catch (err) {
+    mailStatusMsg('save failed: ' + err.message, 'bad');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$('mail-verify')?.addEventListener('click', async () => {
+  const btn = $('mail-verify');
+  const out = $('mail-action-result');
+  btn.disabled = true;
+  mailStatusMsg('verifying Resend token & config…');
+  try {
+    const r = await api('/api/notifications/verify', buildMailProbePayload());
+    const v = r.verification || {};
+    if (v.ok) {
+      const warnHtml = (v.warnings || []).length
+        ? `<div class="warn-detail">${v.warnings.map(w => escapeHtml(w.message)).join(' · ')}</div>`
+        : '';
+      out.innerHTML = `<div class="ai-status-line"><strong>✓ Verified (${escapeHtml(v.keyAccess || 'ok')})</strong> · ${escapeHtml(v.message || 'Resend configuration is valid')} (${v.latencyMs ?? 0}ms)${warnHtml}</div>`;
+      mailStatusMsg('verified ✓', 'ok');
+    } else {
+      out.innerHTML = `<div class="card-warn"><span class="route-chip route-fallback">${escapeHtml(v.code || 'verify_failed')}</span> ${escapeHtml(v.error || 'Verification failed')}${v.hint ? `<div class="warn-detail">${escapeHtml(v.hint)}</div>` : ''}</div>`;
+      mailStatusMsg('verification failed', 'bad');
+    }
+  } catch (err) {
+    out.innerHTML = `<div class="card-warn">${escapeHtml(err.message)}</div>`;
+    mailStatusMsg('verify error', 'bad');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$('mail-test')?.addEventListener('click', async () => {
+  const btn = $('mail-test');
+  const out = $('mail-action-result');
+  btn.disabled = true;
+  mailStatusMsg('sending test email…');
+  try {
+    const r = await api('/api/notifications/test', buildMailProbePayload());
+    const res = r.result || {};
+    if (res.sent) {
+      out.innerHTML = `<div class="ai-status-line"><strong>✓ Test email sent</strong> · Resend ID <code>${escapeHtml(res.id || 'n/a')}</code> · to ${escapeHtml((res.to || []).join(', '))} (${res.attempts || 1} attempt, ${res.latencyMs ?? 0}ms)</div>`;
+      mailStatusMsg('test email sent ✓', 'ok');
+    } else {
+      out.innerHTML = `<div class="card-warn"><span class="route-chip route-fallback">${escapeHtml(res.code || 'send_failed')}</span> ${escapeHtml(res.error || res.reason || 'Test email failed')}${res.hint ? `<div class="warn-detail">${escapeHtml(res.hint)}</div>` : ''}</div>`;
+      mailStatusMsg('test email failed', 'bad');
+    }
+    loadMailStatus();
+  } catch (err) {
+    out.innerHTML = `<div class="card-warn">${escapeHtml(err.message)}</div>`;
+    mailStatusMsg('test error', 'bad');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
 /* ─── boot ────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
   loadState();
@@ -2245,6 +2449,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   fetchIncidents();      // ← new
   restartAgentFeed(8000); // ← new
   loadAiConfig();        // Liquid router + Groq prompt settings
+  loadMailStatus();      // Resend fault email status & settings
   setInterval(() => refreshHealth().catch(() => {}), 30000);
 });
 </script>
