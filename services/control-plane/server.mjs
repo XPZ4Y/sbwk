@@ -7,8 +7,10 @@ import { config } from "./config.mjs";
 import * as store from "./store.mjs";
 import { checkReachability, fetchGitHubRepo } from "./checks.mjs";
 import { applyGateway, applyExternal, applyCodebase, applySafety, applyMonitoring, serviceHealth } from "./apply.mjs";
+import { initAuth, verifyPassword, createSession, destroySession, sessionFromRequest, sessionCookie, clearCookie } from "./auth.mjs";
 
 store.load();
+initAuth();
 
 const log = (level, event, fields = {}) => console.log(JSON.stringify({ level, event, service: "control-plane", timestamp: new Date().toISOString(), ...fields }));
 function sendJson(res, status, obj) { res.writeHead(status, { "Content-Type": "application/json" }); res.end(JSON.stringify(obj)); }
@@ -25,11 +27,74 @@ function readJson(req, limit = 65536) {
 }
 
 const indexHtml = fs.readFileSync(new URL("./public/index.html", import.meta.url), "utf8");
+const loginHtml = fs.readFileSync(new URL("./public/login.html", import.meta.url), "utf8");
+
+// --- login rate limit (per-IP, fixed window) -------------------------------
+const LOGIN_WINDOW_MS = 60_000;
+const LOGIN_MAX_FAILURES = 5;
+const loginFailures = new Map(); // ip -> { count, resetAt }
+function clientIp(req) { return req.socket.remoteAddress || "unknown"; }
+function loginLimited(ip) {
+  const entry = loginFailures.get(ip);
+  if (!entry) return false;
+  if (entry.resetAt < Date.now()) { loginFailures.delete(ip); return false; }
+  return entry.count >= LOGIN_MAX_FAILURES;
+}
+function recordLoginFailure(ip) {
+  const now = Date.now();
+  const entry = loginFailures.get(ip);
+  if (!entry || entry.resetAt < now) loginFailures.set(ip, { count: 1, resetAt: now + LOGIN_WINDOW_MS });
+  else entry.count += 1;
+}
+function clearLoginFailures(ip) { loginFailures.delete(ip); }
 
 const server = http.createServer(async (req, res) => {
   const url = new URL(req.url, "http://localhost");
   const p = url.pathname;
   try {
+    // ---- public routes ---------------------------------------------------
+    if (p === "/login" && req.method === "GET") {
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      return res.end(loginHtml);
+    }
+    if (p === "/api/login" && req.method === "POST") {
+      const ip = clientIp(req);
+      if (loginLimited(ip)) {
+        log("warn", "login_rate_limited", { ip });
+        return fail(res, 429, "too many attempts, try again in a minute");
+      }
+      const body = await readJson(req);
+      // small constant delay regardless of outcome to blunt timing-based enumeration
+      await new Promise(r => setTimeout(r, 150));
+      if (!verifyPassword(body.password)) {
+        recordLoginFailure(ip);
+        log("warn", "login_failed", { ip });
+        return fail(res, 401, "invalid password");
+      }
+      clearLoginFailures(ip);
+      const token = createSession();
+      const secure = req.socket.encrypted || config.NODE_ENV === "production";
+      res.writeHead(200, { "Content-Type": "application/json", "Set-Cookie": sessionCookie(token, { secure }) });
+      return res.end(JSON.stringify({ success: true }));
+    }
+    if (p === "/api/logout" && req.method === "POST") {
+      const s = sessionFromRequest(req);
+      if (s) destroySession(s.token);
+      res.writeHead(200, { "Content-Type": "application/json", "Set-Cookie": clearCookie() });
+      return res.end(JSON.stringify({ success: true }));
+    }
+    if (p === "/health" && req.method === "GET") {
+      return ok(res, { status: "up" });
+    }
+
+    // ---- everything else requires a session -----------------------------
+    const session = sessionFromRequest(req);
+    if (!session) {
+      if (p.startsWith("/api/")) return fail(res, 401, "authentication required");
+      res.writeHead(302, { Location: "/login" });
+      return res.end();
+    }
+
     if (req.method === "GET" && (p === "/" || p === "/index.html")) {
       res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
       return res.end(indexHtml);
@@ -52,26 +117,55 @@ const server = http.createServer(async (req, res) => {
     if (p === "/api/gateway/check" && req.method === "POST") {
       const target = store.get().gateway.targetUrl;
       const check = await checkReachability(target);
-      store.patch("gateway", { lastCheck: { ...check, at: new Date().toISOString() } });
-      return ok(res, { check });
+      // Label honestly: this probes the target from the control plane's network,
+      // not from (or through) the edge container.
+      const enriched = {
+        ...check,
+        probe: "target-server",
+        note: "Probed the target URL from this control plane's network. Does not verify the edge container is routing traffic.",
+        at: new Date().toISOString(),
+      };
+      store.patch("gateway", { lastCheck: enriched });
+      return ok(res, { check: enriched });
     }
 
     // STEP 02 — External access
     if (p === "/api/external" && req.method === "POST") {
       const body = await readJson(req);
-      store.patch("external", { authEndpoint: body.authEndpoint || "", databaseEndpoint: body.databaseEndpoint || "", ...(typeof body.apiKey === "string" && body.apiKey ? { apiKey: body.apiKey } : {}) });
+      store.patch("external", {
+        authEndpoint: body.authEndpoint || "",
+        databaseEndpoint: body.databaseEndpoint || "",
+        ...(typeof body.apiKey === "string" && body.apiKey ? { apiKey: body.apiKey } : {}),
+      });
       return ok(res, { external: store.redacted().external });
     }
     if (p === "/api/external/test" && req.method === "POST") {
       const ext = store.get().external;
       const [auth, database] = await Promise.all([
-        ext.authEndpoint ? checkReachability(ext.authEndpoint, { token: ext.apiKey }) : { ok: false, error: "not configured" },
-        ext.databaseEndpoint ? checkReachability(ext.databaseEndpoint) : { ok: false, error: "not configured" }
+        ext.authEndpoint ? checkReachability(ext.authEndpoint, { token: ext.apiKey }) : { ok: false, reachable: false, error: "not configured" },
+        ext.databaseEndpoint ? checkReachability(ext.databaseEndpoint) : { ok: false, reachable: false, error: "not configured" },
       ]);
       const reachable = [auth, database].filter(r => r.reachable).length;
-      store.patch("external", { lastTest: { auth, database, reachable, at: new Date().toISOString() } });
+
+      const warnings = [];
+      if (database.reachable && database.method === "dns") {
+        warnings.push(`${new URL(ext.databaseEndpoint).protocol} endpoint is DNS-reachable only; connector does not monitor it.`);
+      }
+      if (auth.reachable && auth.method === "http") {
+        warnings.push("Auth check accepts any HTTP response (including 401/403); a wrong key can still show reachable.");
+      }
+
+      store.patch("external", { lastTest: { auth, database, reachable, warnings, at: new Date().toISOString() } });
       const apply = await applyExternal(store.get());
-      return ok(res, { auth, database, reachable, total: 2, apply });
+      return ok(res, {
+        auth,
+        database,
+        reachable,
+        total: 2,
+        warnings,
+        connectorApplied: !apply?.skipped,
+        apply,
+      });
     }
 
     // STEP 03 — Codebase link (Non-compulsory: empty repoUrl clears/skips Git integration)
@@ -86,10 +180,22 @@ const server = http.createServer(async (req, res) => {
       let repo;
       try { repo = await fetchGitHubRepo(body.repoUrl, body.token); }
       catch (e) { return fail(res, 400, e.message); }
-      store.patch("codebase", { repoUrl: repo.repoUrl, fullName: repo.fullName, commits: repo.commits, connectedAt: new Date().toISOString(), ...(body.token ? { token: body.token } : {}) });
+      // If no new token supplied, clear the old one — prevents a public repo link
+      // from silently reusing a previously stored token.
+      const tokenPatch = body.token ? { token: body.token } : { token: "" };
+      store.patch("codebase", {
+        repoUrl: repo.repoUrl,
+        fullName: repo.fullName,
+        commits: repo.commits,
+        connectedAt: new Date().toISOString(),
+        ...tokenPatch,
+      });
       const apply = await applyCodebase(store.get());
-      log("info", "codebase_linked", { fullName: repo.fullName, commits: repo.commits.length, apply });
-      return ok(res, { codebase: { fullName: repo.fullName, repoUrl: repo.repoUrl, defaultBranch: repo.defaultBranch, commits: repo.commits }, apply });
+      log("info", "codebase_linked", { fullName: repo.fullName, commits: repo.commits.length, tokenRotated: Boolean(body.token), apply });
+      return ok(res, {
+        codebase: { fullName: repo.fullName, repoUrl: repo.repoUrl, defaultBranch: repo.defaultBranch, commits: repo.commits },
+        apply,
+      });
     }
 
     // STEP 04 — Safety limits
@@ -98,9 +204,14 @@ const server = http.createServer(async (req, res) => {
       const patch = {};
       if (typeof body.dryRun === "boolean") patch.dryRun = body.dryRun;
       if (typeof body.autoRollback === "boolean") patch.autoRollback = body.autoRollback;
-      if (typeof body.escalationThreshold === "number" && body.escalationThreshold >= 0 && body.escalationThreshold <= 1) patch.escalationThreshold = body.escalationThreshold;
+      if (body.escalationThreshold !== undefined) {
+        const n = Number(body.escalationThreshold);
+        if (!Number.isFinite(n) || n < 0 || n > 1) return fail(res, 400, "escalationThreshold must be a number in [0,1]");
+        patch.escalationThreshold = n;
+      }
       store.patch("safety", patch);
       const apply = await applySafety(store.get());
+      log("info", "safety_updated", { patch, apply });
       return ok(res, { safety: store.get().safety, apply });
     }
 
@@ -125,12 +236,15 @@ const server = http.createServer(async (req, res) => {
       try {
         const r = await fetch(`${config.MIDDLEWARE_URL}/_sbwk/logs?limit=${limit}`, {
           headers: { Authorization: `Bearer ${config.MIDDLEWARE_ADMIN_TOKEN}` },
-          signal: controller.signal
+          signal: controller.signal,
         });
+        if (!r.ok) {
+          return ok(res, { logs: [], unreachable: true, error: `middleware HTTP ${r.status}` });
+        }
         const data = await r.json();
         return ok(res, { logs: data.logs || [] });
-      } catch {
-        return ok(res, { logs: [] });
+      } catch (e) {
+        return ok(res, { logs: [], unreachable: true, error: e.name === "AbortError" ? "timeout" : "unreachable" });
       } finally { clearTimeout(t); }
     }
     if (p === "/api/logs" && req.method === "DELETE") {
@@ -140,11 +254,11 @@ const server = http.createServer(async (req, res) => {
         await fetch(`${config.MIDDLEWARE_URL}/_sbwk/logs`, {
           method: "DELETE",
           headers: { Authorization: `Bearer ${config.MIDDLEWARE_ADMIN_TOKEN}` },
-          signal: controller.signal
+          signal: controller.signal,
         });
         return ok(res, { logs: [] });
-      } catch {
-        return ok(res, { logs: [] });
+      } catch (e) {
+        return ok(res, { logs: [], unreachable: true, error: e.name === "AbortError" ? "timeout" : "unreachable" });
       } finally { clearTimeout(t); }
     }
 
@@ -154,11 +268,18 @@ const server = http.createServer(async (req, res) => {
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), config.REQUEST_TIMEOUT_MS);
       try {
-        const r = await fetch(`${config.AGENT_CORE_URL}/incidents?limit=${limit}`, { headers: { Authorization: `Bearer ${config.AGENT_CORE_TOKEN}` }, signal: controller.signal });
+        const r = await fetch(`${config.AGENT_CORE_URL}/incidents?limit=${limit}`, {
+          headers: { Authorization: `Bearer ${config.AGENT_CORE_TOKEN}` },
+          signal: controller.signal,
+        });
+        if (!r.ok) {
+          return ok(res, { incidents: [], context: {}, unreachable: true, error: `agent-core HTTP ${r.status}` });
+        }
         const data = await r.json();
         return ok(res, { incidents: data.incidents || [], context: data.context || {} });
-      } catch { return ok(res, { incidents: [], context: {} }); }
-      finally { clearTimeout(t); }
+      } catch (e) {
+        return ok(res, { incidents: [], context: {}, unreachable: true, error: e.name === "AbortError" ? "timeout" : "unreachable" });
+      } finally { clearTimeout(t); }
     }
 
     return fail(res, 404, "Not found");

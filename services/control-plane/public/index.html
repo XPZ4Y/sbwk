@@ -23,18 +23,23 @@ a{color:inherit;text-decoration:none}
 .moon{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 70% 30%,transparent 52%,var(--ice) 54%);box-shadow:0 0 18px rgba(20,33,61,.35);transform:rotate(-20deg)}
 .steps{list-style:none;padding:0;margin:0;position:relative}
 .steps::before{content:"";position:absolute;left:11px;top:14px;bottom:14px;width:1px;background:var(--line)}
-.steps a{display:flex;align-items:center;gap:14px;padding:9px 0;color:var(--mu);cursor:pointer;position:relative;transition:color .2s}
+.steps button{display:flex;align-items:center;gap:14px;padding:9px 0;color:var(--mu);cursor:pointer;position:relative;transition:color .2s;background:none;border:0;font:inherit;width:100%;text-align:left}
 .steps i{width:23px;height:23px;border-radius:50%;background:var(--bg);border:1px solid var(--line);display:grid;place-items:center;font:500 10px var(--mono);font-style:normal;flex:none;transition:.2s}
-.steps a:hover{color:var(--tx)}
-.steps a.is-active{color:var(--tx)}
-.steps a.is-active i{border-color:var(--ice);color:var(--bg);background:var(--ice);box-shadow:0 0 14px rgba(20,33,61,.35)}
+.steps button:hover{color:var(--tx)}
+.steps button.is-active{color:var(--tx)}
+.steps button.is-active i{border-color:var(--ice);color:var(--bg);background:var(--ice);box-shadow:0 0 14px rgba(20,33,61,.35)}
+.steps .dot{width:6px;height:6px;border-radius:50%;background:var(--line);margin-left:auto;flex:none}
+.steps .dot.ok{background:var(--ok)}.steps .dot.bad{background:var(--bad)}.steps .dot.warn{background:var(--wake)}
 .live{display:flex;align-items:center;gap:8px;color:var(--mu);font-size:12px}
-.pulse{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(31,138,112,.45);animation:p 2.4s infinite}
+.live .sep{flex:1}
+.signout{color:var(--mu);font-size:11px}.signout:hover{color:var(--tx)}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(31,138,112,.45);animation:p 2.4s infinite;flex:none}
+.pulse.degraded{background:var(--wake);box-shadow:0 0 0 0 rgba(183,121,31,.45)}
+.pulse.down{background:var(--bad);box-shadow:0 0 0 0 rgba(194,65,12,.45)}
 @keyframes p{70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
 main{position:relative;z-index:1;margin-left:260px;padding:0 clamp(20px,5vw,72px)}
 .wrap{max-width:860px;margin:0 auto}
 .mbar{display:none}
-/* hero */
 #top{padding:96px 0 72px}
 .tag{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:5px 14px;font-size:12px;color:var(--mu);margin-bottom:28px}
 h1{font:700 clamp(44px,8vw,92px)/.95 var(--head);letter-spacing:-.04em;margin-bottom:24px}
@@ -51,7 +56,7 @@ h1 span{display:block;color:transparent;-webkit-text-stroke:1px var(--ice)}
 .term pre div:nth-child(1){animation-delay:.3s}.term pre div:nth-child(2){animation-delay:1s}.term pre div:nth-child(3){animation-delay:1.7s}.term pre div:nth-child(4){animation-delay:2.4s}.term pre div:nth-child(5){animation-delay:3.1s}
 @keyframes in{to{opacity:1}}
 .t-ok{color:var(--ok)}.t-bad{color:var(--bad)}.t-wake{color:var(--wake)}.t-ice{color:var(--ice)}
-/* buttons + fields */
+.demo-note{font-size:11px;color:var(--mu);margin-top:8px;font-family:var(--mono)}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 22px;border-radius:8px;border:1px solid var(--ice);background:var(--ice);color:var(--bg);font:700 14px var(--sans);cursor:pointer;transition:.2s}
 .btn:hover{box-shadow:0 0 24px rgba(20,33,61,.3);transform:translateY(-1px)}
 .btn-ghost{background:transparent;color:var(--tx);border-color:var(--line)}
@@ -62,7 +67,9 @@ label{display:block;font-size:12px;color:var(--mu);margin-bottom:8px}
 .field{width:100%;padding:13px 16px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--tx);font:500 15px var(--sans);transition:.2s}
 .field::placeholder{color:#a3abc4;font-weight:400}
 .field:focus{outline:none;border-color:var(--ice);box-shadow:0 0 0 3px rgba(20,33,61,.12)}
-/* sections */
+.field-inline{display:flex;gap:8px;align-items:center}
+.field-inline .field{flex:1}
+.field-suffix{font:500 13px var(--mono);color:var(--mu)}
 h2{font:700 clamp(28px,4.5vw,44px)/1.05 var(--head);letter-spacing:-.03em;margin-bottom:28px}
 .kicker{color:var(--ice);font-size:12px;margin-bottom:14px}
 #how{padding:48px 0 96px}
@@ -84,6 +91,7 @@ body.is-wizard .wizard-step.is-current{display:block;animation:in .35s both}
 .stat{margin-top:24px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--mu)}
 .badge{display:inline-block;font-size:11px;padding:2px 10px;border-radius:99px;border:1px solid var(--line);margin-bottom:10px;color:var(--mu)}
 .ok{color:var(--ok)!important}
+.warn{color:var(--wake)!important}
 .progress{padding:48px 0 0;margin-bottom:-32px}
 .progress .top{display:flex;justify-content:space-between;font-size:12px;color:var(--mu);margin-bottom:10px}
 .track{height:3px;background:var(--line);border-radius:3px;overflow:hidden}
@@ -91,7 +99,6 @@ body.is-wizard .wizard-step.is-current{display:block;animation:in .35s both}
 .dim{font-size:12px;color:var(--mu)}
 .commit{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:10px 14px;font-size:12px;margin-top:8px}
 .commit small{display:block;color:var(--mu);font-size:11px}
-/* toggles */
 .opt{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;padding:22px 0;border-bottom:1px solid var(--line)}
 .opt:first-child{padding-top:0}
 .opt b{display:block;font:700 16px var(--head);margin-bottom:4px}
@@ -100,7 +107,15 @@ body.is-wizard .wizard-step.is-current{display:block;animation:in .35s both}
 .toggle .knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--mu);transition:.2s}
 .toggle[aria-checked="true"]{border-color:var(--ok);background:rgba(31,138,112,.12)}
 .toggle[aria-checked="true"] .knob{transform:translateX(24px);background:var(--ok);box-shadow:0 0 12px rgba(31,138,112,.45)}
-/* final */
+.threshold{display:flex;align-items:center;gap:10px;flex:none}
+.threshold input{width:88px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);font:500 14px var(--mono);color:var(--tx);text-align:right}
+.threshold input:focus{outline:none;border-color:var(--ice);box-shadow:0 0 0 3px rgba(20,33,61,.12)}
+.threshold span{font:500 13px var(--mono);color:var(--mu)}
+.override{margin-top:16px;padding:14px 16px;border:1px dashed var(--wake);border-radius:10px;background:rgba(183,121,31,.06);display:none}
+.override.show{display:block}
+.override label{color:var(--wake);margin-bottom:6px}
+.override .row{gap:8px;margin-top:8px}
+.override .field{padding:9px 12px;font-size:13px}
 .final{margin-top:40px;background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--ice);border-radius:12px;padding:clamp(24px,4vw,40px);box-shadow:0 0 60px -20px rgba(20,33,61,.25)}
 .final h3{font:700 28px var(--head);letter-spacing:-.02em;margin-bottom:8px}
 .final p{color:var(--mu);max-width:420px;margin-bottom:24px}
@@ -119,10 +134,10 @@ footer{padding:48px 0;border-top:1px solid var(--line);color:var(--mu);font-size
 .rail{display:none}main{margin-left:0}
 .mbar{display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:6;margin:0 calc(-1*clamp(20px,5vw,72px));padding:14px clamp(20px,5vw,72px);background:rgba(244,245,249,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
 #top{padding-top:56px}
+.mbar .brand{pointer-events:none}
 }
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.term pre div{opacity:1}}
 
-/* navy refresh */
 h1{letter-spacing:-.045em;font-weight:700}
 h2{letter-spacing:-.035em}
 .panel,.card,.final,.inc,.term{border-radius:18px}
@@ -131,7 +146,7 @@ h2{letter-spacing:-.035em}
 .btn-ghost{background:#fff}
 .field{border-radius:10px;background:#f9fafc}
 .kicker{font-family:var(--mono);font-size:12px;letter-spacing:.02em}
-.status-mono,#status-gateway,#status-test,#status-repo,#status-monitor{font-family:var(--mono);font-size:12.5px}
+.status-mono,#status-gateway,#status-test,#status-repo,#status-monitor{font-family:var(--mono);font-size:12.5px;white-space:pre-wrap}
 .term{background:#0f1a33;border-color:#1c2d57;box-shadow:0 40px 80px -40px rgba(20,33,61,.7)}
 .term-h{background:#16224a;border-color:#1c2d57}
 .term-h b{background:rgba(255,255,255,.22)}
@@ -156,20 +171,27 @@ h2{letter-spacing:-.035em}
 
 <aside class="rail">
   <div>
-    <a href="#top" class="brand"><span class="moon"></span>Sleepy Bot</a>
+    <a href="#top" class="brand" id="brand-side"><span class="moon"></span>Sleepy Bot</a>
     <p class="dim" style="margin:10px 0 44px">Developer onboarding</p>
     <ol class="steps" id="sidebarNav">
-      <li><a class="nav-link"><i>1</i>Gateway</a></li>
-      <li><a class="nav-link"><i>2</i>External access</a></li>
-      <li><a class="nav-link"><i>3</i>Codebase</a></li>
-      <li><a class="nav-link"><i>4</i>Safety limits</a></li>
+      <li><button type="button" class="nav-link" data-step="1"><i>1</i>Gateway<span class="dot" data-dot="1"></span></button></li>
+      <li><button type="button" class="nav-link" data-step="2"><i>2</i>External access<span class="dot" data-dot="2"></span></button></li>
+      <li><button type="button" class="nav-link" data-step="3"><i>3</i>Codebase<span class="dot" data-dot="3"></span></button></li>
+      <li><button type="button" class="nav-link" data-step="4"><i>4</i>Safety limits<span class="dot" data-dot="4"></span></button></li>
     </ol>
   </div>
-  <div class="live"><span class="pulse"></span>Agent ready · v0.1</div>
+  <div class="live">
+    <span class="pulse" id="live-pulse"></span><span id="live-label">Checking services…</span>
+    <span class="sep"></span>
+    <a href="#" id="logout" class="signout">Sign out</a>
+  </div>
 </aside>
 
 <main>
-<div class="mbar"><a href="#top" class="brand"><span class="moon"></span>Sleepy Bot</a><span class="live"><span class="pulse"></span>ready</span></div>
+<div class="mbar">
+  <span class="brand"><span class="moon"></span>Sleepy Bot</span>
+  <span class="live"><span class="pulse" id="live-pulse-m"></span><span id="live-label-m">ready</span></span>
+</div>
 <div class="wrap">
 
   <div id="wizardProgress" class="progress" hidden aria-live="polite">
@@ -187,9 +209,10 @@ h2{letter-spacing:-.035em}
       <a href="#how" class="link">How it works</a>
     </div>
     <div class="term" aria-hidden="true">
-      <div class="term-h"><b></b><b></b><b></b><span>sleepy-bot · edge</span></div>
+      <div class="term-h"><b></b><b></b><b></b><span>sleepy-bot · edge · demo</span></div>
 <pre><div><span class="t-ice">GET</span> /api/checkout <span class="t-bad">→ 500</span> (2140ms)</div><div>detector  anomaly flagged, dispatching agent</div><div>logs      auth <span class="t-ok">ok</span> · db <span class="t-bad">connection pool exhausted</span></div><div>code      commit a41f9c2 lowered pool size 50 → 5</div><div><span class="t-wake">confidence 91%</span>  fix proposed, awaiting approval</div></pre>
     </div>
+    <div class="demo-note">// illustrative transcript, not live output</div>
   </section>
 
   <section id="how">
@@ -210,18 +233,26 @@ h2{letter-spacing:-.035em}
     <p class="copy">Sleepy Bot sits between the client and your server and receives all traffic.</p>
     <p class="copy2">Point your DNS at the Sleepy Bot edge container. Every request passes through the agent first.</p>
     <div class="panel">
-      <form class="stack" onsubmit="return false;">
+      <form class="stack" id="form-gateway">
         <div><label for="gateway-target">Target URL</label><input id="gateway-target" type="text" class="field" placeholder="https://your-production-app.com"></div>
-        <div><label for="gateway-port">Edge port</label><input id="gateway-port" type="number" class="field" placeholder="8080" value="8080"></div>
+        <div><label for="gateway-port">Edge port (stored only — not pushed to middleware)</label><input id="gateway-port" type="number" class="field" placeholder="8080" value="8080"></div>
         <div class="row">
           <button type="button" id="btn-gateway-save" class="btn btn-ghost">Save target</button>
           <button type="button" id="btn-gateway-check" class="btn btn-ghost">Check reachability</button>
-          <button type="button" id="btn-gateway" class="btn" style="margin-left:auto">Next</button>
+          <button type="submit" id="btn-gateway" class="btn" style="margin-left:auto">Next</button>
         </div>
       </form>
       <div class="stat">
         <span id="status-gateway-badge" class="badge">Unchecked</span>
         <div id="status-gateway">&gt; awaiting configuration</div>
+        <div class="dim" style="margin-top:6px">Reachability probes the target URL from this control plane's network. It does not confirm the edge container is routing traffic.</div>
+      </div>
+      <div class="override" id="override-gateway">
+        <label for="override-gateway-reason">Advancing without a passing check. Reason (required):</label>
+        <div class="row">
+          <input id="override-gateway-reason" type="text" class="field" placeholder="e.g. staging edge not yet deployed">
+          <button type="button" class="btn btn-ghost" id="override-gateway-confirm">Override &amp; continue</button>
+        </div>
       </div>
     </div>
   </article>
@@ -233,19 +264,26 @@ h2{letter-spacing:-.035em}
     <p class="copy">The agent needs logs from your authentication and database services.</p>
     <p class="copy2">Provide read-only credentials only. The agent must never have write access.</p>
     <div class="panel">
-      <form class="stack" onsubmit="return false;">
+      <form class="stack" id="form-external">
         <div><label for="auth-endpoint">Auth provider endpoint</label><input id="auth-endpoint" type="text" class="field" placeholder="https://auth.your-app.com/logs"></div>
         <div><label for="api-key">Read-only API key</label><input id="api-key" type="password" class="field" placeholder="••••••••••••••••••••"></div>
         <div><label for="db-endpoint">Database provider endpoint</label><input id="db-endpoint" type="text" class="field" placeholder="mongodb+srv://readonly@cluster.mongodb.net"></div>
         <div class="actions">
-          <button type="button" class="btn btn-ghost" onclick="goToStep(1)">Back</button>
+          <button type="button" class="btn btn-ghost" id="btn-external-back">Back</button>
           <div class="row">
             <button type="button" id="btn-test-save" class="btn btn-ghost">Save</button>
-            <button type="button" id="btn-test" class="btn">Test and continue</button>
+            <button type="submit" id="btn-test" class="btn">Test and continue</button>
           </div>
         </div>
         <span id="status-test" class="dim">// awaiting input</span>
       </form>
+      <div class="override" id="override-external">
+        <label for="override-external-reason">Advancing without passing checks. Reason (required):</label>
+        <div class="row">
+          <input id="override-external-reason" type="text" class="field" placeholder="e.g. auth logs behind VPN, will wire later">
+          <button type="button" class="btn btn-ghost" id="override-external-confirm">Override &amp; continue</button>
+        </div>
+      </div>
     </div>
   </article>
 
@@ -256,14 +294,14 @@ h2{letter-spacing:-.035em}
     <p class="copy">The agent reads your source code to find the root cause.</p>
     <p class="copy2">Connect the repository and it reads the last five commits, then matches them to failing requests. Optional: skip to use local inspection only.</p>
     <div class="panel">
-      <form class="stack" onsubmit="return false;">
+      <form class="stack" id="form-codebase">
         <div><label for="repo-url">Repository URL</label><input id="repo-url" type="text" class="field" placeholder="https://github.com/your-org/your-repo"></div>
         <div><label for="repo-token">Personal access token</label><input id="repo-token" type="password" class="field" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"></div>
         <div class="actions">
-          <button type="button" class="btn btn-ghost" onclick="goToStep(2)">Back</button>
+          <button type="button" class="btn btn-ghost" id="btn-repo-back">Back</button>
           <div class="row">
             <button type="button" id="btn-repo-skip" class="btn btn-ghost">Skip</button>
-            <button type="button" id="btn-repo" class="btn">Link and continue</button>
+            <button type="submit" id="btn-repo" class="btn">Link and continue</button>
           </div>
         </div>
         <span id="status-repo" class="dim">// not connected</span>
@@ -282,10 +320,15 @@ h2{letter-spacing:-.035em}
         <button id="toggle-dryrun" class="toggle" role="switch" aria-checked="true" aria-label="Dry-run mode"><span class="knob"></span></button></div>
       <div class="opt"><div><b>Auto-rollback on failure</b><p>If a fix doesn't clear the error within 60 seconds, the change is reverted.</p></div>
         <button id="toggle-rollback" class="toggle" role="switch" aria-checked="true" aria-label="Auto-rollback on failure"><span class="knob"></span></button></div>
-      <div class="opt" style="border:0;padding-bottom:0"><div><b>Escalation window</b><p>Below 80% confidence, the agent stops and wakes the human engineer.</p></div>
-        <button id="toggle-escalation" class="toggle" role="switch" aria-checked="true" aria-label="Escalation window"><span class="knob"></span></button></div>
+      <div class="opt" style="border:0;padding-bottom:0">
+        <div><b>Escalation threshold</b><p>Below this confidence, the agent stops and wakes the human engineer. Set to 0 to never escalate.</p></div>
+        <div class="threshold">
+          <input id="escalation-threshold" type="number" min="0" max="100" step="1" value="80" aria-label="Escalation threshold percent">
+          <span>%</span>
+        </div>
+      </div>
     </div>
-    <div class="actions" style="margin-top:20px"><button type="button" class="btn btn-ghost" onclick="goToStep(3)">Back</button></div>
+    <div class="actions" style="margin-top:20px"><button type="button" class="btn btn-ghost" id="btn-safety-back">Back</button></div>
 
     <div class="final">
       <div class="kicker">Final step</div>
@@ -305,12 +348,17 @@ h2{letter-spacing:-.035em}
 const $ = id => document.getElementById(id);
 const api = async (path, body) => {
   const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : undefined);
+  if (res.status === 401) { location.href = '/login'; throw new Error('session expired'); }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.success === false) throw new Error(data.error || ('HTTP ' + res.status));
+  if (!res.ok || data.success === false) {
+    const err = new Error(data.error || ('HTTP ' + res.status));
+    err.status = res.status;
+    throw err;
+  }
   return data;
 };
 const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const setStatus = (el, text, ok) => { el.textContent = text; el.classList.toggle('ok', !!ok); };
+const setStatus = (el, text, ok) => { el.textContent = text; el.classList.toggle('ok', !!ok); el.classList.toggle('warn', ok === 'warn'); };
 
 const wizardTitles = ['Network gateway', 'External access', 'Codebase link', 'Safety limits'];
 function goToStep(step) {
@@ -323,12 +371,44 @@ function goToStep(step) {
   const p = step / steps.length * 100;
   $('wizardProgressBar').style.width = p + '%';
   $('wizardProgressBar').parentElement.setAttribute('aria-valuenow', String(Math.round(p)));
-  document.querySelectorAll('#sidebarNav .nav-link').forEach((l, i) => l.classList.toggle('is-active', i === step - 1));
+  document.querySelectorAll('#sidebarNav .nav-link').forEach(b => b.classList.toggle('is-active', Number(b.dataset.step) === step));
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 $('btn-begin').addEventListener('click', () => goToStep(1));
+document.querySelectorAll('#sidebarNav .nav-link').forEach(b => b.addEventListener('click', () => goToStep(Number(b.dataset.step))));
+$('brand-side').addEventListener('click', (e) => { if (document.body.classList.contains('is-wizard')) { e.preventDefault(); document.body.classList.remove('is-wizard'); window.scrollTo({ top: 0 }); } });
+$('logout').addEventListener('click', async (e) => {
+  e.preventDefault();
+  try { await fetch('/api/logout', { method: 'POST' }); } catch { /* ignore */ }
+  location.href = '/login';
+});
 
-/* STEP 1 */
+/* --- live service health ------------------------------------------- */
+async function refreshHealth(services) {
+  if (!services) {
+    try { services = (await api('/api/state')).services; } catch { return; }
+  }
+  const vals = Object.values(services);
+  const bad = vals.filter(v => v !== 'healthy').length;
+  const cls = bad === 0 ? '' : bad === vals.length ? 'down' : 'degraded';
+  const label = bad === 0 ? 'All services healthy' : `${bad}/${vals.length} services degraded`;
+  for (const [pulseId, labelId] of [['live-pulse', 'live-label'], ['live-pulse-m', 'live-label-m']]) {
+    const p = $(pulseId), l = $(labelId);
+    if (p) { p.classList.remove('degraded', 'down'); if (cls) p.classList.add(cls); }
+    if (l) l.textContent = label;
+  }
+}
+
+/* --- step dots ----------------------------------------------------- */
+function setDot(step, status) {
+  const d = document.querySelector(`.dot[data-dot="${step}"]`);
+  if (!d) return;
+  d.classList.remove('ok', 'bad', 'warn');
+  if (status) d.classList.add(status);
+}
+
+/* --- Step 1 -------------------------------------------------------- */
+let gatewayPassed = false;
 async function saveGateway() {
   const targetUrl = $('gateway-target').value.trim(), port = $('gateway-port').value.trim();
   if (!targetUrl) throw new Error('enter a target URL');
@@ -336,9 +416,19 @@ async function saveGateway() {
   return targetUrl;
 }
 const reach = (check) => check.reachable
-  ? `> [OK] EDGE CONNECTED. SERVER REACHABLE (${check.method === 'http' ? 'HTTP ' + check.status : check.method}, ${check.latencyMs}ms)`
-  : `> [FAIL] SERVER UNREACHABLE: ${check.error}`;
+  ? `> [OK] TARGET SERVER REACHABLE from control plane (${check.method === 'http' ? 'HTTP ' + check.status : check.method}, ${check.latencyMs}ms)`
+  : `> [FAIL] TARGET UNREACHABLE: ${check.error}`;
 const badge = c => c.reachable ? `HTTP ${c.status} (${c.latencyMs}ms)` : 'Unreachable';
+
+async function runGatewayCheck() {
+  await saveGateway();
+  const { check } = await api('/api/gateway/check', {});
+  $('status-gateway').textContent = reach(check);
+  setStatus($('status-gateway-badge'), badge(check), check.reachable);
+  gatewayPassed = !!check.reachable;
+  setDot(1, gatewayPassed ? 'ok' : 'bad');
+  return check;
+}
 
 $('btn-gateway-save').addEventListener('click', async () => {
   const btn = $('btn-gateway-save'), s = $('status-gateway');
@@ -348,24 +438,37 @@ $('btn-gateway-save').addEventListener('click', async () => {
   finally { btn.disabled = false; }
 });
 $('btn-gateway-check').addEventListener('click', async () => {
-  const btn = $('btn-gateway-check'), s = $('status-gateway'), b = $('status-gateway-badge');
-  btn.disabled = true; s.textContent = '> checking edge reachability…';
-  try { await saveGateway(); const { check } = await api('/api/gateway/check', {}); s.textContent = reach(check); setStatus(b, badge(check), check.reachable); }
-  catch (e) { s.textContent = '> [ERROR] ' + e.message; setStatus(b, 'Error', false); }
+  const btn = $('btn-gateway-check');
+  btn.disabled = true; $('status-gateway').textContent = '> checking…';
+  try { await runGatewayCheck(); }
+  catch (e) { $('status-gateway').textContent = '> [ERROR] ' + e.message; setStatus($('status-gateway-badge'), 'Error', false); setDot(1, 'bad'); }
   finally { btn.disabled = false; }
 });
-$('btn-gateway').addEventListener('click', async () => {
-  const btn = $('btn-gateway'), s = $('status-gateway'), b = $('status-gateway-badge');
-  btn.disabled = true; s.textContent = '> saving + checking edge…';
-  try { await saveGateway(); const { check } = await api('/api/gateway/check', {}); s.textContent = reach(check); setStatus(b, badge(check), check.reachable); goToStep(2); }
-  catch (e) { s.textContent = '> [ERROR] ' + e.message; }
+$('form-gateway').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('btn-gateway');
+  btn.disabled = true; $('status-gateway').textContent = '> saving + checking…';
+  try {
+    const check = await runGatewayCheck();
+    if (check.reachable) { $('override-gateway').classList.remove('show'); goToStep(2); }
+    else { $('override-gateway').classList.add('show'); }
+  } catch (err) { $('status-gateway').textContent = '> [ERROR] ' + err.message; }
   finally { btn.disabled = false; }
+});
+$('override-gateway-confirm').addEventListener('click', () => {
+  const reason = $('override-gateway-reason').value.trim();
+  if (!reason) { $('override-gateway-reason').focus(); return; }
+  setDot(1, 'warn');
+  console.info('[override] step 1 advanced without passing check:', reason);
+  goToStep(2);
 });
 
-/* STEP 2 */
+/* --- Step 2 -------------------------------------------------------- */
+let externalPassed = false;
 async function saveExternal() {
   await api('/api/external', { authEndpoint: $('auth-endpoint').value.trim(), apiKey: $('api-key').value, databaseEndpoint: $('db-endpoint').value.trim() });
 }
+$('btn-external-back').addEventListener('click', () => goToStep(1));
 $('btn-test-save').addEventListener('click', async () => {
   const btn = $('btn-test-save'), s = $('status-test');
   btn.disabled = true; setStatus(s, '> saving…', false);
@@ -373,35 +476,57 @@ $('btn-test-save').addEventListener('click', async () => {
   catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
   finally { btn.disabled = false; }
 });
-$('btn-test').addEventListener('click', async () => {
+$('form-external').addEventListener('submit', async (e) => {
+  e.preventDefault();
   const btn = $('btn-test'), s = $('status-test');
   btn.disabled = true; setStatus(s, '> validating…', false);
   try {
     await saveExternal();
     const r = await api('/api/external/test', {});
-    const detail = `auth:${r.auth?.reachable ? 'OK' : 'FAIL'} db:${r.database?.reachable ? 'OK' : 'FAIL'}`;
-    setStatus(s, `> [${r.reachable === r.total ? 'OK' : 'WARN'}] ${r.reachable}/${r.total} SERVICES REACHABLE (${detail})`, r.reachable > 0);
-    goToStep(3);
-  } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
+    const authOk = r.auth?.reachable;
+    const dbOk = r.database?.reachable;
+    const dbMethod = r.database?.method;
+    const dbNote = r.database?.note ? ' (DNS-only)' : '';
+    const warn = dbMethod === 'dns' ? ' — note: Mongo endpoint stored but NOT monitored by connector' : '';
+    const detail = `auth:${authOk ? 'OK' : 'FAIL'} db:${dbOk ? 'OK' : 'FAIL'}${dbNote}`;
+    const allOk = authOk && dbOk;
+    externalPassed = allOk;
+    setStatus(s, `> [${allOk ? 'OK' : 'WARN'}] ${r.reachable}/${r.total} REACHABLE (${detail})${warn}`, allOk ? true : 'warn');
+    setDot(2, allOk ? 'ok' : 'warn');
+    if (allOk) { $('override-external').classList.remove('show'); goToStep(3); }
+    else { $('override-external').classList.add('show'); }
+  } catch (err) { setStatus(s, '> [ERROR] ' + err.message, false); }
   finally { btn.disabled = false; }
 });
+$('override-external-confirm').addEventListener('click', () => {
+  const reason = $('override-external-reason').value.trim();
+  if (!reason) { $('override-external-reason').focus(); return; }
+  setDot(2, 'warn');
+  console.info('[override] step 2 advanced without passing checks:', reason);
+  goToStep(3);
+});
 
-/* STEP 3 */
+/* --- Step 3 -------------------------------------------------------- */
 function renderCommits(commits) {
   const box = $('repo-commits');
   if (!commits || !commits.length) { box.innerHTML = ''; return; }
   box.innerHTML = `<div class="dim" style="margin-top:12px">// last ${commits.length} commits</div>` +
     commits.map(c => `<div class="commit"><span class="t-ice">${escapeHtml((c.sha || '').slice(0, 7))}</span> ${escapeHtml((c.message || '').split('\n')[0])}<small>${escapeHtml(c.author || '')} · ${escapeHtml(c.date || '')}</small></div>`).join('');
 }
-$('btn-repo').addEventListener('click', async () => {
+$('btn-repo-back').addEventListener('click', () => goToStep(2));
+$('form-codebase').addEventListener('submit', async (e) => {
+  e.preventDefault();
   const btn = $('btn-repo'), s = $('status-repo');
-  btn.disabled = true; setStatus(s, '> cloning metadata…', false); $('repo-commits').innerHTML = '';
+  btn.disabled = true; setStatus(s, '> linking…', false); $('repo-commits').innerHTML = '';
   try {
     const r = await api('/api/codebase', { repoUrl: $('repo-url').value.trim(), token: $('repo-token').value });
     setStatus(s, `> [OK] REPOSITORY LINKED — ${r.codebase.fullName} (${r.codebase.commits.length} commits)`, true);
     renderCommits(r.codebase.commits);
+    setDot(3, 'ok');
+    // server clears the token when repoUrl is set without a new token (fixes re-link flow)
+    $('repo-token').value = '';
     goToStep(4);
-  } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
+  } catch (err) { setStatus(s, '> [ERROR] ' + err.message, false); }
   finally { btn.disabled = false; }
 });
 $('btn-repo-skip').addEventListener('click', async () => {
@@ -411,24 +536,31 @@ $('btn-repo-skip').addEventListener('click', async () => {
     $('repo-url').value = ''; $('repo-token').value = ''; $('repo-commits').innerHTML = '';
     const r = await api('/api/codebase', { repoUrl: '', token: '' });
     setStatus(s, r.skipped ? '> [SKIPPED] GIT CLEARED — LOCAL INSPECTION ONLY' : '> [OK] REPOSITORY LINKED', true);
+    setDot(3, 'ok');
     goToStep(4);
-  } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
+  } catch (err) { setStatus(s, '> [ERROR] ' + err.message, false); }
   finally { btn.disabled = false; }
 });
 
-/* STEP 4 */
-const safetyPayload = () => ({
-  dryRun: $('toggle-dryrun').getAttribute('aria-checked') === 'true',
-  autoRollback: $('toggle-rollback').getAttribute('aria-checked') === 'true',
-  escalationThreshold: $('toggle-escalation').getAttribute('aria-checked') === 'true' ? 0.8 : 0
-});
+/* --- Step 4 -------------------------------------------------------- */
+function safetyPayload() {
+  const pct = Number($('escalation-threshold').value);
+  const t = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) / 100 : 0;
+  return {
+    dryRun: $('toggle-dryrun').getAttribute('aria-checked') === 'true',
+    autoRollback: $('toggle-rollback').getAttribute('aria-checked') === 'true',
+    escalationThreshold: t,
+  };
+}
 async function pushSafety() { try { await api('/api/safety', safetyPayload()); } catch (e) { console.error(e); } }
-['toggle-dryrun', 'toggle-rollback', 'toggle-escalation'].forEach(id => {
+['toggle-dryrun', 'toggle-rollback'].forEach(id => {
   $(id).addEventListener('click', function () {
     this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
     pushSafety();
   });
 });
+$('escalation-threshold').addEventListener('change', pushSafety);
+$('btn-safety-back').addEventListener('click', () => goToStep(3));
 
 function formatDiff(diffText) {
   if (!diffText) return '';
@@ -439,17 +571,36 @@ function formatDiff(diffText) {
   return `<div class="diff-view">${lines}</div>`;
 }
 
+function fmtTime(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleString();
+}
+
+let lastIncidentSig = '';
+let feedTimer = null;
+let feedFailures = 0;
 async function refreshIncidents() {
   try {
     const r = await api('/api/incidents?limit=10');
+    feedFailures = 0;
     const feed = $('incident-feed');
+    if (r.unreachable) {
+      feed.innerHTML = '<div class="dim warn">// incident backend unreachable — feed is not live</div>';
+      return;
+    }
     if (!r.incidents || !r.incidents.length) {
       feed.innerHTML = '<div class="dim">// no incidents yet. Trigger one through the edge, e.g. /status/500</div>';
       return;
     }
+    // cheap signature so we don't rebuild DOM (and lose selection/diffs) every 4s
+    const sig = r.incidents.map(x => (x.incident?.id || '') + ':' + (x.status || '')).join('|');
+    if (sig === lastIncidentSig) return;
+    lastIncidentSig = sig;
     feed.innerHTML = r.incidents.map(rec => {
       const inc = rec.incident || {}, a = rec.analysis;
-      const when = inc.detectedAt ? new Date(inc.detectedAt).toLocaleTimeString() : '';
+      const when = fmtTime(inc.detectedAt);
       if (!a) {
         return `<div class="inc"><div class="inc-h"><span>${escapeHtml(inc.method)} ${escapeHtml(inc.path)} → ${escapeHtml(inc.statusCode)}</span><span class="t-wake">${escapeHtml((rec.status || 'investigating').toUpperCase())}</span></div>
           <div class="dim" style="margin-top:8px">detected ${escapeHtml(when)} — ${escapeHtml(inc.reason)}</div></div>`;
@@ -468,45 +619,66 @@ async function refreshIncidents() {
         ${a.escalationReason ? `<div class="t-wake" style="margin-top:4px">${escapeHtml(a.escalationReason)}</div>` : ''}
         ${deps ? `<div style="margin-top:10px">${deps}</div>` : ''}${fixes}</div>`;
     }).join('');
-  } catch (e) { /* backend not reachable yet */ }
+  } catch (e) {
+    feedFailures = Math.min(feedFailures + 1, 6);
+    clearInterval(feedTimer); feedTimer = null;
+    const delay = Math.min(4000 * Math.pow(2, feedFailures), 60000);
+    feedTimer = setTimeout(() => { feedTimer = null; refreshIncidents().then(scheduleFeed); }, delay);
+  }
+}
+function scheduleFeed() {
+  if (!feedTimer) feedTimer = setInterval(refreshIncidents, 4000);
 }
 
-let feedTimer = null;
 $('btn-start').addEventListener('click', async () => {
   const btn = $('btn-start'), s = $('status-monitor');
   btn.disabled = true; s.textContent = '> starting…';
   try {
     await pushSafety();
     await api('/api/monitoring/start', {});
-    btn.textContent = 'Monitoring active'; setStatus(s, '> [OK] AGENT WATCHING. IT WILL NOT SLEEP.', true);
+    btn.textContent = 'Monitoring active'; setStatus(s, '> [OK] AGENT WATCHING.', true);
     await refreshIncidents();
     if (!feedTimer) feedTimer = setInterval(refreshIncidents, 4000);
   } catch (e) { s.textContent = '> [ERROR] ' + e.message; btn.disabled = false; }
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-  document.querySelectorAll('#sidebarNav .nav-link').forEach((l, i) => l.addEventListener('click', () => goToStep(i + 1)));
   try {
-    const { state } = await api('/api/state');
+    const { state, services } = await api('/api/state');
+    refreshHealth(services);
     if (state.gateway?.targetUrl) $('gateway-target').value = state.gateway.targetUrl;
     if (state.gateway?.port) $('gateway-port').value = state.gateway.port;
-    if (state.gateway?.lastCheck) { const lc = state.gateway.lastCheck; setStatus($('status-gateway-badge'), badge(lc), Boolean(lc.reachable)); }
+    if (state.gateway?.lastCheck) {
+      const lc = state.gateway.lastCheck;
+      setStatus($('status-gateway-badge'), badge(lc), Boolean(lc.reachable));
+      setDot(1, lc.reachable ? 'ok' : 'bad');
+    }
     if (state.external?.authEndpoint) $('auth-endpoint').value = state.external.authEndpoint;
     if (state.external?.databaseEndpoint) $('db-endpoint').value = state.external.databaseEndpoint;
+    if (state.external?.lastTest) {
+      const lt = state.external.lastTest;
+      const allOk = lt.auth?.reachable && lt.database?.reachable;
+      setDot(2, allOk ? 'ok' : (lt.reachable > 0 ? 'warn' : 'bad'));
+    }
     if (state.codebase?.repoUrl) $('repo-url').value = state.codebase.repoUrl;
-    if (state.codebase?.commits?.length) renderCommits(state.codebase.commits);
+    if (state.codebase?.commits?.length) { renderCommits(state.codebase.commits); setDot(3, 'ok'); }
+    if (state.codebase?.fullName) setDot(3, 'ok');
     if (state.safety) {
       $('toggle-dryrun').setAttribute('aria-checked', String(Boolean(state.safety.dryRun)));
       $('toggle-rollback').setAttribute('aria-checked', String(Boolean(state.safety.autoRollback)));
-      $('toggle-escalation').setAttribute('aria-checked', String(Number(state.safety.escalationThreshold) > 0));
+      $('escalation-threshold').value = String(Math.round(Number(state.safety.escalationThreshold ?? 0.8) * 100));
     }
     if (state.monitoring?.active) {
       $('btn-start').textContent = 'Monitoring active';
       setStatus($('status-monitor'), '> [OK] AGENT WATCHING.', true);
       refreshIncidents();
       feedTimer = setInterval(refreshIncidents, 4000);
+    } else {
+      setStatus($('status-monitor'), '// monitoring inactive', false);
     }
-  } catch (e) { /* backend not reachable yet */ }
+    // refresh health every 30s so the sidebar pulse tracks reality
+    setInterval(() => refreshHealth().catch(() => {}), 30000);
+  } catch (e) { /* backend not reachable or not authed; api() handles 401 */ }
 });
 </script>
 </body>
