@@ -36,13 +36,14 @@ export function deriveDependencyFindings(investigation) {
 export const hasUnreachableDependency = findings => findings.some(f => f.status === "unreachable");
 export const unhealthyServices = findings => findings.filter(f => ["unhealthy", "unreachable", "degraded"].includes(f.status));
 
-const fix = (title, description, kind, file) => ({ title, description, kind, file });
+const fix = (title, description, kind, file, diff) => ({ title, description, kind, file, ...(diff ? { diff } : {}) });
 
 export function heuristicReason(input) {
   const { incident, dependency, codeFindings, recurring, recentCommits = [], repoUrl } = input;
   const findings = deriveDependencyFindings(dependency);
   const primary = unhealthyServices(findings)[0];
   let severity = "medium", summary, rootCause, confidence, fixes;
+  const targetFile = codeFindings[0]?.file || "server.mjs";
   const narrative = [`Incident: ${incident.method} ${incident.path} -> HTTP ${incident.statusCode} (${incident.category}).`];
   if (dependency.error) narrative.push(`Agent Connector was not fully reachable: ${dependency.error}.`);
 
@@ -55,8 +56,14 @@ export function heuristicReason(input) {
       rootCause = "Database degradation (connection-pool exhaustion, slow queries or connectivity) is causing the application request to fail.";
       confidence = primary.status === "unhealthy" ? 0.82 : 0.65;
       fixes = [
+        fix(
+          "Add connection-pool guard and fallback timeout",
+          "Wrap database queries with a pool check and bounded timeout so exhausted pools fail fast with HTTP 503 Retry-After.",
+          "code",
+          targetFile,
+          `--- a/${targetFile}\n+++ b/${targetFile}\n@@ -14,5 +14,8 @@\n function getUsersFromDatabase() {\n   if (failMode === "database") {\n-    throw new Error("Database error: connection pool exhausted (100/100 connections in use)");\n+    const err = new Error("Database temporarily unavailable: pool exhausted");\n+    err.statusCode = 503;\n+    throw err;\n   }\n   return users;\n }`
+        ),
         fix("Verify database connectivity and pool", "Check the database is reachable and the connection pool is not exhausted; raise pool size or fix leaked connections.", "dependency"),
-        fix("Add query timeouts and retry/backoff", "Wrap database calls with bounded timeouts and exponential backoff so transient failures degrade gracefully.", "code", codeFindings[0]?.file),
         fix("Inspect slow queries", "Review the slowest queries and add indexes or pagination where average query time is high.", "dependency")
       ];
     } else if (svc === "external_api") {
@@ -65,7 +72,13 @@ export function heuristicReason(input) {
       rootCause = "An upstream third-party API is returning errors or timing out, propagating failure to this request.";
       confidence = primary.status === "unhealthy" ? 0.78 : 0.6;
       fixes = [
-        fix("Add a circuit breaker and fallback", "Stop hammering a failing upstream; serve a cached/fallback response while it recovers.", "code", codeFindings[0]?.file),
+        fix(
+          "Add a circuit breaker and cached fallback",
+          "Stop hammering a failing upstream; serve a degraded/cached response while the third-party provider recovers.",
+          "code",
+          targetFile,
+          `--- a/${targetFile}\n+++ b/${targetFile}\n@@ -22,6 +22,6 @@\n function callExternalApi() {\n   if (failMode === "external") {\n-    const err = new Error("Upstream third-party API returned HTTP 503");\n-    err.statusCode = 503;\n-    throw err;\n+    return { ok: false, degraded: true, provider: "third-party-api-cache" };\n   }\n   return { ok: true, provider: "third-party-api" };\n }`
+        ),
         fix("Tune client timeouts and retries", "Set explicit timeouts and bounded retries with jitter on the third-party client.", "config"),
         fix("Confirm provider status", "Check the provider's status page and your API credentials/quota.", "investigation")
       ];
@@ -76,7 +89,13 @@ export function heuristicReason(input) {
       confidence = primary.status === "unhealthy" ? 0.72 : 0.58;
       fixes = [
         fix("Verify auth service health", "Check token-signing keys and identity-store connectivity on the auth service.", "dependency"),
-        fix("Handle auth failures gracefully", "Return a clear 401/503 and avoid cascading 500s when auth is degraded.", "code", codeFindings[0]?.file)
+        fix(
+          "Handle auth failures gracefully",
+          "Return a clear 503 with Retry-After and avoid cascading unhandled 500s when auth is degraded.",
+          "code",
+          targetFile,
+          `--- a/${targetFile}\n+++ b/${targetFile}\n@@ -50,3 +50,4 @@\n   } catch (err) {\n+    res.setHeader("Retry-After", "5");\n     return json(res, err.statusCode || 500, { error: err.message });\n   }`
+        )
       ];
     }
   } else if (incident.category === "upstream_unreachable" || incident.category === "timeout") {
@@ -84,39 +103,72 @@ export function heuristicReason(input) {
     summary = "The application Server itself was unreachable or timed out.";
     rootCause = "The Server process is down, crashed, or overloaded (no dependency failure was detected).";
     confidence = 0.7;
-    fixes = [fix("Check Server process and health", "Confirm the Server is running and its /health endpoint responds; inspect restart/crash loops.", "investigation"), fix("Review resource saturation", "Check CPU/memory and consider scaling or a readiness probe.", "config")];
+    fixes = [
+      fix("Check Server process and health", "Confirm the Server is running and its /health endpoint responds; inspect restart/crash loops.", "investigation"),
+      fix("Review resource saturation", "Check CPU/memory and consider scaling or a readiness probe.", "config")
+    ];
     narrative.push("No dependency failure detected; the Server endpoint did not respond.");
   } else if (incident.category === "client_error") {
     severity = "low";
     summary = `Client error HTTP ${incident.statusCode} on ${incident.path}.`;
     rootCause = "The requested route or resource does not exist or the request was malformed (e.g. missing route registration or wrong path).";
     confidence = 0.6;
-    fixes = [fix("Verify route registration", `Confirm ${incident.path} is registered and the HTTP method matches.`, "code", codeFindings[0]?.file), fix("Check client request", "Validate the client is calling the correct path and parameters.", "investigation")];
+    fixes = [
+      fix(
+        "Verify route registration",
+        `Confirm ${incident.path} is registered and the HTTP method matches.`,
+        "code",
+        targetFile,
+        `--- a/${targetFile}\n+++ b/${targetFile}\n@@ -60,2 +60,3 @@\n     if (p === "/external") return json(res, 200, callExternalApi());\n+    if (p === "${incident.path}") return json(res, 200, { ok: true });\n     return json(res, 404, { error: "Not Found", path: p });`
+      ),
+      fix("Check client request", "Validate the client is calling the correct path and parameters.", "investigation")
+    ];
     narrative.push("No dependency failure detected; this is a client-side/routing error.");
   } else if (incident.category === "slow_response") {
     severity = "medium";
     summary = `Slow response on ${incident.path} (${Math.round(incident.durationMs)}ms).`;
     rootCause = "The request exceeded the latency threshold — likely a performance regression, an unindexed query, or downstream latency.";
     confidence = 0.5;
-    fixes = [fix("Profile the slow endpoint", "Trace the request to find the slow span (query, external call, or CPU).", "investigation", codeFindings[0]?.file), fix("Add caching / pagination / indexes", "Cache hot reads, paginate large results, and index slow queries.", "code", codeFindings[0]?.file)];
+    fixes = [
+      fix("Profile the slow endpoint", "Trace the request to find the slow span (query, external call, or CPU).", "investigation", targetFile),
+      fix(
+        "Bound handler execution time",
+        "Enforce a strict request timeout budget or cache expensive reads on this route.",
+        "code",
+        targetFile,
+        `--- a/${targetFile}\n+++ b/${targetFile}\n@@ -52,4 +52,4 @@\n     if (delayMatch) {\n-      const seconds = Math.min(Number(delayMatch[1]), 10);\n+      const seconds = Math.min(Number(delayMatch[1]), 1.5); // enforce SLA budget\n       await new Promise(r => setTimeout(r, seconds * 1000));`
+      )
+    ];
     narrative.push("No dependency outage detected; the response was slower than the configured threshold.");
   } else if (codeFindings.length > 0) {
     severity = "medium";
     summary = `Application error on ${incident.path}; relevant code located.`;
     rootCause = `An unhandled error in the application code path (see ${codeFindings[0].file}) is the most likely cause.`;
     confidence = 0.55;
-    fixes = [fix("Add error handling around the failing path", "Inspect the matched handler and add validation / try-catch with a meaningful error response.", "code", codeFindings[0].file), fix("Reproduce with the captured request", "Use the incident request and response sample to reproduce locally.", "investigation")];
+    fixes = [
+      fix(
+        "Add structured error handling around the failing path",
+        "Inspect the matched handler and add validation / try-catch with a meaningful error response.",
+        "code",
+        codeFindings[0].file,
+        `--- a/${codeFindings[0].file}\n+++ b/${codeFindings[0].file}\n@@ -${codeFindings[0].line},3 +${codeFindings[0].line},5 @@\n // Matched snippet around line ${codeFindings[0].line}:\n+// Suggestion: guard upstream/state errors with explicit status code & fallback\n+try {\n ${codeFindings[0].snippet.split("\n")[0] || ""}\n+} catch (e) { return json(res, 503, { error: e.message, degraded: true }); }`
+      ),
+      fix("Reproduce with the captured request", "Use the incident request and response sample to reproduce locally.", "investigation")
+    ];
     narrative.push(`Dependencies look healthy; matched ${codeFindings.length} relevant code location(s).`);
   } else {
     severity = "medium";
     summary = `Unclassified HTTP ${incident.statusCode} on ${incident.path}.`;
     rootCause = "Insufficient evidence to determine a root cause automatically.";
     confidence = 0.3;
-    fixes = [fix("Gather more evidence", "Enable richer application logs/tracing for this route and re-run the request.", "investigation"), fix("Manual inspection", "An engineer should review the request path and recent deployments.", "investigation")];
+    fixes = [
+      fix("Gather more evidence", "Enable richer application logs/tracing for this route and re-run the request.", "investigation"),
+      fix("Manual inspection", "An engineer should review the request path and recent deployments.", "investigation")
+    ];
     narrative.push("No dependency failure and no relevant code found; evidence is insufficient.");
   }
 
-  // Correlate the failing request with the last commits of the linked repository.
+  // Correlate the failing request with the last commits of the linked repository (if configured).
   if (recentCommits.length) {
     const pathWords = incident.path.split("/").map(s => s.replace(/[^a-zA-Z0-9_-]/g, "").toLowerCase()).filter(s => s.length >= 3 && !/^\d+$/.test(s));
     const correlated = recentCommits.find(c => pathWords.some(w => (c.message || "").toLowerCase().includes(w)));
@@ -143,7 +195,7 @@ const SYSTEM_PROMPT = [
   "Respond with ONLY a JSON object (no markdown) with keys:",
   "severity (low|medium|high|critical), summary (string),",
   "rootCause {summary, confidence 0..1}, confidence (0..1),",
-  "suggestedFixes (array of {title, description, kind: config|code|dependency|investigation, file?}),",
+  "suggestedFixes (array of {title, description, kind: config|code|dependency|investigation, file?, diff? (optional unified diff string)}),",
   "reasoning (string). Prefer dependency root causes when a dependency is unhealthy."
 ].join(" ");
 
@@ -165,7 +217,7 @@ export async function groqReason(input, cfg = defaultConfig) {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.GROQ_API_KEY}` },
       signal: controller.signal,
-      body: JSON.stringify({ model: cfg.GROQ_MODEL, temperature: 0.2, max_tokens: 1200, response_format: { type: "json_object" }, messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: `Diagnose this incident and return the JSON object.\n\nEVIDENCE:\n${JSON.stringify(evidence)}` }] })
+      body: JSON.stringify({ model: cfg.GROQ_MODEL, temperature: 0.2, max_tokens: 1400, response_format: { type: "json_object" }, messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: `Diagnose this incident and return the JSON object.\n\nEVIDENCE:\n${JSON.stringify(evidence)}` }] })
     });
     if (!res.ok) return null;
     const data = await res.json();

@@ -1,6 +1,6 @@
 // Zero-dependency onboarding control plane. Serves the UI and makes every
-// onboarding step real: gateway healthcheck, external connection tests, GitHub
-// repo + last-5-commits link, safety limits, and the monitoring switch.
+// onboarding step real: gateway healthcheck, external connection tests, optional GitHub
+// repo + last-5-commits link, safety limits, request logs, and AI incident feed.
 import http from "node:http";
 import fs from "node:fs";
 import { config } from "./config.mjs";
@@ -74,10 +74,15 @@ const server = http.createServer(async (req, res) => {
       return ok(res, { auth, database, reachable, total: 2, apply });
     }
 
-    // STEP 03 — Codebase link (real GitHub API)
+    // STEP 03 — Codebase link (Non-compulsory: empty repoUrl clears/skips Git integration)
     if (p === "/api/codebase" && req.method === "POST") {
       const body = await readJson(req);
-      if (!body.repoUrl) return fail(res, 400, "repoUrl is required");
+      if (!body.repoUrl || !String(body.repoUrl).trim()) {
+        store.patch("codebase", { repoUrl: "", fullName: "", commits: [], connectedAt: null, token: "" });
+        const apply = await applyCodebase(store.get());
+        log("info", "codebase_skipped_or_cleared", { apply });
+        return ok(res, { skipped: true, codebase: { fullName: null, repoUrl: null, commits: [] }, apply });
+      }
       let repo;
       try { repo = await fetchGitHubRepo(body.repoUrl, body.token); }
       catch (e) { return fail(res, 400, e.message); }
@@ -112,12 +117,44 @@ const server = http.createServer(async (req, res) => {
       return ok(res, { monitoring: store.get().monitoring, apply });
     }
 
-    // Live incident feed (proxied from agent-core) for the monitoring view.
-    if (p === "/api/incidents" && req.method === "GET") {
+    // Live request logs (proxied from middleware) for the Logs tab.
+    if (p === "/api/logs" && req.method === "GET") {
+      const limit = Math.min(Number(url.searchParams.get("limit")) || 100, 500);
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), config.REQUEST_TIMEOUT_MS);
       try {
-        const r = await fetch(`${config.AGENT_CORE_URL}/incidents?limit=10`, { headers: { Authorization: `Bearer ${config.AGENT_CORE_TOKEN}` }, signal: controller.signal });
+        const r = await fetch(`${config.MIDDLEWARE_URL}/_sbwk/logs?limit=${limit}`, {
+          headers: { Authorization: `Bearer ${config.MIDDLEWARE_ADMIN_TOKEN}` },
+          signal: controller.signal
+        });
+        const data = await r.json();
+        return ok(res, { logs: data.logs || [] });
+      } catch {
+        return ok(res, { logs: [] });
+      } finally { clearTimeout(t); }
+    }
+    if (p === "/api/logs" && req.method === "DELETE") {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), config.REQUEST_TIMEOUT_MS);
+      try {
+        await fetch(`${config.MIDDLEWARE_URL}/_sbwk/logs`, {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${config.MIDDLEWARE_ADMIN_TOKEN}` },
+          signal: controller.signal
+        });
+        return ok(res, { logs: [] });
+      } catch {
+        return ok(res, { logs: [] });
+      } finally { clearTimeout(t); }
+    }
+
+    // Live incident & AI analysis feed (proxied from agent-core).
+    if (p === "/api/incidents" && req.method === "GET") {
+      const limit = Math.min(Number(url.searchParams.get("limit")) || 25, 100);
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), config.REQUEST_TIMEOUT_MS);
+      try {
+        const r = await fetch(`${config.AGENT_CORE_URL}/incidents?limit=${limit}`, { headers: { Authorization: `Bearer ${config.AGENT_CORE_TOKEN}` }, signal: controller.signal });
         const data = await r.json();
         return ok(res, { incidents: data.incidents || [], context: data.context || {} });
       } catch { return ok(res, { incidents: [], context: {} }); }
