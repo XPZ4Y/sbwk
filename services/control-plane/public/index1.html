@@ -1,0 +1,2153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sleepy Bot · Control Plane</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #f3f3e7;
+  --surface: #fbfaf7;
+  --muted-surface: #f0ece2;
+  --brown: #76583b;
+  --text: #57432f;
+  --text-mid: #8b775f;
+  --line: #e4dbcc;
+  --hair: rgba(87, 67, 47, 0.08);
+  --accent: #e64a19;
+  --ok: #007a5a;
+  --bad: #b71c1c;
+  --selection: #e9e1d4;
+  --focus-ring: #baa98f;
+  --placeholder: #9b866d;
+  --mono: 'Space Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --shadow-sm: 0 1px 2px rgba(87, 67, 47, 0.035);
+  --shadow-md: 0 4px 16px -8px rgba(87, 67, 47, 0.12);
+  --radius: 0.5rem;
+  --radius-lg: 0.8rem;
+}
+
+html, body { height: 100%; }
+body {
+  font: 400 13px/1.6 var(--mono);
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  padding: 0;
+}
+a { color: inherit; }
+button { font: inherit; }
+::selection { background: var(--selection); color: var(--text); }
+:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+::placeholder { color: var(--placeholder); opacity: 1; }
+
+/* ── shell ─────────────────────────────────────────────────── */
+.shell {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  min-height: 100vh;
+}
+
+/* ── rail ─────────────────────────────────────────────────── */
+.rail {
+  display: flex;
+  flex-direction: column;
+  background: var(--surface);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+  padding: 0 12px;
+  box-shadow: var(--shadow-sm);
+}
+.rail-head {
+  padding: 28px 16px 24px;
+  border-bottom: 1px solid var(--line);
+  margin: 0 -12px;
+  padding-left: 28px;
+  padding-right: 28px;
+}
+.brand {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  line-height: 0.9;
+}
+.brand-sub {
+  font-size: 10px;
+  color: var(--text-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin-top: 4px;
+}
+.tabs {
+  list-style: none;
+  flex: 1;
+  padding: 16px 0;
+}
+.tabs button {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-left: 3px solid transparent;
+  background: transparent;
+  color: var(--text-mid);
+  font-weight: 700;
+  font-size: 11px;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  transition: background 0.15s, color 0.15s;
+}
+.tabs button:hover { color: var(--text); background: var(--hair); }
+.tabs button.is-active {
+  color: var(--text);
+  border-left-color: var(--brown);
+  background: var(--muted-surface);
+}
+.rail-foot {
+  border-top: 1px solid var(--line);
+  padding: 20px 16px 24px;
+  margin: 0 -12px;
+  padding-left: 28px;
+  padding-right: 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 10px;
+  color: var(--text-mid);
+}
+.status-line { display: flex; align-items: center; gap: 8px; }
+.dot {
+  width: 8px; height: 8px;
+  background: var(--placeholder);
+  border-radius: 50%;
+  flex: none;
+}
+.dot.ok { background: var(--ok); }
+.dot.warn { background: var(--accent); }
+.dot.bad { background: var(--bad); }
+.rail-foot a {
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  text-decoration: none;
+  color: var(--text-mid);
+  font-size: 10px;
+  transition: color 0.15s;
+}
+.rail-foot a:hover { color: var(--text); }
+
+/* ── main content ─────────────────────────────────────────── */
+main { min-width: 0; }
+.tab-panel { display: none; }
+.tab-panel.is-active { display: block; }
+
+.panel-head {
+  padding: 32px 40px 24px;
+  border-bottom: 1px solid var(--line);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  background: var(--surface);
+}
+.panel-head h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-transform: uppercase;
+  line-height: 0.85;
+}
+.panel-head .meta {
+  font-size: 10px;
+  color: var(--text-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+
+/* ── requests tab ────────────────────────────────────────── */
+.toolbar {
+  padding: 12px 40px;
+  border-bottom: 1px solid var(--hair);
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  font-size: 11px;
+  flex-wrap: wrap;
+  background: var(--surface);
+}
+.toolbar label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-mid);
+}
+.toolbar input[type="checkbox"] {
+  appearance: none;
+  width: 14px; height: 14px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  cursor: pointer;
+  position: relative;
+  border-radius: 2px;
+  transition: background 0.15s, border-color 0.15s;
+}
+.toolbar input[type="checkbox"]:checked { background: var(--brown); border-color: var(--brown); }
+.toolbar input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: var(--surface);
+  border-radius: 1px;
+}
+.toolbar select, .toolbar button {
+  font: inherit;
+  font-size: 11px;
+  padding: 6px 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  border-radius: var(--radius);
+  transition: background 0.15s, border-color 0.15s;
+}
+.toolbar button:hover, .toolbar select:hover { background: var(--muted-surface); border-color: var(--brown); }
+.feed-state {
+  margin-left: auto;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--ok);
+}
+.feed-state.warn { color: var(--accent); }
+.feed-state.bad { color: var(--bad); }
+
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  background: var(--surface);
+}
+.log-table thead th {
+  text-align: left;
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-mid);
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+}
+.log-table tbody td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--hair);
+  vertical-align: top;
+}
+.log-table tr.log-row { cursor: pointer; transition: background 0.1s; }
+.log-table tr.log-row:hover { background: var(--hair); }
+.log-table tr.log-row.is-anomaly td:first-child {
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+.col-time { white-space: nowrap; color: var(--text-mid); font-size: 11px; }
+.col-method { font-weight: 700; }
+.col-status { font-weight: 700; }
+.col-inc { text-align: right; width: 60px; }
+.cell-4xx { color: #a05600; }
+.cell-5xx { color: var(--bad); }
+.cat-bad { color: var(--bad); }
+.cat-warn { color: #a05600; }
+
+.link-btn {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  padding: 2px 8px;
+  font-size: 10px;
+  cursor: pointer;
+  border-radius: var(--radius);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  transition: background 0.15s, color 0.15s;
+}
+.link-btn:hover { background: var(--brown); color: var(--surface); border-color: var(--brown); }
+
+.log-detail td {
+  background: var(--muted-surface);
+  padding: 14px 14px 16px 28px;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 8px 24px;
+  font-size: 11px;
+}
+.detail-grid .k {
+  color: var(--text-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-right: 6px;
+  font-size: 10px;
+}
+.detail-grid code {
+  font-family: var(--mono);
+  word-break: break-all;
+}
+pre.sample {
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font-size: 11px;
+  overflow-x: auto;
+  max-height: 280px;
+  white-space: pre-wrap;
+  word-break: break-all;
+  border-radius: var(--radius);
+}
+tr.empty td {
+  padding: 48px 14px;
+  text-align: center;
+  color: var(--placeholder);
+  font-style: italic;
+}
+
+/* ── config tab ──────────────────────────────────────────── */
+#config-form {
+  padding: 28px 40px 36px;
+  max-width: 1040px;
+}
+fieldset {
+  border: 1px solid var(--line);
+  padding: 20px 24px 22px;
+  margin-bottom: 24px;
+  border-radius: var(--radius-lg);
+  background: var(--surface);
+  box-shadow: var(--shadow-sm);
+}
+legend {
+  padding: 0 10px;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+  background: var(--surface);
+  border-radius: var(--radius);
+}
+.btn-micro {
+  font-size: 10px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 700;
+  border-radius: var(--radius);
+  transition: background 0.15s, color 0.15s;
+}
+.btn-micro:hover { background: var(--brown); color: var(--surface); border-color: var(--brown); }
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 20px;
+}
+.field-row.equal { grid-template-columns: 1fr 1fr; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-mid);
+}
+.field input, .field select {
+  font: inherit;
+  font-size: 13px;
+  padding: 10px 12px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--line);
+  width: 100%;
+  border-radius: var(--radius);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+.field input:focus, .field select:focus {
+  outline: none;
+  border-color: var(--brown);
+  box-shadow: 0 0 0 3px rgba(186, 169, 143, 0.25);
+}
+.field .hint {
+  font-size: 10px;
+  color: var(--placeholder);
+  min-height: 12px;
+}
+.field .hint.warn { color: var(--accent); }
+.field .hint.error { color: var(--bad); }
+.inline { display: flex; align-items: stretch; }
+.inline input { flex: 1; border-radius: var(--radius) 0 0 var(--radius); }
+.inline .suffix {
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-left: 0;
+  background: var(--muted-surface);
+  font-size: 12px;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  color: var(--text-mid);
+}
+
+.service-row {
+  display: grid;
+  grid-template-columns: 140px 120px 1fr 200px 40px;
+  gap: 14px;
+  padding: 16px 0;
+  border-top: 1px solid var(--hair);
+  align-items: start;
+}
+.service-row:first-child { border-top: 0; padding-top: 0; }
+.services-empty {
+  padding: 20px 0;
+  color: var(--placeholder);
+  font-style: italic;
+  font-size: 12px;
+}
+.btn-remove {
+  font-size: 18px;
+  width: 40px;
+  height: 40px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  align-self: end;
+  margin-top: 16px;
+  border-radius: var(--radius);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.btn-remove:hover { background: var(--bad); color: #fff; border-color: var(--bad); }
+
+.opt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 0;
+  border-top: 1px solid var(--hair);
+  gap: 16px;
+}
+.opt-row:first-of-type { border-top: 0; padding-top: 0; }
+.opt-label .key {
+  display: block;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+.opt-label .desc {
+  display: block;
+  font-size: 11px;
+  color: var(--text-mid);
+}
+.toggle {
+  width: 52px; height: 26px;
+  border: 1px solid var(--line);
+  background: var(--muted-surface);
+  cursor: pointer;
+  position: relative;
+  flex: none;
+  padding: 0;
+  border-radius: 13px;
+  transition: background 0.2s, border-color 0.2s;
+}
+.toggle::after {
+  content: "";
+  position: absolute;
+  top: 3px; left: 3px;
+  width: 18px; height: 18px;
+  background: var(--brown);
+  border-radius: 50%;
+  transition: left 0.2s;
+}
+.toggle[aria-checked="true"] { background: var(--brown); border-color: var(--brown); }
+.toggle[aria-checked="true"]::after {
+  left: auto; right: 3px;
+  background: var(--surface);
+}
+
+.warn-bar {
+  margin: 20px 40px 0;
+  border: 1px solid var(--accent);
+  padding: 12px 16px;
+  background: rgba(230, 74, 25, 0.04);
+  font-size: 12px;
+  max-width: 1040px;
+  border-radius: var(--radius);
+}
+.warn-bar[hidden] { display: none; }
+.warn-line { padding: 4px 0; }
+.warn-key {
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-right: 8px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 20px 0 0;
+  border-top: 1px solid var(--line);
+  margin-top: 28px;
+  flex-wrap: wrap;
+}
+.btn-primary {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 12px 24px;
+  background: var(--brown);
+  color: var(--surface);
+  border: 1px solid var(--brown);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: var(--radius);
+  transition: background 0.15s, transform 0.1s;
+}
+.btn-primary:hover { background: #57432f; transform: translateY(-1px); }
+.btn-primary:disabled { opacity: 0.4; cursor: wait; transform: none; }
+.btn-ghost {
+  font-size: 12px;
+  padding: 12px 24px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--line);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: var(--radius);
+  transition: background 0.15s, border-color 0.15s;
+}
+.btn-ghost:hover { background: var(--hair); border-color: var(--brown); }
+.save-status {
+  font-size: 11px;
+  color: var(--text-mid);
+  margin-left: auto;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.save-status.ok { color: var(--ok); }
+.save-status.bad { color: var(--bad); }
+
+/* ── agent tab ───────────────────────────────────────────── */
+.agent-feed {
+  padding: 24px 40px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1040px;
+}
+.agent-card {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+.agent-card-head {
+  display: flex; justify-content: space-between; align-items: center;
+  gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--hair); flex-wrap: wrap;
+  background: var(--surface);
+}
+.agent-card-title { display: flex; align-items: center; gap: 10px; font-size: 12px; }
+.agent-card-title code { font-family: var(--mono); font-weight: 700; }
+.agent-card-time {
+  font-size: 10px; color: var(--text-mid); text-transform: uppercase;
+  letter-spacing: 0.08em; white-space: nowrap;
+}
+.agent-card-meta {
+  display: flex; flex-wrap: wrap; gap: 14px; padding: 10px 18px;
+  font-size: 11px; color: var(--text-mid); border-bottom: 1px solid var(--hair);
+  background: var(--muted-surface);
+}
+.agent-card-body { padding: 18px; font-size: 12px; }
+.agent-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px 24px; padding-bottom: 14px; border-bottom: 1px solid var(--hair);
+}
+.agent-grid .k {
+  color: var(--text-mid); text-transform: uppercase; letter-spacing: 0.06em;
+  font-size: 10px; margin-right: 8px;
+}
+.agent-grid code { font-family: var(--mono); }
+.agent-section { padding-top: 14px; border-top: 1px solid var(--hair); margin-top: 14px; }
+.agent-section:first-of-type { border-top: 0; margin-top: 0; padding-top: 0; }
+.agent-section-head {
+  font-size: 10px; font-weight: 700; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--text-mid); margin-bottom: 8px;
+}
+.agent-section p { font-size: 12px; line-height: 1.65; }
+.agent-muted { color: var(--placeholder); font-style: italic; font-size: 11px; }
+.agent-reasoning { color: var(--text-mid); }
+.agent-escalate { color: var(--accent); font-weight: 700; }
+.agent-pending { color: var(--placeholder); font-style: italic; }
+.agent-empty {
+  padding: 48px 14px; text-align: center;
+  color: var(--placeholder); font-style: italic;
+}
+
+.sev {
+  display: inline-block; font-size: 10px; font-weight: 700;
+  letter-spacing: 0.08em; padding: 3px 10px;
+  border: 1px solid var(--line); text-transform: uppercase;
+  border-radius: 20px;
+}
+.sev-low      { background: rgba(0,122,90,0.08);  border-color: var(--ok);     color: var(--ok); }
+.sev-medium   { background: rgba(230,74,25,0.06); border-color: var(--accent); color: var(--accent); }
+.sev-high     { background: rgba(183,28,28,0.08); border-color: var(--bad);    color: var(--bad); }
+.sev-critical { background: var(--bad); border-color: var(--bad); color: #fff; }
+
+.dep-row {
+  display: flex; align-items: baseline; gap: 10px;
+  padding: 5px 0; font-size: 11px; flex-wrap: wrap;
+}
+.dep-service { font-weight: 700; }
+.dep-signals { color: var(--text-mid); }
+.dep-status {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  padding: 2px 8px; border: 1px solid; text-transform: uppercase;
+  border-radius: 20px;
+}
+.dep-healthy   { color: var(--ok);     border-color: var(--ok); }
+.dep-degraded  { color: var(--accent); border-color: var(--accent); }
+.dep-unhealthy,
+.dep-unreachable { color: var(--bad);  border-color: var(--bad); }
+.dep-unknown   { color: var(--placeholder); border-color: var(--placeholder); }
+
+.code-finding { border: 1px solid var(--line); margin-bottom: 10px; border-radius: var(--radius); overflow: hidden; }
+.code-file {
+  font-size: 11px; font-weight: 700; padding: 6px 10px;
+  border-bottom: 1px solid var(--line); background: var(--muted-surface);
+}
+.code-snippet {
+  margin: 0; padding: 10px; font: 11px/1.5 var(--mono);
+  overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+}
+
+.fix-list { list-style: none; padding: 0; margin: 0; }
+.fix-item { padding: 10px 0; border-top: 1px solid var(--hair); }
+.fix-item:first-child { border-top: 0; padding-top: 0; }
+.fix-head { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; }
+.fix-title { font-weight: 700; font-size: 12px; }
+.fix-kind {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  text-transform: uppercase; padding: 2px 8px;
+  border: 1px solid var(--line); color: var(--text-mid);
+  border-radius: 20px;
+}
+.fix-desc { font-size: 11px; color: var(--text-mid); margin-top: 4px; }
+.fix-file { font-size: 10px; color: var(--placeholder); margin-top: 3px; font-family: var(--mono); }
+
+@media (max-width: 900px) {
+  .agent-feed { padding-left: 20px; padding-right: 20px; }
+}
+
+/* ── AI provider warnings ────────────────────────────────── */
+.ai-warn {
+  margin: 0 40px 6px;
+  max-width: 1040px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.ai-warn[hidden] { display: none; }
+.ai-warn-error {
+  border: 1px solid var(--bad);
+  background: rgba(183,28,28,0.06);
+  color: var(--bad);
+  padding: 12px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: var(--radius);
+}
+.ai-warn-notice {
+  border: 1px solid var(--accent);
+  background: rgba(230,74,25,0.04);
+  color: var(--accent);
+  padding: 12px 16px;
+  font-size: 12px;
+  border-radius: var(--radius);
+}
+.ai-warn-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 10px;
+  margin-bottom: 6px;
+}
+.ai-warn ul { list-style: none; margin: 0; padding: 0; }
+.ai-warn li { padding: 3px 0; font-weight: 400; word-break: break-word; }
+.ai-warn li code { font-weight: 700; margin-right: 6px; }
+.ai-warn-close {
+  border: 0; background: none; color: inherit; cursor: pointer;
+  font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em;
+  font-weight: 700; text-decoration: underline; padding: 0;
+}
+
+/* ── AI routing badge + per-incident warnings ────────────── */
+.route-line { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: 11px; }
+.route-chip {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase;
+  padding: 3px 10px; border: 1px solid var(--line);
+  border-radius: 20px;
+}
+.route-chip.route-liquid-groq { background: rgba(0,122,90,0.08); border-color: var(--ok); color: var(--ok); }
+.route-chip.route-liquid-engineer { background: rgba(183,28,28,0.08); border-color: var(--bad); color: var(--bad); }
+.route-chip.route-fallback { background: rgba(183,28,28,0.08); border-color: var(--bad); color: var(--bad); }
+.route-chip.route-default { background: rgba(230,74,25,0.06); border-color: var(--accent); color: var(--accent); }
+.route-detail { color: var(--text-mid); }
+.route-reasons { margin: 8px 0 0; padding-left: 18px; color: var(--text-mid); font-size: 11px; }
+.route-reasons li { padding: 2px 0; }
+
+.card-warn {
+  margin-top: 10px; padding: 10px 14px;
+  border-left: 3px solid var(--bad); background: rgba(183,28,28,0.05);
+  color: var(--bad); font-size: 11px; font-weight: 700;
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.card-warn.notice { border-left-color: var(--accent); background: rgba(230,74,25,0.04); color: var(--accent); font-weight: 400; }
+.card-warn .warn-detail { color: var(--text-mid); font-weight: 400; margin-top: 4px; word-break: break-word; }
+
+/* ── rendered unified diffs ──────────────────────────────── */
+.diff {
+  margin: 10px 0 0;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  font: 11px/1.6 var(--mono);
+  overflow-x: auto;
+  padding: 6px 0;
+  border-radius: var(--radius);
+}
+.diff-line { display: block; padding: 0 14px; white-space: pre; }
+.diff-line.diff-add {
+  background: rgba(0,122,90,0.12);
+  color: #055c3d;
+  box-shadow: inset 3px 0 0 var(--ok);
+}
+.diff-line.diff-del {
+  background: rgba(183,28,28,0.10);
+  color: #8d1515;
+  box-shadow: inset 3px 0 0 var(--bad);
+}
+.diff-line.diff-hunk { background: var(--muted-surface); color: var(--text-mid); font-weight: 700; }
+.diff-line.diff-file { background: var(--hair); color: var(--text); font-weight: 700; }
+.diff-line.diff-ctx { color: var(--text-mid); }
+
+/* ── AI call debug ───────────────────────────────────────── */
+.ai-debug { margin-top: 14px; border-top: 1px solid var(--hair); padding-top: 12px; }
+.ai-debug summary {
+  cursor: pointer; font-size: 10px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-mid);
+}
+.ai-debug summary:hover { color: var(--text); }
+.ai-debug pre {
+  margin: 10px 0 0; padding: 12px; border: 1px solid var(--line);
+  background: var(--surface); font: 10px/1.6 var(--mono);
+  overflow-x: auto; max-height: 320px; white-space: pre-wrap; word-break: break-word;
+  border-radius: var(--radius);
+}
+
+/* ── AI settings form ────────────────────────────────────── */
+#ai-form { padding: 0 40px 56px; max-width: 1040px; }
+#ai-form textarea {
+  font: inherit; font-size: 12px; line-height: 1.6;
+  padding: 10px 12px; background: var(--surface); color: var(--text);
+  border: 1px solid var(--line); width: 100%; resize: vertical;
+  font-family: var(--mono);
+  border-radius: var(--radius);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+#ai-form textarea:focus { outline: none; border-color: var(--brown); box-shadow: 0 0 0 3px rgba(186, 169, 143, 0.25); }
+#ai-form .field { margin-bottom: 14px; }
+.ai-status-line {
+  font-size: 11px; padding: 10px 14px; margin-bottom: 18px;
+  border-left: 3px solid var(--ok); background: rgba(0,122,90,0.05); color: var(--ok);
+  border-radius: 0 var(--radius) var(--radius) 0;
+}
+.ai-status-line.bad { border-left-color: var(--bad); background: rgba(183,28,28,0.05); color: var(--bad); font-weight: 700; }
+.ai-status-line.warn { border-left-color: var(--accent); background: rgba(230,74,25,0.04); color: var(--accent); }
+.ai-test-result { margin-top: 20px; }
+.ai-test-result:empty { display: none; }
+
+@media (max-width: 900px) {
+  .ai-warn { margin-left: 20px; margin-right: 20px; }
+  #ai-form { padding-left: 20px; padding-right: 20px; }
+}
+
+/* ── about tab ───────────────────────────────────────────── */
+.prose {
+  padding: 28px 40px 72px;
+  max-width: 760px;
+  font-size: 14px;
+  line-height: 1.75;
+}
+.prose .lead { font-size: 16px; margin-bottom: 28px; }
+.prose h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  margin: 36px 0 14px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--line);
+  color: var(--text-mid);
+}
+.prose p + p { margin-top: 14px; }
+.prose ul { list-style: none; padding-left: 0; }
+.prose ul li {
+  padding: 5px 0 5px 24px;
+  position: relative;
+}
+.prose ul li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--placeholder);
+}
+.prose b { font-weight: 700; }
+.prose pre {
+  font: 12px/1.6 var(--mono);
+  padding: 18px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  overflow-x: auto;
+  margin: 18px 0;
+  white-space: pre;
+  border-radius: var(--radius);
+}
+.prose code {
+  font-family: var(--mono);
+  background: var(--hair);
+  padding: 1px 6px;
+  font-size: 12px;
+  border-radius: 3px;
+}
+
+/* ── responsive ─────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .rail {
+    position: static;
+    height: auto;
+    padding: 0;
+  }
+  .rail-head { padding: 20px 20px 18px; margin: 0; }
+  .tabs { display: flex; padding: 0; overflow-x: auto; }
+  .tabs button {
+    border-left: 0;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    padding: 12px 18px;
+    border-radius: 0;
+  }
+  .tabs button.is-active { border-left: 0; border-bottom-color: var(--brown); }
+  .rail-foot { margin: 0; padding-left: 20px; padding-right: 20px; }
+  .panel-head, .toolbar, #config-form, .prose { padding-left: 20px; padding-right: 20px; }
+  .warn-bar { margin-left: 20px; margin-right: 20px; }
+  .field-row, .field-row.equal { grid-template-columns: 1fr; }
+  .service-row { grid-template-columns: 1fr; gap: 12px; }
+  .btn-remove { margin-top: 0; align-self: start; }
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <aside class="rail">
+    <div class="rail-head">
+      <div class="brand">Sleepy Bot</div>
+      <div class="brand-sub">control plane</div>
+    </div>
+
+    <ol class="tabs" role="tablist">
+      <li role="presentation"><button type="button" role="tab" class="tab-btn is-active" data-tab="requests" aria-selected="true">Requests</button></li>
+      <li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="agent" aria-selected="false">Agent</button></li>
+      <li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="config" aria-selected="false">Config</button></li>
+      <li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="about" aria-selected="false">About</button></li>
+    </ol>
+
+    <div class="rail-foot">
+      <div class="status-line">
+        <span class="dot" id="health-dot"></span>
+        <span id="health-label">checking…</span>
+      </div>
+      <a href="#" id="logout">Sign out →</a>
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- ─── REQUESTS ──────────────────────────────────────── -->
+    <section id="tab-requests" class="tab-panel is-active" role="tabpanel">
+      <header class="panel-head">
+        <h1>Requests</h1>
+        <div class="meta">
+          <span id="req-count">0</span> total ·
+          <span id="req-anomalies">0</span> anomalies
+        </div>
+      </header>
+
+      <div class="toolbar">
+        <label><input type="checkbox" id="filter-anomaly"> anomalies only</label>
+        <label><input type="checkbox" id="filter-errors"> errors only</label>
+        <select id="filter-status">
+          <option value="">any status</option>
+          <option value="2xx">2xx</option>
+          <option value="4xx">4xx</option>
+          <option value="5xx">5xx</option>
+        </select>
+        <button type="button" id="btn-pause">Pause</button>
+        <span class="feed-state" id="feed-state">live</span>
+      </div>
+
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Status</th>
+            <th>ms</th>
+            <th>Category</th>
+            <th>Incident</th>
+          </tr>
+        </thead>
+        <tbody id="log-body">
+          <tr class="empty"><td colspan="7">// no requests yet</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ─── AGENT ─────────────────────────────────────────── -->
+    <section id="tab-agent" class="tab-panel" role="tabpanel">
+      <header class="panel-head">
+        <h1>Agent</h1>
+        <div class="meta">
+          <span id="agent-count">0</span> analyses ·
+          <span id="agent-escalated">0</span> escalated
+        </div>
+      </header>
+
+      <div class="toolbar">
+        <label><input type="checkbox" id="agent-filter-escalated"> escalated only</label>
+        <select id="agent-filter-severity">
+          <option value="">any severity</option>
+          <option value="critical">critical</option>
+          <option value="high">high</option>
+          <option value="medium">medium</option>
+          <option value="low">low</option>
+        </select>
+        <button type="button" id="agent-refresh">Refresh</button>
+        <span class="feed-state" id="agent-state">live</span>
+      </div>
+
+      <!-- Red banner: shown when an AI provider call failed (Liquid / Groq / agent-core). -->
+      <div class="ai-warn" id="agent-warning" hidden></div>
+
+      <div class="agent-feed" id="agent-feed">
+        <div class="agent-empty">// loading…</div>
+      </div>
+    </section>
+
+    <!-- ─── CONFIG ────────────────────────────────────────── -->
+    <section id="tab-config" class="tab-panel" role="tabpanel">
+      <header class="panel-head">
+        <h1>Config</h1>
+        <div class="meta" id="config-meta">not loaded</div>
+      </header>
+
+      <div class="warn-bar" id="warn-bar" hidden></div>
+
+      <form id="config-form" autocomplete="off">
+        <fieldset>
+          <legend>Server</legend>
+          <div class="field-row">
+            <div class="field">
+              <label for="cfg-target">TARGET_URL</label>
+              <input id="cfg-target" type="text" placeholder="https://your-app.example.com">
+              <div class="hint" id="hint-target"></div>
+            </div>
+            <div class="field">
+              <label for="cfg-port">EDGE_PORT</label>
+              <input id="cfg-port" type="number" placeholder="8080">
+              <div class="hint">stored only — not pushed to middleware</div>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>
+            External services
+            <button type="button" class="btn-micro" id="btn-add-service">+ add</button>
+          </legend>
+          <div id="services-list"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Codebase</legend>
+          <div class="field-row equal">
+            <div class="field">
+              <label for="cfg-repo">REPO_URL</label>
+              <input id="cfg-repo" type="text" placeholder="https://github.com/your-org/your-repo">
+              <div class="hint">optional — enables commit correlation in the incident feed</div>
+            </div>
+            <div class="field">
+              <label for="cfg-token">GITHUB_TOKEN</label>
+              <input id="cfg-token" type="password" placeholder="(unchanged)">
+              <div class="hint" id="hint-token">leave blank to keep the existing token</div>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Safety</legend>
+          <div class="opt-row">
+            <div class="opt-label">
+              <span class="key">DRY_RUN</span>
+              <span class="desc">agent proposes actions, does not execute them</span>
+            </div>
+            <button type="button" class="toggle" id="cfg-dryrun" role="switch" aria-checked="true" aria-label="Dry run"></button>
+          </div>
+          <div class="opt-row">
+            <div class="opt-label">
+              <span class="key">AUTO_ROLLBACK</span>
+              <span class="desc">revert a fix if it doesn't clear the error in 60s</span>
+            </div>
+            <button type="button" class="toggle" id="cfg-rollback" role="switch" aria-checked="true" aria-label="Auto rollback"></button>
+          </div>
+          <div class="opt-row">
+            <div class="opt-label">
+              <span class="key">ESCALATION_THRESHOLD</span>
+              <span class="desc">below this confidence, the agent wakes the human</span>
+            </div>
+            <div class="inline" style="width:120px">
+              <input id="cfg-threshold" type="number" min="0" max="100" step="1" aria-label="Escalation threshold percent">
+              <span class="suffix">%</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Monitoring</legend>
+          <div class="opt-row">
+            <div class="opt-label">
+              <span class="key">MONITORING_ACTIVE</span>
+              <span class="desc">start or pause the agent's watch on every request</span>
+            </div>
+            <button type="button" class="toggle" id="cfg-monitoring" role="switch" aria-checked="false" aria-label="Monitoring active"></button>
+          </div>
+        </fieldset>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" id="btn-save">Save config</button>
+          <button type="button" class="btn-ghost" id="btn-reload">Reload</button>
+          <span class="save-status" id="save-status"></span>
+        </div>
+      </form>
+
+      <!-- ─── AI: Liquid router + Groq prompt engineering ─────────────── -->
+      <form id="ai-form" autocomplete="off">
+        <fieldset>
+          <legend>AI · Liquid d1 router</legend>
+          <div class="ai-status-line" id="ai-liquid-status">checking agent-core…</div>
+          <div class="field-row equal">
+            <div class="field">
+              <label for="ai-liquid-key">LIQUID_API_KEY</label>
+              <input id="ai-liquid-key" type="password" placeholder="(unchanged)">
+              <div class="hint">unset → every incident defaults to Groq AI</div>
+            </div>
+            <div class="field">
+              <label for="ai-liquid-model">LIQUID_MODEL</label>
+              <input id="ai-liquid-model" type="text" placeholder="d1">
+              <div class="hint" id="hint-liquid-model"></div>
+            </div>
+          </div>
+          <div class="opt-row">
+            <div class="opt-label">
+              <span class="key">LIQUID_ENABLED</span>
+              <span class="desc">triage each incident with d1 before the Groq reasoner</span>
+            </div>
+            <button type="button" class="toggle" id="ai-liquid-enabled" role="switch" aria-checked="false" aria-label="Liquid routing enabled"></button>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>AI · Groq prompt engineering</legend>
+          <div class="field-row equal">
+            <div class="field">
+              <label for="ai-profile">PROMPT_PROFILE</label>
+              <select id="ai-profile"></select>
+              <div class="hint" id="hint-profile">built-in strategies — pick one, then tweak the text below</div>
+            </div>
+            <div class="field">
+              <label for="ai-model">GROQ_MODEL</label>
+              <input id="ai-model" type="text" placeholder="llama-3.3-70b-versatile">
+              <div class="hint" id="hint-ai-model"></div>
+            </div>
+          </div>
+          <div class="field-row equal">
+            <div class="field">
+              <label for="ai-temperature">TEMPERATURE</label>
+              <input id="ai-temperature" type="number" min="0" max="2" step="0.05">
+            </div>
+            <div class="field">
+              <label for="ai-max-tokens">MAX_TOKENS</label>
+              <input id="ai-max-tokens" type="number" min="256" max="16000" step="64">
+            </div>
+          </div>
+          <div class="field">
+            <label for="ai-system">SYSTEM_PROMPT</label>
+            <textarea id="ai-system" rows="7" spellcheck="false"></textarea>
+            <div class="hint">override for this profile · empty = profile default</div>
+          </div>
+          <div class="field">
+            <label for="ai-template">USER_PROMPT_TEMPLATE</label>
+            <textarea id="ai-template" rows="9" spellcheck="false"></textarea>
+            <div class="hint">variables: {{incident}} {{evidence}} {{dependencyFindings}} {{codeFindings}} {{recentCommits}} {{recurring}} {{repoUrl}} {{liquid}} {{tools}}</div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>AI · Test an incident</legend>
+          <div class="field-row equal">
+            <div class="field">
+              <label for="ai-test-path">TEST_PATH</label>
+              <input id="ai-test-path" type="text" placeholder="/checkout">
+            </div>
+            <div class="field">
+              <label for="ai-test-status">TEST_STATUS</label>
+              <input id="ai-test-status" type="number" placeholder="500">
+              <div class="hint">runs the real pipeline once — nothing is saved, nobody is paged</div>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn-primary" id="ai-save">Save AI settings</button>
+            <button type="button" class="btn-ghost" id="ai-reset">Reset prompt</button>
+            <button type="button" class="btn-ghost" id="ai-test-run">Run test incident</button>
+            <span class="save-status" id="ai-save-status"></span>
+          </div>
+          <div class="ai-test-result" id="ai-test-result"></div>
+        </fieldset>
+      </form>
+    </section>
+
+    <!-- ─── ABOUT ─────────────────────────────────────────── -->
+    <section id="tab-about" class="tab-panel" role="tabpanel">
+      <header class="panel-head">
+        <h1>About</h1>
+      </header>
+      <div class="prose">
+        <p class="lead">Sleepy Bot sits between your users and your server. Every request passes through the edge. The edge detects anomalies, dispatches them to the agent, and the agent reasons about dependencies and code — then either proposes a fix or wakes a human.</p>
+
+        <h2>The stack</h2>
+<pre>   ┌──────────┐    ┌──────────────┐    ┌─────────┐
+   │  CLIENT  │───▶│  MIDDLEWARE  │───▶│ SERVER  │
+   └──────────┘    │    (edge)    │    └─────────┘
+                   └──────┬───────┘
+                          │ anomaly
+                          ▼
+                   ┌──────────────┐    ┌──────────────┐
+                   │ AGENT CORE   │───▶│  CONNECTOR   │
+                   │ (reasoning)  │    │  (read-only) │
+                   └──────┬───────┘    └──────────────┘
+                          │
+                          ▼
+                   ┌──────────────┐   deliberate?   ┌──────────────┐
+                   │ LIQUID d1    │─── no ─────────▶│   ENGINEER   │
+                   │  (triage)    │                 │  (hand-off)  │
+                   └──────┬───────┘                 └──────────────┘
+                          │ technical
+                          ▼
+                   ┌──────────────┐
+                   │  GROQ AI     │  diagnosis + diffs
+                   └──────────────┘</pre>
+        <p style="margin-top:14px;font-size:13px;line-height:1.75">Each incident is triaged by Liquid AI's <code>d1</code> decision model first: billing/sales questions and very frustrated reporters go straight to a human, everything technical goes to Groq. No Liquid key configured? Every incident defaults to "call Groq AI". If a provider call fails, the Agent tab shows it in red and the incident still gets analysed.</p>
+
+        <h2>What each tab does</h2>
+        <ul>
+          <li><b>Requests</b> — live view of everything passing through the edge. Rows with a left bar were flagged as anomalies and dispatched to the agent. Click a row to see the request ID, upstream, client IP and a response sample.</li>
+          <li><b>Config</b> — the whole stack in one form: server target, external services, codebase link, safety limits, and the monitoring switch. The AI section at the bottom configures the Liquid router and lets you A/B test Groq prompts against a synthetic incident.</li>
+          <li><b>Config → AI</b> — pick a prompt profile (<code>balanced</code>, <code>concise</code>, <code>diff_first</code>, <code>strict_json</code>, <code>sre_checklist</code>), edit the system prompt or user template, then "Run test incident" to see exactly what the AI returns. Warnings appear inline when something will be stored but not monitored, or sent over plaintext.</li>
+          <li><b>About</b> — this page.</li>
+        </ul>
+
+        <h2>What gets pushed where</h2>
+        <ul>
+          <li><code>TARGET_URL</code> → middleware (<code>/_sbwk/config</code>) so the edge re-points immediately.</li>
+          <li>External services → connector (<code>/connector/config</code>), only for HTTP-scheme endpoints of kind <code>auth</code>, <code>database</code> or <code>external_api</code>. Non-HTTP endpoints (<code>mongodb+srv:</code>, <code>postgres:</code>, …) are stored but the connector does not monitor them.</li>
+          <li><code>REPO_URL</code> + commits → agent-core (<code>/config</code>) for commit correlation.</li>
+          <li>Safety limits + monitoring switch → agent-core (<code>/config</code>).</li>
+        </ul>
+
+        <h2>What this page cannot verify</h2>
+        <ul>
+          <li>It cannot prove the edge container is actually routing traffic — only that the control plane can reach the target from its own network.</li>
+          <li>It cannot check that the API token you provided is read-only. It can check that the auth endpoint answered, but any HTTP response (including <code>401</code> and <code>403</code>) counts as "reachable".</li>
+          <li>It cannot monitor a MongoDB, Postgres or Redis endpoint. Those are DNS-checked only.</li>
+          <li>The "auto-rollback within 60 seconds" promise lives in agent-core, not here.</li>
+        </ul>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* ─── helpers ─────────────────────────────────────────────── */
+const $ = id => document.getElementById(id);
+const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+async function api(path, body) {
+  const res = await fetch(path, body ? {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  } : undefined);
+  if (res.status === 401) { location.href = '/login'; throw new Error('session expired'); }
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
+  return data;
+}
+
+/* ─── tab wiring ──────────────────────────────────────────── */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      const on = b === btn;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => {
+      p.classList.toggle('is-active', p.id === `tab-${btn.dataset.tab}`);
+    });
+  });
+});
+
+$('logout').addEventListener('click', async (e) => {
+  e.preventDefault();
+  try { await fetch('/api/logout', { method: 'POST' }); } catch {}
+  location.href = '/login';
+});
+
+/* ─── health dot ──────────────────────────────────────────── */
+async function refreshHealth(services) {
+  if (!services) {
+    try { services = (await api('/api/state')).services; } catch { return; }
+  }
+  const vals = Object.values(services || {});
+  const bad = vals.filter(v => v !== 'healthy').length;
+  const dot = $('health-dot'), label = $('health-label');
+  dot.className = 'dot';
+  if (bad === 0) dot.classList.add('ok');
+  else if (bad === vals.length) dot.classList.add('bad');
+  else dot.classList.add('warn');
+  label.textContent = bad === 0 ? 'all healthy' : `${bad}/${vals.length} degraded`;
+}
+
+/* ─── REQUESTS ────────────────────────────────────────────── */
+const MAX_ROWS = 200;
+const expanded = new Set();
+let filterSig = '';
+let feedTimer = null;
+let feedBackoff = 0;
+let paused = false;
+
+function rowMatches(l) {
+  if ($('filter-anomaly').checked && !l.anomaly) return false;
+  if ($('filter-errors').checked && l.statusCode < 400) return false;
+  const f = $('filter-status').value;
+  if (f === '2xx' && (l.statusCode < 200 || l.statusCode >= 300)) return false;
+  if (f === '4xx' && (l.statusCode < 400 || l.statusCode >= 500)) return false;
+  if (f === '5xx' && (l.statusCode < 500 || l.statusCode >= 600)) return false;
+  return true;
+}
+
+function renderRow(l) {
+  const time = new Date(l.timestamp).toLocaleTimeString();
+  const statusCls = l.statusCode >= 500 ? 'cell-5xx' : l.statusCode >= 400 ? 'cell-4xx' : '';
+  const catCls = (l.category === 'server_error' || l.category === 'timeout') ? 'cat-bad'
+               : l.category === 'normal' ? '' : 'cat-warn';
+  const isExpanded = expanded.has(l.id);
+  const main = `<tr data-log-id="${escapeHtml(l.id)}" class="log-row ${l.anomaly ? 'is-anomaly' : ''}">
+    <td class="col-time">${escapeHtml(time)}</td>
+    <td class="col-method">${escapeHtml(l.method)}</td>
+    <td class="col-path">${escapeHtml(l.path)}</td>
+    <td class="col-status ${statusCls}">${l.statusCode}</td>
+    <td>${Math.round(l.durationMs)}</td>
+    <td class="${catCls}">${escapeHtml(l.category || 'normal')}</td>
+    <td class="col-inc">${l.incidentId ? `<button class="link-btn" data-copy="${escapeHtml(l.incidentId)}">copy</button>` : '—'}</td>
+  </tr>`;
+  if (!isExpanded) return main;
+  return main + `<tr class="log-detail" data-log-id="${escapeHtml(l.id)}">
+    <td colspan="7">
+      <div class="detail-grid">
+        <div><span class="k">id</span><code>${escapeHtml(l.id)}</code></div>
+        <div><span class="k">upstream</span><code>${escapeHtml(l.upstream)}</code></div>
+        <div><span class="k">client</span><code>${escapeHtml(l.clientIp || '?')}</code></div>
+        ${l.incidentId ? `<div><span class="k">incident</span><code>${escapeHtml(l.incidentId)}</code></div>` : ''}
+      </div>
+      ${l.responseSample ? `<pre class="sample">${escapeHtml(l.responseSample)}</pre>` : ''}
+    </td>
+  </tr>`;
+}
+
+function renderLogs(rawLogs) {
+  $('req-count').textContent = String(rawLogs.length);
+  $('req-anomalies').textContent = String(rawLogs.filter(l => l.anomaly).length);
+
+  const body = $('log-body');
+  const newFilterSig = `${$('filter-anomaly').checked}|${$('filter-errors').checked}|${$('filter-status').value}`;
+  if (newFilterSig !== filterSig) {
+    filterSig = newFilterSig;
+    body.innerHTML = '';
+    expanded.clear();
+  }
+
+  const matching = rawLogs.filter(rowMatches);
+  const currentIds = new Set(matching.map(l => l.id));
+
+  // remove rows that no longer match filters or fell off the end
+  body.querySelectorAll('tr[data-log-id]').forEach(el => {
+    if (!currentIds.has(el.dataset.logId)) el.remove();
+  });
+
+  // insert new rows at the top
+  const existingIds = new Set([...body.querySelectorAll('tr.log-row')].map(el => el.dataset.logId));
+  const fresh = matching.filter(l => !existingIds.has(l.id));
+  for (const l of fresh) {
+    body.insertAdjacentHTML('afterbegin', renderRow(l));
+  }
+
+  // cap visible rows
+  const rows = body.querySelectorAll('tr.log-row');
+  for (let i = MAX_ROWS; i < rows.length; i++) {
+    const row = rows[i];
+    const detail = row.nextElementSibling;
+    if (detail && detail.classList.contains('log-detail')) detail.remove();
+    row.remove();
+  }
+
+  if (!body.querySelector('tr.log-row')) {
+    body.innerHTML = '<tr class="empty"><td colspan="7">// no requests match current filters</td></tr>';
+  }
+
+  wireRows(rawLogs);
+}
+
+function wireRows(rawLogs) {
+  const body = $('log-body');
+  body.querySelectorAll('tr.log-row').forEach(row => {
+    if (row.dataset.wired) return;
+    row.dataset.wired = '1';
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      const id = row.dataset.logId;
+      if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+      const detail = row.nextElementSibling;
+      if (detail && detail.classList.contains('log-detail')) detail.remove();
+      if (expanded.has(id)) {
+        const l = rawLogs.find(x => x.id === id);
+        if (l) row.insertAdjacentHTML('afterend', renderRow(l).split('</tr>')[1] + '</tr>');
+      }
+    });
+  });
+  body.querySelectorAll('[data-copy]').forEach(btn => {
+    if (btn.dataset.wired) return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      navigator.clipboard?.writeText(btn.dataset.copy);
+      btn.textContent = 'copied';
+      setTimeout(() => { btn.textContent = 'copy'; }, 1000);
+    });
+  });
+}
+
+async function fetchLogs() {
+  try {
+    const r = await api('/api/logs?limit=100');
+    feedBackoff = 0;
+    const state = $('feed-state');
+    if (r.unreachable) {
+      state.textContent = 'middleware unreachable';
+      state.className = 'feed-state warn';
+    } else {
+      state.textContent = paused ? 'paused' : 'live';
+      state.className = 'feed-state';
+    }
+    renderLogs(r.logs || []);
+  } catch {
+    feedBackoff = Math.min(feedBackoff + 1, 5);
+    const state = $('feed-state');
+    state.textContent = 'error — retrying';
+    state.className = 'feed-state bad';
+    restartFeed(Math.min(4000 * 2 ** feedBackoff, 60000));
+  }
+}
+function restartFeed(delay = 4000) {
+  clearInterval(feedTimer); clearTimeout(feedTimer);
+  feedTimer = setTimeout(() => { fetchLogs(); if (!paused) restartFeed(4000); }, delay);
+}
+['filter-anomaly','filter-errors','filter-status'].forEach(id => {
+  $(id).addEventListener('change', () => fetchLogs());
+});
+$('btn-pause').addEventListener('click', () => {
+  paused = !paused;
+  $('btn-pause').textContent = paused ? 'Resume' : 'Pause';
+  const s = $('feed-state');
+  if (paused) { s.textContent = 'paused'; s.className = 'feed-state warn'; }
+  else { restartFeed(100); }
+});
+
+/* ─── AGENT ───────────────────────────────────────────────── */
+let agentTimer = null;
+let agentBackoff = 0;
+let lastIncidents = [];
+let lastContext = {};
+
+function severityClass(sev) {
+  return ['critical', 'high', 'medium', 'low'].includes(sev) ? `sev-${sev}` : 'sev-medium';
+}
+
+/* Render a unified diff: removed lines get a red shade, added lines green. */
+function renderDiff(diff) {
+  const lines = String(diff || '').replace(/\r\n/g, '\n').split('\n');
+  const out = lines.map(line => {
+    let cls = 'diff-ctx';
+    if (line.startsWith('+++') || line.startsWith('---')) cls = 'diff-file';
+    else if (line.startsWith('@@')) cls = 'diff-hunk';
+    else if (line.startsWith('+')) cls = 'diff-add';
+    else if (line.startsWith('-')) cls = 'diff-del';
+    const text = line === '' ? '&nbsp;' : escapeHtml(line);
+    return `<span class="diff-line ${cls}">${text}</span>`;
+  }).join('');
+  return `<pre class="diff">${out}</pre>`;
+}
+
+/* Liquid d1 -> Groq / human routing badge for one analysis. */
+function renderRouting(a) {
+  const r = a.routing;
+  if (!r) return '';
+  const model = String(r.model || 'd1').toUpperCase();
+  let cls = 'route-default';
+  let label = 'ROUTER UNKNOWN';
+  if (r.route === 'engineer') { cls = 'route-liquid-engineer'; label = `LIQUID ${model} → HUMAN ENGINEER`; }
+  else if (r.skipped) { cls = 'route-default'; label = 'LIQUID NOT CONFIGURED → GROQ AI'; }
+  else if (!r.ok) { cls = 'route-fallback'; label = 'LIQUID FAILED → GROQ AI FALLBACK'; }
+  else if (r.route === 'groq') { cls = 'route-liquid-groq'; label = `LIQUID ${model} → GROQ AI`; }
+
+  const d = r.decision || {};
+  const detail = [];
+  if (d.department) detail.push(`dept ${d.department}`);
+  if (typeof d.urgencyProbability === 'number') detail.push(`urgency ${Math.round(d.urgencyProbability * 100)}%`);
+  if (typeof d.frustrationScore === 'number') detail.push(`frustration ${d.frustrationScore.toFixed(2)}${d.frustrationLabel ? ` (${d.frustrationLabel})` : ''}`);
+  if (typeof r.latencyMs === 'number' && r.latencyMs > 0) detail.push(`${Math.round(r.latencyMs)}ms`);
+  detail.push(`answer from ${a.mode === 'live' ? 'Groq AI' : a.mode === 'engineer' ? 'hand-off' : 'heuristic'}`);
+
+  const reasons = (r.reasons || []).length
+    ? `<ul class="route-reasons">${r.reasons.map(x => `<li>${escapeHtml(x)}</li>`).join('')}</ul>`
+    : '';
+
+  return `<div class="agent-section">
+      <div class="agent-section-head">AI routing</div>
+      <div class="route-line">
+        <span class="route-chip ${cls}">${escapeHtml(label)}</span>
+        <span class="route-detail">${escapeHtml(detail.join(' · '))}</span>
+      </div>
+      ${reasons}
+    </div>`;
+}
+
+/* Red block for an AI call that failed; amber for "not configured". */
+function renderWarnings(warnings) {
+  return (warnings || []).map(w => {
+    const notice = w.severity !== 'error';
+    const head = notice ? 'Routing notice' : 'AI API WARNING';
+    return `<div class="card-warn${notice ? ' notice' : ''}">
+        <span class="route-chip ${notice ? 'route-default' : 'route-fallback'}">${head}</span>
+        ${escapeHtml(w.message)}
+        ${w.detail ? `<div class="warn-detail">${escapeHtml(String(w.detail).slice(0, 400))}</div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+/* The debug JSON we also print to console.log on agent-core. */
+function renderAiDebug(aiDebug) {
+  if (!Array.isArray(aiDebug) || !aiDebug.length) return '';
+  let pretty;
+  try { pretty = JSON.stringify(aiDebug, null, 2); } catch { pretty = String(aiDebug); }
+  return `<details class="ai-debug">
+      <summary>AI call debug — ${aiDebug.length} request${aiDebug.length === 1 ? '' : 's'} (JSON)</summary>
+      <pre>${escapeHtml(pretty)}</pre>
+    </details>`;
+}
+
+function renderIncident(record) {
+  const inc = record.incident || {};
+  const a = record.analysis;
+  const when = a?.createdAt || record.createdAt || inc.detectedAt;
+  const time = when ? new Date(when).toLocaleString() : '';
+  const catCls = (inc.category === 'server_error' || inc.category === 'timeout') ? 'cat-bad'
+               : inc.category === 'normal' ? '' : 'cat-warn';
+
+  let body;
+  if (!a) {
+    body = `<div class="agent-pending">Investigation ${escapeHtml(record.status || 'pending')}…</div>`;
+  } else {
+    const conf     = Math.round((a.confidence || 0) * 100);
+    const rootConf = Math.round((a.rootCause?.confidence || 0) * 100);
+
+    const deps = (a.dependencyFindings || []).length
+      ? a.dependencyFindings.map(f => `
+          <div class="dep-row">
+            <span class="dep-status dep-${escapeHtml(f.status || 'unknown')}">${escapeHtml(f.status || 'unknown')}</span>
+            <span class="dep-service">${escapeHtml(f.service || '')}</span>
+            ${(f.signals && f.signals.length)
+              ? `<span class="dep-signals">${f.signals.map(escapeHtml).join(' · ')}</span>`
+              : ''}
+          </div>`).join('')
+      : '<div class="agent-muted">no dependency findings</div>';
+
+    const codes = (a.codeFindings || []).length
+      ? a.codeFindings.map(f => `
+          <div class="code-finding">
+            <div class="code-file">${escapeHtml(f.file || '')}${f.line ? `:${f.line}` : ''}</div>
+            <pre class="code-snippet">${escapeHtml(f.snippet || '')}</pre>
+          </div>`).join('')
+      : '<div class="agent-muted">no relevant code located</div>';
+
+    const fixes = (a.suggestedFixes || []).length
+      ? a.suggestedFixes.map(fx => `
+          <li class="fix-item">
+            <div class="fix-head">
+              <span class="fix-kind">${escapeHtml(fx.kind || 'other')}</span>
+              <span class="fix-title">${escapeHtml(fx.title || '')}</span>
+            </div>
+            <div class="fix-desc">${escapeHtml(fx.description || '')}</div>
+            ${fx.file ? `<div class="fix-file">${escapeHtml(fx.file)}</div>` : ''}
+            ${fx.diff ? renderDiff(fx.diff) : ''}
+          </li>`).join('')
+      : '<li class="agent-muted">no suggested fixes</li>';
+
+    const escalation = a.escalate
+      ? `<div class="agent-section">
+          <div class="agent-section-head">Escalation</div>
+          <p class="agent-escalate">${escapeHtml(a.escalationReason || 'escalated to engineer')}</p>
+          ${record.notification
+            ? `<div class="agent-muted">notification: ${escapeHtml(record.notification.channel || 'log')} · ${record.notification.sent ? 'sent' : 'failed'}${record.notification.reason ? ` · ${escapeHtml(record.notification.reason)}` : ''}</div>`
+            : ''}
+        </div>`
+      : `<div class="agent-section">
+          <div class="agent-section-head">Escalation</div>
+          <div class="agent-muted">not escalated</div>
+        </div>`;
+
+    body = `
+      ${renderWarnings(a.warnings)}
+      <div class="agent-grid">
+        <div><span class="k">severity</span><span class="sev ${severityClass(a.severity)}">${escapeHtml((a.severity || 'medium').toUpperCase())}</span></div>
+        <div><span class="k">confidence</span><code>${conf}%</code></div>
+        <div><span class="k">root cause</span><code>${rootConf}%</code></div>
+        <div><span class="k">mode</span><code>${escapeHtml(a.mode || '—')}</code></div>
+        <div><span class="k">recurring</span><code>${a.recurring ?? 0}</code></div>
+        <div><span class="k">dry run</span><code>${a.policy?.dryRun ? 'on' : 'off'}</code></div>
+      </div>
+      <div class="agent-section">
+        <div class="agent-section-head">Summary</div>
+        <p>${escapeHtml(a.summary || '—')}</p>
+      </div>
+      <div class="agent-section">
+        <div class="agent-section-head">Root cause</div>
+        <p>${escapeHtml(a.rootCause?.summary || '—')}</p>
+      </div>
+      ${renderRouting(a)}
+      ${escalation}
+      <div class="agent-section">
+        <div class="agent-section-head">Dependencies</div>
+        ${deps}
+      </div>
+      <div class="agent-section">
+        <div class="agent-section-head">Code findings</div>
+        ${codes}
+      </div>
+      <div class="agent-section">
+        <div class="agent-section-head">Suggested fixes</div>
+        <ol class="fix-list">${fixes}</ol>
+      </div>
+      <div class="agent-section">
+        <div class="agent-section-head">Reasoning</div>
+        <p class="agent-reasoning">${escapeHtml(a.reasoning || '—')}</p>
+      </div>
+      ${renderAiDebug(a.aiDebug)}
+    `;
+  }
+
+  return `<article class="agent-card" data-incident="${escapeHtml(inc.id || '')}">
+    <header class="agent-card-head">
+      <div class="agent-card-title">
+        <span class="sev ${a ? severityClass(a.severity) : 'sev-medium'}">${a ? escapeHtml((a.severity || 'medium').toUpperCase()) : '…'}</span>
+        <code>${escapeHtml(inc.method || '')} ${escapeHtml(inc.path || '')} → ${escapeHtml(String(inc.statusCode ?? ''))}</code>
+      </div>
+      <div class="agent-card-time">${escapeHtml(time)}</div>
+    </header>
+    <div class="agent-card-meta">
+      <span class="${catCls}">${escapeHtml(inc.category || '')}</span>
+      <span>${escapeHtml(inc.reason || '')}</span>
+      ${inc.durationMs != null ? `<span>${Math.round(inc.durationMs)}ms</span>` : ''}
+      <span>id ${escapeHtml(inc.id || '')}</span>
+    </div>
+    <div class="agent-card-body">${body}</div>
+  </article>`;
+}
+
+function applyIncidentFilters() {
+  const onlyEsc = $('agent-filter-escalated').checked;
+  const sev     = $('agent-filter-severity').value;
+  let list = lastIncidents;
+  if (onlyEsc) list = list.filter(r => r.analysis?.escalate);
+  if (sev)     list = list.filter(r => (r.analysis?.severity || '') === sev);
+
+  const feed = $('agent-feed');
+  if (!list.length) {
+    feed.innerHTML = lastIncidents.length
+      ? '<div class="agent-empty">// no analyses match current filters</div>'
+      : '<div class="agent-empty">// no agent analyses yet — anomalies dispatched from the edge will appear here</div>';
+    return;
+  }
+  feed.innerHTML = list.map(renderIncident).join('');
+}
+
+/* ─── red banner: any AI provider call that failed ─────────── */
+const dismissedWarnings = new Set();
+
+function renderAgentWarnings(incidents, unreachable, error) {
+  const el = $('agent-warning');
+  if (!el) return;
+  const items = [];
+  if (unreachable) {
+    items.push({ severity: 'error', source: 'agent-core', message: `unreachable — ${error || 'no detail'}` });
+  }
+  for (const rec of incidents || []) {
+    const inc = rec.incident || {};
+    const source = `${inc.method || ''} ${inc.path || ''}`.trim() || String(inc.id || 'incident');
+    for (const w of rec.analysis?.warnings || []) {
+      items.push({ severity: w.severity === 'error' ? 'error' : 'notice', source, message: w.message, detail: w.detail });
+    }
+  }
+  const seen = new Set();
+  const unique = [];
+  for (const it of items) {
+    const key = `${it.severity}|${it.message}`;
+    if (seen.has(key) || dismissedWarnings.has(key)) continue;
+    seen.add(key);
+    unique.push(it);
+  }
+  const errors  = unique.filter(i => i.severity === 'error');
+  const notices = unique.filter(i => i.severity !== 'error');
+  if (!errors.length && !notices.length) { el.hidden = true; el.innerHTML = ''; return; }
+
+  const block = (list, cls, title) => !list.length ? '' : `
+    <div class="${cls}">
+      <div class="ai-warn-head">
+        <span>${escapeHtml(title)}</span>
+        <button type="button" class="ai-warn-close" data-dismiss>dismiss</button>
+      </div>
+      <ul>${list.map(i => `<li><code>${escapeHtml(i.source)}</code>${escapeHtml(i.message)}${i.detail ? ` <span class="route-detail">— ${escapeHtml(String(i.detail).slice(0, 180))}</span>` : ''}</li>`).join('')}</ul>
+    </div>`;
+
+  el.hidden = false;
+  el.innerHTML = block(errors, 'ai-warn-error', `⚠ one of the AI APIs did not work (${errors.length})`)
+               + block(notices, 'ai-warn-notice', `AI routing notice (${notices.length})`);
+  el.querySelectorAll('[data-dismiss]').forEach(btn => btn.addEventListener('click', () => {
+    unique.forEach(i => dismissedWarnings.add(`${i.severity}|${i.message}`));
+    el.hidden = true;
+    el.innerHTML = '';
+  }));
+}
+
+async function fetchIncidents() {
+  try {
+    const r = await api('/api/incidents?limit=25');
+    agentBackoff = 0;
+    const stateEl = $('agent-state');
+    if (r.unreachable) {
+      stateEl.textContent = 'agent-core unreachable';
+      stateEl.className = 'feed-state warn';
+      renderAgentWarnings([], true, r.error);
+      if (!lastIncidents.length) {
+        $('agent-feed').innerHTML = `<div class="agent-empty">// agent-core unreachable: ${escapeHtml(r.error || 'unknown error')}</div>`;
+      }
+      return;
+    }
+    stateEl.textContent = 'live';
+    stateEl.className = 'feed-state';
+    lastIncidents = r.incidents || [];
+    lastContext = r.context || {};
+    renderAgentWarnings(lastIncidents, false, null);
+    $('agent-count').textContent = String(lastIncidents.length);
+    $('agent-escalated').textContent = String(lastIncidents.filter(x => x.analysis?.escalate).length);
+    applyIncidentFilters();
+  } catch (e) {
+    agentBackoff = Math.min(agentBackoff + 1, 5);
+    const stateEl = $('agent-state');
+    stateEl.textContent = 'error — retrying';
+    stateEl.className = 'feed-state bad';
+    restartAgentFeed(Math.min(4000 * 2 ** agentBackoff, 60000));
+  }
+}
+
+function restartAgentFeed(delay = 8000) {
+  clearTimeout(agentTimer);
+  agentTimer = setTimeout(() => { fetchIncidents(); restartAgentFeed(8000); }, delay);
+}
+
+['agent-filter-escalated', 'agent-filter-severity'].forEach(id => {
+  $(id).addEventListener('change', applyIncidentFilters);
+});
+$('agent-refresh').addEventListener('click', () => fetchIncidents());
+
+/* ─── CONFIG ──────────────────────────────────────────────── */
+let services = [];
+let currentState = null;
+let dirty = false;
+
+function inferScheme(endpoint) {
+  try {
+    const u = new URL(endpoint);
+    if (u.protocol === 'http:' || u.protocol === 'https:') return u.protocol.slice(0, -1);
+    if (u.protocol === 'mongodb+srv:') return 'mongodb+srv';
+    if (u.protocol === 'postgres:' || u.protocol === 'postgresql:') return 'postgres';
+    if (u.protocol === 'redis:' || u.protocol === 'rediss:') return 'redis';
+    return 'other';
+  } catch { return 'other'; }
+}
+const isLoopback = host => host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+
+function renderServices() {
+  const list = $('services-list');
+  if (!services.length) {
+    list.innerHTML = '<div class="services-empty">// no services configured — click + add</div>';
+    return;
+  }
+  list.innerHTML = services.map((svc, i) => `
+    <div class="service-row" data-index="${i}">
+      <div class="field">
+        <label>NAME</label>
+        <input data-field="name" value="${escapeHtml(svc.name || '')}" placeholder="auth">
+      </div>
+      <div class="field">
+        <label>KIND</label>
+        <select data-field="kind">
+          <option value="auth"${svc.kind === 'auth' ? ' selected' : ''}>auth</option>
+          <option value="database"${svc.kind === 'database' ? ' selected' : ''}>database</option>
+          <option value="external_api"${svc.kind === 'external_api' ? ' selected' : ''}>external_api</option>
+          <option value="other"${svc.kind === 'other' ? ' selected' : ''}>other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>ENDPOINT</label>
+        <input data-field="endpoint" value="${escapeHtml(svc.endpoint || '')}" placeholder="https://auth.example.com/logs">
+        <div class="hint" data-hint="endpoint"></div>
+      </div>
+      <div class="field">
+        <label>TOKEN</label>
+        <input data-field="token" type="password" placeholder="${svc.hasToken ? '•••• stored ••••' : ''}">
+        <div class="hint">${svc.hasToken ? 'leave blank to keep stored token' : ''}</div>
+      </div>
+      <button type="button" class="btn-remove" data-action="remove" aria-label="Remove service">×</button>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.service-row').forEach(row => {
+    const i = Number(row.dataset.index);
+    row.querySelectorAll('[data-field]').forEach(el => {
+      el.addEventListener('input', () => {
+        const f = el.dataset.field;
+        if (f) services[i][f] = el.value;
+        dirty = true;
+        validate();
+      });
+    });
+    row.querySelector('[data-action="remove"]').addEventListener('click', () => {
+      services.splice(i, 1);
+      dirty = true;
+      renderServices();
+      validate();
+    });
+  });
+}
+
+$('btn-add-service').addEventListener('click', () => {
+  services.push({ id: `svc_${Date.now()}`, name: 'service', kind: 'other', endpoint: '', hasToken: false });
+  dirty = true;
+  renderServices();
+  validate();
+});
+
+function collectWarnings() {
+  const warnings = [];
+  const target = $('cfg-target').value.trim();
+  if (target) {
+    try {
+      const u = new URL(target);
+      if (u.protocol === 'http:' && !isLoopback(u.hostname)) {
+        warnings.push({ field: 'gateway.targetUrl', message: 'http:// target — traffic between edge and server is unencrypted.' });
+      }
+    } catch {
+      warnings.push({ field: 'gateway.targetUrl', message: 'not a valid URL.' });
+    }
+  }
+  services.forEach((svc, i) => {
+    const label = svc.name || svc.kind || `services[${i}]`;
+    if (!svc.endpoint) return;
+    const scheme = inferScheme(svc.endpoint);
+    if (scheme === 'other') {
+      warnings.push({ field: `services[${i}].endpoint`, message: `${label}: unrecognised scheme — stored, not monitored.` });
+    } else if (scheme !== 'http' && scheme !== 'https') {
+      warnings.push({ field: `services[${i}].endpoint`, message: `${label}: ${scheme} is DNS-checked only; connector will not monitor it.` });
+    } else if (scheme === 'http' && !isLoopback(new URL(svc.endpoint).hostname)) {
+      warnings.push({ field: `services[${i}].endpoint`, message: `${label}: plaintext http:// — its token will be sent unencrypted.` });
+    }
+    if (!['auth','database','external_api'].includes(svc.kind)) {
+      warnings.push({ field: `services[${i}].kind`, message: `${label}: kind "${svc.kind}" has no connector slot — stored only.` });
+    }
+  });
+  return warnings;
+}
+
+function validate() {
+  const warnings = collectWarnings();
+
+  // warn bar
+  const bar = $('warn-bar');
+  if (!warnings.length) {
+    bar.hidden = true; bar.innerHTML = '';
+  } else {
+    bar.hidden = false;
+    bar.innerHTML = warnings.map(w => `<div class="warn-line"><span class="warn-key">${escapeHtml(w.field)}</span>${escapeHtml(w.message)}</div>`).join('');
+  }
+
+  // per-service endpoint hint
+  document.querySelectorAll('.service-row').forEach((row, i) => {
+    const hint = row.querySelector('[data-hint="endpoint"]');
+    if (!hint) return;
+    const match = warnings.find(w => w.field === `services[${i}].endpoint`);
+    hint.textContent = match ? match.message : '';
+    hint.className = 'hint' + (match ? ' warn' : '');
+  });
+
+  // target hint
+  const targetHint = $('hint-target');
+  const targetWarn = warnings.find(w => w.field === 'gateway.targetUrl');
+  targetHint.textContent = targetWarn ? targetWarn.message : '';
+  targetHint.className = 'hint' + (targetWarn ? ' warn' : '');
+}
+
+function populate(state) {
+  currentState = state;
+  $('cfg-target').value = state.gateway.targetUrl || '';
+  $('cfg-port').value = state.gateway.port || 8080;
+  $('cfg-repo').value = state.codebase.repoUrl || '';
+  $('cfg-token').value = '';
+  $('hint-token').textContent = state.codebase.hasToken ? 'leave blank to keep stored token' : 'no token stored';
+  $('cfg-dryrun').setAttribute('aria-checked', String(Boolean(state.safety.dryRun)));
+  $('cfg-rollback').setAttribute('aria-checked', String(Boolean(state.safety.autoRollback)));
+  $('cfg-threshold').value = Math.round((state.safety.escalationThreshold ?? 0.8) * 100);
+  $('cfg-monitoring').setAttribute('aria-checked', String(Boolean(state.monitoring.active)));
+  $('config-meta').textContent = state.monitoring.active
+    ? `monitoring active since ${state.monitoring.startedAt ? new Date(state.monitoring.startedAt).toLocaleString() : 'unknown'}`
+    : 'monitoring inactive';
+
+  services = (state.external.services || []).map(s => ({ ...s }));
+  renderServices();
+  validate();
+  dirty = false;
+}
+
+async function loadState() {
+  try {
+    const { state, services: health } = await api('/api/state');
+    populate(state);
+    refreshHealth(health);
+  } catch (e) {
+    $('config-meta').textContent = 'failed to load — ' + e.message;
+  }
+}
+
+['cfg-target','cfg-port','cfg-repo','cfg-token','cfg-threshold'].forEach(id => {
+  $(id).addEventListener('input', () => { dirty = true; validate(); });
+});
+['cfg-dryrun','cfg-rollback','cfg-monitoring'].forEach(id => {
+  $(id).addEventListener('click', () => {
+    const on = $(id).getAttribute('aria-checked') === 'true';
+    $(id).setAttribute('aria-checked', String(!on));
+    dirty = true;
+  });
+});
+
+$('btn-reload').addEventListener('click', () => { if (!dirty || confirm('Discard unsaved changes?')) loadState(); });
+
+$('config-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('btn-save'), status = $('save-status');
+  btn.disabled = true; status.textContent = 'saving…'; status.className = 'save-status';
+
+  const payload = {
+    gateway: {
+      targetUrl: $('cfg-target').value.trim(),
+      port: Number($('cfg-port').value) || 8080
+    },
+    external: {
+      services: services.map(s => {
+        const out = { id: s.id, name: s.name, kind: s.kind, endpoint: s.endpoint };
+        // include a new token only if the user typed one
+        const row = document.querySelector(`.service-row[data-index="${services.indexOf(s)}"]`);
+        const tokenInput = row?.querySelector('[data-field="token"]');
+        if (tokenInput && tokenInput.value) out.token = tokenInput.value;
+        return out;
+      })
+    },
+    codebase: {
+      repoUrl: $('cfg-repo').value.trim(),
+      ...( $('cfg-token').value ? { token: $('cfg-token').value } : {} )
+    },
+    safety: {
+      dryRun: $('cfg-dryrun').getAttribute('aria-checked') === 'true',
+      autoRollback: $('cfg-rollback').getAttribute('aria-checked') === 'true',
+      escalationThreshold: Math.max(0, Math.min(100, Number($('cfg-threshold').value) || 0)) / 100
+    },
+    monitoring: { active: $('cfg-monitoring').getAttribute('aria-checked') === 'true' },
+    save: true
+  };
+
+  try {
+    const r = await api('/api/config', payload);
+    populate(r.state);
+    if (r.warnings?.length) {
+      const bar = $('warn-bar');
+      bar.hidden = false;
+      bar.innerHTML = r.warnings.map(w => `<div class="warn-line"><span class="warn-key">${escapeHtml(w.field)}</span>${escapeHtml(w.message)}</div>`).join('');
+    }
+    const appliedEntries = Object.entries(r.applied || {});
+    const failed = appliedEntries.filter(([, v]) => !v.ok);
+    if (failed.length) {
+      status.textContent = `saved, apply failed: ${failed.map(([k, v]) => `${k}: ${v.error || v.status || 'error'}`).join('; ')}`;
+      status.className = 'save-status bad';
+    } else {
+      status.textContent = 'saved ✓';
+      status.className = 'save-status ok';
+    }
+    dirty = false;
+    // refresh the requests tab health dot
+    const s = await api('/api/state');
+    refreshHealth(s.services);
+  } catch (e) {
+    status.textContent = 'save failed: ' + e.message;
+    status.className = 'save-status bad';
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/* ─── AI settings: Liquid router + Groq prompt engineering ── */
+let aiConfig = null;
+let aiPromptsDirty = false;   // only send the prompt text when the operator edited it
+let aiLoadedPrompts = { systemPrompt: '', userPromptTemplate: '' };
+
+function aiStatus(text, kind) {
+  const el = $('ai-save-status');
+  el.textContent = text;
+  el.className = 'save-status' + (kind ? ' ' + kind : '');
+}
+
+function fillAiForm(config) {
+  if (!config) return;
+  const liquid = config.liquid || {};
+  const llm = config.llm || {};
+
+  const status = $('ai-liquid-status');
+  if (liquid.configured) {
+    status.className = 'ai-status-line';
+    status.textContent = `Liquid ${liquid.model || 'd1'} triage is active · ${liquid.decisionsPath || '/decisions/v1/systemone'} @ ${liquid.baseUrl || 'https://api.liquid.ai'}`;
+  } else if (liquid.hasKey && liquid.enabled === false) {
+    status.className = 'ai-status-line warn';
+    status.textContent = 'Liquid routing is disabled (LIQUID_ENABLED=false) — every incident goes to Groq AI.';
+  } else {
+    status.className = 'ai-status-line bad';
+    status.textContent = 'LIQUID_API_KEY is not set — every incident falls back to "call Groq AI". Add a key below to enable d1 routing.';
+  }
+
+  $('ai-liquid-model').value = liquid.model || '';
+  $('ai-liquid-enabled').setAttribute('aria-checked', String(Boolean(liquid.enabled)));
+
+  const select = $('ai-profile');
+  select.innerHTML = (llm.profiles || []).map(pr =>
+    `<option value="${escapeHtml(pr.id)}">${escapeHtml(pr.label)} — ${escapeHtml(pr.description)}</option>`
+  ).join('') || '<option value="balanced">balanced</option>';
+  select.value = llm.profile || 'balanced';
+
+  $('ai-model').value = llm.model || '';
+  $('ai-temperature').value = llm.temperature ?? '';
+  $('ai-max-tokens').value = llm.maxTokens ?? '';
+  $('ai-system').value = llm.systemPrompt || '';
+  $('ai-template').value = llm.userPromptTemplate || '';
+  aiLoadedPrompts = { systemPrompt: llm.systemPrompt || '', userPromptTemplate: llm.userPromptTemplate || '' };
+  aiPromptsDirty = false;
+
+  $('hint-profile').textContent = llm.isCustom
+    ? 'custom prompt active — edit below, or Reset prompt to return to the profile'
+    : 'built-in strategies — pick one, then tweak the text below';
+  $('hint-ai-model').textContent = llm.hasKey ? '' : 'GROQ_API_KEY is not set on agent-core — live answers will fall back to the heuristic';
+  $('hint-ai-model').className = llm.hasKey ? 'hint' : 'hint error';
+  $('hint-liquid-model').textContent = liquid.hasKey ? 'key configured' : 'no key configured';
+}
+
+async function loadAiConfig() {
+  try {
+    const r = await api('/api/ai');
+    if (r.unreachable) {
+      $('ai-liquid-status').className = 'ai-status-line bad';
+      $('ai-liquid-status').textContent = `agent-core unreachable — cannot read AI settings (${r.error || 'unknown error'})`;
+      return;
+    }
+    aiConfig = r.config || {};
+    fillAiForm(aiConfig);
+  } catch (e) {
+    $('ai-liquid-status').className = 'ai-status-line bad';
+    $('ai-liquid-status').textContent = 'failed to load AI settings — ' + e.message;
+  }
+}
+
+['ai-system', 'ai-template'].forEach(id => $(id).addEventListener('input', () => { aiPromptsDirty = true; }));
+
+$('ai-liquid-enabled').addEventListener('click', () => {
+  const on = $('ai-liquid-enabled').getAttribute('aria-checked') === 'true';
+  $('ai-liquid-enabled').setAttribute('aria-checked', String(!on));
+});
+
+$('ai-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('ai-save');
+  btn.disabled = true;
+  aiStatus('saving…');
+
+  const payload = {
+    llm: {
+      profile: $('ai-profile').value,
+      model: $('ai-model').value.trim(),
+      temperature: Number($('ai-temperature').value),
+      maxTokens: Number($('ai-max-tokens').value)
+    },
+    liquid: {
+      model: $('ai-liquid-model').value.trim(),
+      enabled: $('ai-liquid-enabled').getAttribute('aria-checked') === 'true'
+    }
+  };
+  if (!Number.isFinite(payload.llm.temperature)) delete payload.llm.temperature;
+  if (!Number.isFinite(payload.llm.maxTokens)) delete payload.llm.maxTokens;
+
+  // Only send prompt text when it was edited (or deliberately emptied).
+  if (aiPromptsDirty) {
+    payload.llm.systemPrompt = $('ai-system').value;
+    payload.llm.userPromptTemplate = $('ai-template').value;
+  }
+  const key = $('ai-liquid-key').value.trim();
+  if (key) payload.liquid.apiKey = key;
+
+  try {
+    const r = await api('/api/ai', payload);
+    aiConfig = r.config || aiConfig;
+    $('ai-liquid-key').value = '';
+    fillAiForm(aiConfig);
+    aiStatus('saved ✓', 'ok');
+  } catch (err) {
+    aiStatus('save failed: ' + err.message, 'bad');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$('ai-reset').addEventListener('click', async () => {
+  aiStatus('resetting…');
+  try {
+    const r = await api('/api/ai', { llm: { reset: true } });
+    aiConfig = r.config || aiConfig;
+    fillAiForm(aiConfig);
+    aiStatus('prompt overrides cleared ✓', 'ok');
+  } catch (err) {
+    aiStatus('reset failed: ' + err.message, 'bad');
+  }
+});
+
+$('ai-test-run').addEventListener('click', async () => {
+  const btn = $('ai-test-run');
+  const out = $('ai-test-result');
+  btn.disabled = true;
+  aiStatus('running a real incident through the pipeline…');
+  const statusCode = Number($('ai-test-status').value) || 500;
+  try {
+    const r = await api('/api/ai/test', {
+      path: $('ai-test-path').value.trim() || '/checkout',
+      statusCode,
+      category: statusCode >= 500 ? 'server_error' : 'client_error'
+    });
+    out.innerHTML = `<div class="agent-section-head">Test result · ${escapeHtml(new Date().toLocaleTimeString())} · not saved</div>`
+      + renderIncident(r.incident);
+    aiStatus('test complete ✓', 'ok');
+  } catch (err) {
+    out.innerHTML = `<div class="ai-warn-error"><div class="ai-warn-head"><span>test failed</span></div>${escapeHtml(err.message)}</div>`;
+    aiStatus('test failed', 'bad');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+/* ─── boot ────────────────────────────────────────────────── */
+document.addEventListener('DOMContentLoaded', async () => {
+  loadState();
+  fetchLogs();
+  restartFeed(4000);
+  fetchIncidents();      // ← new
+  restartAgentFeed(8000); // ← new
+  loadAiConfig();        // Liquid router + Groq prompt settings
+  setInterval(() => refreshHealth().catch(() => {}), 30000);
+});
+</script>
+</body>
+</html>
