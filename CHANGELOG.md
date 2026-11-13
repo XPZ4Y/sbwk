@@ -4,6 +4,49 @@ All notable changes to SBWK (Sleepy Bot with Keys). Newest first.
 
 ---
 
+## v2.2.2 — onboarding saves work on a fresh volume (EACCES on /data)
+
+**Bug:** every save from the onboarding UI failed with
+
+```
+save failed: could not save: EACCES: permission denied, open '/data/onboarding.json.tmp'
+```
+
+`control-plane-data` is a named volume, which Docker creates as `root:root 0755`,
+while the image ran as `USER node` (uid 1000). The store's atomic write (temp file
++ rename) therefore could not create the temp file. The GitHub token was never at
+fault — the repo is fetched and verified *before* the write.
+
+### Fixes
+
+* `services/control-plane/preflight.mjs` (new): probes `DATA_DIR` for real
+  (create + delete a file, not mode bits) at boot; reclaims it when the process
+  has the rights; otherwise logs `data_dir_not_writable` with the exact `chown`
+  and keeps serving so the UI still explains itself.
+* `store.mjs` wraps persistence failures in a `DataDirError` that names the
+  directory, the running uid and the remedy, and preserves the original errno as
+  `code` (`EACCES`, `EROFS`, …). The misleading `.tmp` path is gone; a half-written
+  temp file is cleaned up.
+* `docker-entrypoint.sh` (new, control-plane **and** agent-core): starts as root,
+  chowns `DATA_DIR` to the runtime user only when it is wrong, then
+  `su-exec node`. Existing broken volumes heal on the next `docker compose up`;
+  fresh ones are correct on first boot. Running the image as an arbitrary uid
+  (compose `user:`) still works — the entrypoint then simply skips the chown.
+* `agent-core` had the same mount/uid mismatch and swallowed it: context was
+  silently never persisted. It now logs `state_persist_failed` (once per errno)
+  with the remedy.
+* `GET /api/state` → `dataDir: { path, status, writable }` so the UI (or `curl`)
+  can show why saves fail without reading container logs.
+
+### Tests
+
+`services/control-plane/test/preflight.test.mjs` (6): writable probe, `DATA_DIR`
+unset no-op, unwritable dir → `readonly` (never throws), chown reclaim, chown
+failure fallthrough, and an end-to-end check that a failed persist reports
+`DataDirError` with `dataDir` + errno rather than a `.tmp` path.
+
+---
+
 ## v2.2.1 — dumb activation function for the batch gate
 
 **Theme:** the gate's wake condition was one number, which meant five 404s woke it

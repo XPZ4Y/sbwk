@@ -27,7 +27,23 @@ export class IncidentStore {
     try {
       fs.mkdirSync(this.dataDir, { recursive: true });
       fs.writeFileSync(file, JSON.stringify(this.order.map(id => this.records.get(id)).filter(Boolean), null, 2));
-    } catch { /* best-effort */ }
+      this.lastPersistError = undefined;
+    } catch (e) {
+      // Best-effort by design (memory is the source of truth), but a mounted
+      // DATA_DIR owned by another uid is a real misconfiguration: it silently
+      // loses context across restarts. Report it once per distinct error.
+      this.lastPersistError = { code: e.code, message: e.message, at: new Date().toISOString() };
+      if (this.lastReportedError !== e.code) {
+        this.lastReportedError = e.code;
+        console.log(JSON.stringify({
+          level: "error", event: "state_persist_failed", service: "agent-core",
+          timestamp: new Date().toISOString(), dataDir: this.dataDir, code: e.code || "EUNKNOWN",
+          hint: e.code === "EACCES" || e.code === "EPERM" || e.code === "EROFS"
+            ? `DATA_DIR '${this.dataDir}' is not writable by uid ${typeof process.getuid === "function" ? process.getuid() : "?"}; context will not survive a restart. Fix: chown -R node:node ${this.dataDir}`
+            : e.message
+        }));
+      }
+    }
   }
 
   create(incident) {

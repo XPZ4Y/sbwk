@@ -74,3 +74,47 @@ server.mjs   # node:http server + onboarding API + serves the UI
 public/      # the onboarding UI (rewired to call the real API)
 test/        # node --test
 ```
+
+## Troubleshooting
+
+### `save failed: could not save: EACCES: permission denied, open '/data/onboarding.json.tmp'`
+
+The control plane writes onboarding state to `DATA_DIR` (`/data` in Compose) with
+an atomic temp-file + rename. The data dir is a **named volume**, which Docker
+creates as `root:root 0755` — but the app runs as `node` (uid 1000), so creating
+`onboarding.json.tmp` fails. Nothing is wrong with your GitHub token; the request
+never got that far (the GitHub link is fetched and verified *before* the write).
+
+**Fix an existing install (one command):**
+
+```bash
+docker compose run --rm --user root --entrypoint sh control-plane \
+  -c 'chown -R node:node /data && ls -ln /data'
+docker compose up -d control-plane
+```
+
+Or repair the volume directly:
+
+```bash
+docker volume ls | grep control-plane          # find the real name, e.g. sbwk_control-plane-data
+docker run --rm -v sbwk_control-plane-data:/data alpine chown -R 1000:1000 /data
+```
+
+**Prevention is built in:** the image entrypoint starts as root, chowns
+`DATA_DIR` to the runtime user, then drops privileges with `su-exec` — so a
+correct volume costs one `stat`, and an already-broken one heals on the next
+`docker compose up` (look for `"event":"data_dir_chowned"` in the logs).
+
+Two guards make the failure loud instead of cryptic:
+
+* at boot the control plane probes the directory and logs
+  `data_dir_not_writable` with the exact `chown` to run; `GET /api/state` reports
+  `dataDir: { path, status: "ok" | "reclaimed" | "readonly" }`.
+* a failed save now says `DATA_DIR '/data' is not writable by this process
+  (running as uid 1000). Fix it with: …` instead of naming a `.tmp` file.
+  The original errno is preserved as `error.code` (`EACCES`, `EROFS`, …).
+
+`agent-core` mounts `agent-core-data` the same way and shares the entrypoint; it
+previously swallowed the same failure silently (context never persisted across
+restarts) and now logs `state_persist_failed` once per errno.
+

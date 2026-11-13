@@ -5,12 +5,17 @@ import http from "node:http";
 import fs from "node:fs";
 import { config } from "./config.mjs";
 import * as store from "./store.mjs";
+import { ensureWritableDataDir } from "./preflight.mjs";
 import { checkReachability, fetchGitHubRepo } from "./checks.mjs";
 import { applyGateway, applyExternal, applyCodebase, applySafety, applyMonitoring, serviceHealth } from "./apply.mjs";
 import { saveConfig } from "./config-service.mjs";
 import { initAuth, verifyPassword, createSession, destroySession, sessionFromRequest, sessionCookie, clearCookie } from "./auth.mjs";
 import { getAiConfig, saveAiConfig, runPromptTest } from "./ai.mjs";
 
+// Make the mounted DATA_DIR usable before anything tries to write to it. The
+// Docker entrypoint normally did this already (as root, before dropping to node);
+// this covers `node server.mjs` and containers started as a non-root user.
+const dataDirStatus = ensureWritableDataDir(config.DATA_DIR);
 store.load();
 initAuth();
 
@@ -103,7 +108,13 @@ const server = http.createServer(async (req, res) => {
     }
 
     if (p === "/api/state" && req.method === "GET") {
-      return ok(res, { state: store.redacted(), services: await serviceHealth() });
+      return ok(res, {
+        state: store.redacted(),
+        services: await serviceHealth(),
+        // "ok" | "reclaimed" | "readonly" | "disabled" — "readonly" means saves
+        // will fail and the container needs its DATA_DIR chown (see README).
+        dataDir: { path: config.DATA_DIR || null, status: dataDirStatus, writable: dataDirStatus !== "readonly" }
+      });
     }
 
     // Atomic config save (the form in the Config tab). This route was missing:

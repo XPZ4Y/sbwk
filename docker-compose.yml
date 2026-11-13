@@ -127,6 +127,11 @@ services:
       DEFAULT_TARGET_URL: http://server:8000
       DATA_DIR: /data
     volumes:
+      # A named volume is created root:root, but the app runs as `node` (uid 1000),
+      # which used to fail every save with
+      #   EACCES: permission denied, open '/data/onboarding.json.tmp'
+      # The image's entrypoint now starts as root, chowns this mount to `node`,
+      # then drops privileges — so existing volumes heal on the next `up`.
       - control-plane-data:/data
     depends_on:
       - middleware

@@ -52,13 +52,45 @@ export function load() {
   }
 }
 
+/**
+ * The data dir is a mounted volume. When the mount is owned by another uid than
+ * the process (classic: Docker creates the named volume as root:root 0755 while
+ * the image runs as `USER node`), writes fail with EACCES on the temp file.
+ * The raw fs error names the *.tmp file, which hides which directory is at
+ * fault, so wrap it into something actionable and keep the errno as `code`.
+ */
 function persist(next) {
   const f = file();
   if (!f) return;
-  fs.mkdirSync(path.dirname(f), { recursive: true });
+  const dir = path.dirname(f);
+  try {
+    fs.mkdirSync(dir, { recursive: true });
+  } catch (e) {
+    throw dataDirError(e, dir, "create");
+  }
   const tmp = `${f}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(next, null, 2), { mode: 0o600 });
-  fs.renameSync(tmp, f);
+  try {
+    fs.writeFileSync(tmp, JSON.stringify(next, null, 2), { mode: 0o600 });
+    fs.renameSync(tmp, f);
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch { /* may not exist */ }
+    throw dataDirError(e, dir, "write");
+  }
+}
+
+function dataDirError(cause, dir, action) {
+  const hint =
+    cause.code === "EACCES" || cause.code === "EPERM" || cause.code === "EROFS"
+      ? `DATA_DIR '${dir}' is not writable by this process (running as uid ${typeof process.getuid === "function" ? process.getuid() : "?"}). ` +
+        `Fix it with: docker compose run --rm --user root --entrypoint sh control-plane -c 'chown -R node:node ${dir}' ` +
+        `(or set user: "\${UID}" on the service and recreate the volume).`
+      : `Could not ${action} onboarding state under DATA_DIR '${dir}'.`;
+  const e = new Error(hint);
+  e.name = "DataDirError";
+  e.code = cause.code || "EUNKNOWN";
+  e.cause = cause;
+  e.dataDir = dir;
+  return e;
 }
 
 // Commit a new state only if it persisted. On failure, memory is left unchanged.
