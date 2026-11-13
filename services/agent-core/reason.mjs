@@ -2,6 +2,8 @@
 // Reasoning: dependency findings + deterministic heuristic + optional Groq LLM with tool calling.
 import { config as defaultConfig } from "./config.mjs";
 import { inspectCodebase } from "./codebase.mjs";
+import { resolvePromptSettings, renderTemplate, TOOL_NAMES } from "./prompts.mjs";
+import { logAiCall, debugRecord } from "./ai-debug.mjs";
 
 const log = (level, event, fields = {}) =>
   console.log(JSON.stringify({ level, event, service: "agent-core", timestamp: new Date().toISOString(), ...fields }));
@@ -297,32 +299,16 @@ async function executeTool(name, args, input, cfg) {
 
   return { error: `unknown tool: ${name}` };
 }
-
 // ─────────────────────────────────────────────────────────────────────────────
 // Groq agent loop
 // ─────────────────────────────────────────────────────────────────────────────
+//
+// The prompt is configuration, not code: see prompts.mjs. `resolvePromptSettings`
+// merges (1) the runtime override saved by POST /config, (2) GROQ_* env vars, and
+// (3) the selected built-in profile. That is what makes A/B testing different
+// prompting strategies possible without redeploying.
 
 const MAX_TOOL_ITERATIONS = 6;
-const MAX_OUTPUT_TOKENS = 4000; // raised from 1400: 8 suggestedFixes with diffs overflowed 1400
-
-const SYSTEM_PROMPT = [
-  "You are SBWK Agent Core, a read-only site-reliability assistant.",
-  "You diagnose production incidents by calling read-only diagnostic tools.",
-  "Call tools to gather evidence first. Do not guess.",
-  "Available tools: inspect_database_health/metrics/logs, inspect_auth_health/metrics/logs,",
-  "inspect_external_api_health/metrics/logs, and search_codebase.",
-  "Start by checking the dependencies most likely to be involved based on the incident.",
-  "After you have enough evidence, return the final JSON diagnosis WITHOUT any tool calls.",
-  "Do not invent facts about dependencies that are reported healthy.",
-  "You suggest fixes but NEVER execute, deploy, restart or remediate anything.",
-  "Respond with ONLY a JSON object (no markdown) with keys:",
-  "severity (low|medium|high|critical), summary (string),",
-  "rootCause {summary, confidence 0..1}, confidence (0..1),",
-  "suggestedFixes (array of {title, description, kind: config|code|dependency|investigation, file?, diff? (optional unified diff string)}),",
-  "reasoning (string). Prefer dependency root causes when a dependency is unhealthy.",
-  "confidence and rootCause.confidence MUST be JSON numbers between 0 and 1, not strings.",
-  "Return at most 3 suggestedFixes; omit diff unless it is short."
-].join(" ");
 
 /**
  * Tolerant final-answer parser. Handles the two failure modes we kept hitting:
@@ -354,6 +340,15 @@ function parseFinalAnswer(content) {
     return null;
   }
 
+  // Normalise fixes so the UI can always render a diff block when one exists.
+  const suggestedFixes = parsed.suggestedFixes.slice(0, 8).map(f => ({
+    title: String(f?.title || ""),
+    description: String(f?.description || ""),
+    kind: String(f?.kind || "other"),
+    ...(f?.file ? { file: String(f.file) } : {}),
+    ...(typeof f?.diff === "string" && f.diff.trim() ? { diff: f.diff } : {})
+  }));
+
   return {
     mode: "live",
     severity: String(parsed.severity).toLowerCase(),
@@ -362,86 +357,172 @@ function parseFinalAnswer(content) {
       summary: String(parsed.rootCause.summary || ""),
       confidence: Math.max(0, Math.min(1, Number(parsed.rootCause.confidence) || 0))
     },
-    suggestedFixes: parsed.suggestedFixes.slice(0, 8),
+    suggestedFixes,
     confidence: Math.max(0, Math.min(1, Number(parsed.confidence))),
     reasoning: String(parsed.reasoning || "")
   };
 }
 
+/** Everything the model is allowed to know, flattened into template variables. */
+export function buildPromptVariables(input, cfg = defaultConfig) {
+  const dependencyFindings = deriveDependencyFindings(input.dependency || { results: [] });
+  const codeFindings = (input.codeFindings || []).slice(0, 3).map(f => ({
+    file: f.file,
+    line: f.line,
+    snippet: String(f.snippet || "").slice(0, 400),
+    reason: f.reason
+  }));
+  const recentCommits = (input.recentCommits || []).map(c => ({
+    sha: String(c.sha || "").slice(0, 7),
+    message: String(c.message || "").split("\n")[0]
+  }));
+
+  const incident = {
+    method: input.incident?.method,
+    path: input.incident?.path,
+    statusCode: input.incident?.statusCode,
+    category: input.incident?.category,
+    reason: input.incident?.reason,
+    responseSample: input.incident?.responseSample?.slice(0, 800),
+    error: input.incident?.error
+  };
+
+  const evidence = [
+    "dependency findings:",
+    JSON.stringify(dependencyFindings, null, 2),
+    "code findings:",
+    JSON.stringify(codeFindings, null, 2),
+    `recurring on this path: ${input.recurring ?? 0}`,
+    recentCommits.length ? `recent commits:\n${JSON.stringify(recentCommits, null, 2)}` : "recent commits: none",
+    input.repoUrl ? `repository: ${input.repoUrl}` : "repository: not linked"
+  ].join("\n");
+
+  const liquid = input.liquid
+    ? {
+        route: input.liquid.route,
+        decision: input.liquid.decision,
+        reasons: input.liquid.reasons,
+        evidence: input.liquid.evidence
+      }
+    : null;
+
+  return {
+    incident: JSON.stringify({ ...incident, recurring: input.recurring, repoUrl: input.repoUrl }, null, 2),
+    dependencyFindings: JSON.stringify(dependencyFindings, null, 2),
+    codeFindings: JSON.stringify(codeFindings, null, 2),
+    recentCommits: JSON.stringify(recentCommits, null, 2),
+    repoUrl: input.repoUrl || "none",
+    recurring: String(input.recurring ?? 0),
+    liquid: liquid ? JSON.stringify(liquid, null, 2) : "none (Liquid AI was not consulted or returned no decision)",
+    tools: TOOL_NAMES.join(", "),
+    evidence
+  };
+}
+
+/**
+ * One chat-completions call, with the debug JSON log the operator asked for.
+ * Returns { ok, data } or { ok:false, error } — never throws.
+ */
+async function postChat(baseUrl, cfg, body, debug) {
+  const url = `${baseUrl}/chat/completions`;
+  const headers = { "Content-Type": "application/json", Authorization: `Bearer ${cfg.GROQ_API_KEY}` };
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), cfg.LLM_TIMEOUT_MS);
+  const started = Date.now();
+  try {
+    const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body), signal: controller.signal });
+    const text = await res.text();
+    const durationMs = Date.now() - started;
+
+    // ── debug JSON of the API call (console.log + optional analysis record) ──
+    const record = debugRecord({
+      provider: "groq",
+      ok: res.ok,
+      durationMs,
+      request: { method: "POST", url, headers, body },
+      response: { status: res.status, body: text },
+      error: res.ok ? undefined : `HTTP ${res.status}`
+    });
+    logAiCall("groq_ai_call", { provider: "groq", ok: res.ok, durationMs, request: record.request, response: record.response });
+    if (debug) debug.push(record);
+
+    if (!res.ok) {
+      log("warn", "llm_http_error", { status: res.status, body: text.slice(0, 300) });
+      return { ok: false, error: `HTTP ${res.status}`, body: text.slice(0, 300), durationMs };
+    }
+    try {
+      return { ok: true, data: JSON.parse(text), durationMs };
+    } catch {
+      log("warn", "llm_invalid_json", { head: text.slice(0, 200) });
+      return { ok: false, error: "invalid JSON from provider", durationMs };
+    }
+  } catch (e) {
+    const durationMs = Date.now() - started;
+    const error = e.name === "AbortError" ? "timeout" : (e.message || "network error");
+    const record = debugRecord({
+      provider: "groq",
+      ok: false,
+      durationMs,
+      request: { method: "POST", url, headers, body },
+      error
+    });
+    logAiCall("groq_ai_call", { provider: "groq", ok: false, durationMs, request: record.request, error });
+    if (debug) debug.push(record);
+    log("warn", "llm_fetch_failed", { error });
+    return { ok: false, error, durationMs };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * Live reasoning through Groq. Returns the parsed diagnosis extended with
+ * `aiDebug` (when cfg.AI_DEBUG) and `llmError` when a call failed, or null when
+ * the provider is not configured / nothing usable came back.
+ */
 export async function groqReason(input, cfg = defaultConfig) {
   if (!cfg.GROQ_API_KEY) { log("warn", "llm_skipped", { reason: "no GROQ_API_KEY" }); return null; }
 
+  const settings = resolvePromptSettings(cfg);
+  const variables = buildPromptVariables(input, cfg);
   const messages = [
-    { role: "system", content: SYSTEM_PROMPT },
-    {
-      role: "user",
-      content: `Diagnose this incident.\n\nINCIDENT:\n${JSON.stringify({
-        incident: {
-          method: input.incident.method,
-          path: input.incident.path,
-          statusCode: input.incident.statusCode,
-          category: input.incident.category,
-          reason: input.incident.reason,
-          responseSample: input.incident.responseSample?.slice(0, 800),
-          error: input.incident.error
-        },
-        recurring: input.recurring,
-        repoUrl: input.repoUrl,
-        recentCommits: (input.recentCommits || []).map(c => ({
-          sha: (c.sha || "").slice(0, 7),
-          message: (c.message || "").split("\n")[0]
-        })),
-        // Seed context the model already has (still encourage tool use for more).
-        initialDependencyFindings: deriveDependencyFindings(input.dependency),
-        initialCodeFindings: (input.codeFindings || []).slice(0, 3).map(f => ({
-          file: f.file,
-          line: f.line,
-          snippet: f.snippet.slice(0, 400)
-        }))
-      })}`
-    }
+    { role: "system", content: settings.systemPrompt },
+    { role: "user", content: renderTemplate(settings.userPromptTemplate, variables) }
   ];
 
   const tools = buildToolDefinitions();
-  const baseUrl = cfg.GROQ_BASE_URL.replace(/\/$/, "");
+  const baseUrl = String(cfg.GROQ_BASE_URL || "https://api.groq.com/openai/v1").replace(/\/$/, "");
+  const debug = [];
+  let lastError = null;
+
+  log("info", "llm_prompt_resolved", {
+    profile: settings.profile,
+    custom: settings.isCustom,
+    temperature: settings.temperature,
+    maxTokens: settings.maxTokens,
+    model: cfg.GROQ_MODEL,
+    promptChars: settings.systemPrompt.length + settings.userPromptTemplate.length
+  });
 
   for (let i = 0; i < MAX_TOOL_ITERATIONS; i++) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), cfg.LLM_TIMEOUT_MS);
-    let data;
-    try {
-      const res = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${cfg.GROQ_API_KEY}`
-        },
-        signal: controller.signal,
-        body: JSON.stringify({
-          model: cfg.GROQ_MODEL,
-          messages,
-          tools,
-          tool_choice: "auto",
-          temperature: 0.2,
-          max_tokens: MAX_OUTPUT_TOKENS
-        })
-      });
-      if (!res.ok) {
-        const body = await res.text().catch(() => "");
-        log("warn", "llm_http_error", { iteration: i, status: res.status, body: body.slice(0, 300) });
-        return null;
-      }
-      data = await res.json();
-    } catch (e) {
-      log("warn", "llm_fetch_failed", { iteration: i, error: e.name === "AbortError" ? "timeout" : e.message });
-      return null;
-    } finally {
-      clearTimeout(timeout);
-    }
+    const result = await postChat(baseUrl, cfg, {
+      model: cfg.GROQ_MODEL,
+      messages,
+      tools,
+      tool_choice: "auto",
+      temperature: settings.temperature,
+      max_tokens: settings.maxTokens
+    }, debug);
 
+    if (!result.ok) {
+      lastError = result.error;
+      // A provider error mid-loop is fatal for this incident: fall back cleanly.
+      return attachDebug(null, debug, cfg, lastError);
+    }
+    const data = result.data;
     const msg = data.choices?.[0]?.message;
     const finish = data.choices?.[0]?.finish_reason;
-    if (!msg) { log("warn", "llm_empty_message", { iteration: i, finish }); return null; }
+    if (!msg) { log("warn", "llm_empty_message", { iteration: i, finish }); return attachDebug(null, debug, cfg, "empty message"); }
 
     // Append the assistant message (may include tool_calls).
     messages.push(msg);
@@ -449,13 +530,10 @@ export async function groqReason(input, cfg = defaultConfig) {
     if (!msg.tool_calls || msg.tool_calls.length === 0) {
       const parsed = parseFinalAnswer(msg.content);
       if (!parsed) {
-        log("warn", "llm_parse_failed", {
-          iteration: i,
-          finish,
-          head: (msg.content || "").slice(0, 400)
-        });
+        log("warn", "llm_parse_failed", { iteration: i, finish, head: (msg.content || "").slice(0, 400) });
+        lastError = "unparseable final answer";
       }
-      return parsed;
+      return attachDebug(parsed, debug, cfg, parsed ? null : lastError);
     }
 
     // Execute tool calls in order; append each result with matching tool_call_id.
@@ -464,11 +542,11 @@ export async function groqReason(input, cfg = defaultConfig) {
       try {
         args = JSON.parse(call.function?.arguments || "{}");
       } catch { /* keep {} */ }
-      const result = await executeTool(call.function?.name || "", args, input, cfg);
+      const result2 = await executeTool(call.function?.name || "", args, input, cfg);
       messages.push({
         role: "tool",
         tool_call_id: call.id,
-        content: JSON.stringify(result)
+        content: JSON.stringify(result2)
       });
     }
   }
@@ -480,114 +558,60 @@ export async function groqReason(input, cfg = defaultConfig) {
     content: "Stop calling tools. Return the final JSON diagnosis now using the evidence you have gathered."
   });
 
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), cfg.LLM_TIMEOUT_MS);
-  try {
-    const res = await fetch(`${baseUrl}/chat/completions`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${cfg.GROQ_API_KEY}`
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: cfg.GROQ_MODEL,
-        messages,
-        temperature: 0.2,
-        max_tokens: MAX_OUTPUT_TOKENS,
-        response_format: { type: "json_object" }
-      })
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => "");
-      log("warn", "llm_http_error", { stage: "forced_final", status: res.status, body: body.slice(0, 300) });
-      return null;
-    }
-    const data = await res.json();
-    const msg = data.choices?.[0]?.message;
-    const finish = data.choices?.[0]?.finish_reason;
-    const parsed = parseFinalAnswer(msg?.content);
-    if (!parsed) {
-      log("warn", "llm_parse_failed", {
-        stage: "forced_final",
-        finish,
-        head: (msg?.content || "").slice(0, 400)
-      });
-    }
-    return parsed;
-  } catch (e) {
-    log("warn", "llm_fetch_failed", { stage: "forced_final", error: e.name === "AbortError" ? "timeout" : e.message });
-    return null;
-  } finally {
-    clearTimeout(timeout);
+  const forced = await postChat(baseUrl, cfg, {
+    model: cfg.GROQ_MODEL,
+    messages,
+    temperature: settings.temperature,
+    max_tokens: settings.maxTokens,
+    response_format: { type: "json_object" }
+  }, debug);
+
+  if (!forced.ok) return attachDebug(null, debug, cfg, forced.error);
+  const parsed = parseFinalAnswer(forced.data.choices?.[0]?.message?.content);
+  if (!parsed) {
+    log("warn", "llm_parse_failed", { stage: "forced_final", head: (forced.data.choices?.[0]?.message?.content || "").slice(0, 400) });
+    return attachDebug(null, debug, cfg, "unparseable forced final answer");
   }
+  return attachDebug(parsed, debug, cfg, null);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Mode policy
-//   AGENT_MODE=mock  (non-API runtime)  → hardcoded heuristics are the expected
-//                                          reasoner. No warning.
-//   AGENT_MODE=live  (API-tethered)     → the reasoning model is the ONLY
-//                                          permitted diagnosis source. Hardcoded
-//                                          heuristics are disabled. If the LLM
-//                                          fails or is unconfigured, a degraded,
-//                                          explicitly-warned result is returned
-//                                          and the incident is escalated.
-// ─────────────────────────────────────────────────────────────────────────────
-
-export const AI_UNAVAILABLE_WARNING = {
-  code: "NON_API_FALLBACK",
-  severity: "warn",
-  message:
-    "The AI reasoning API was unavailable or returned an unusable answer. " +
-    "Hardcoded heuristics are disabled in API-tethered mode, so no automated " +
-    "root cause is asserted. The incident is escalated for human review."
-};
-
-function aiUnavailableResult() {
-  return {
-    mode: "degraded",
-    degraded: true,
-    severity: "medium",
-    summary: "Automated AI diagnosis unavailable; escalated for human review.",
-    rootCause: {
-      summary:
-        "No automated root cause was asserted. Dependency and code evidence " +
-        "collected before reasoning is attached for the engineer.",
-      confidence: 0
-    },
-    suggestedFixes: [],
-    confidence: 0,
-    reasoning:
-      "This application is API-tethered (AGENT_MODE=live), so the reasoning model " +
-      "is the only permitted diagnosis source. The LLM call failed or returned an " +
-      "unparseable answer. The hardcoded heuristic path is reserved for non-API " +
-      "runtime (AGENT_MODE=mock).",
-    warnings: [AI_UNAVAILABLE_WARNING]
-  };
+/**
+ * Uniform return shape: { parsed, aiDebug?, llmError? }.
+ * `parsed` is null whenever nothing usable came back, so callers never have to
+ * guess whether an error object holds a diagnosis or a failure detail.
+ */
+function attachDebug(parsed, debug, cfg, llmError) {
+  const out = { parsed: parsed || null };
+  if (cfg.AI_DEBUG && Array.isArray(debug) && debug.length) out.aiDebug = debug;
+  if (llmError || !parsed) out.llmError = llmError || "llm unavailable";
+  return out;
 }
 
+/**
+ * Route to the LLM, then fall back to the deterministic heuristic.
+ * A failed Groq call is surfaced as `llmWarning` so the UI can show it in red
+ * instead of silently pretending the heuristic answer came from the model.
+ */
 export async function reason(input, cfg = defaultConfig) {
-  if (cfg.AGENT_MODE === "live") {
-    if (cfg.GROQ_API_KEY) {
-      const live = await groqReason(input, cfg);
-      if (live) return { ...live, warnings: [] };
-      log("warn", "ai_reasoning_unavailable", {
-        incidentId: input.incident?.id,
-        path: input.incident?.path,
-        fallback: "degraded"
-      });
-    } else {
-      log("warn", "ai_reasoning_unavailable", {
-        incidentId: input.incident?.id,
-        path: input.incident?.path,
-        reason: "AGENT_MODE=live but GROQ_API_KEY is not set",
-        fallback: "degraded"
-      });
-    }
-    return aiUnavailableResult();
-  }
+  if (cfg.AGENT_MODE === "live" && cfg.GROQ_API_KEY) {
+    const raw = await groqReason(input, cfg);
+    const live = raw?.parsed;
+    const debug = raw?.aiDebug;
+    const llmError = raw?.llmError;
 
-  // Non-API runtime: hardcoded heuristics are expected and carry no warning.
-  return { ...heuristicReason(input), mode: "mock", warnings: [] };
+    if (live) return { ...live, ...(debug ? { aiDebug: debug } : {}) };
+
+    log("warn", "llm_fallback_to_heuristic", {
+      incidentId: input.incident?.id,
+      path: input.incident?.path,
+      error: llmError
+    });
+    const fallback = heuristicReason(input);
+    return {
+      ...fallback,
+      llmWarning: `Groq AI call failed (${llmError || "no usable answer"}) — fell back to the heuristic reasoner.`,
+      ...(debug && cfg.AI_DEBUG ? { aiDebug: debug } : {})
+    };
+  }
+  return heuristicReason(input);
 }

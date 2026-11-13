@@ -9,6 +9,7 @@ import { checkReachability, fetchGitHubRepo } from "./checks.mjs";
 import { applyGateway, applyExternal, applyCodebase, applySafety, applyMonitoring, serviceHealth } from "./apply.mjs";
 import { saveConfig } from "./config-service.mjs";
 import { initAuth, verifyPassword, createSession, destroySession, sessionFromRequest, sessionCookie, clearCookie } from "./auth.mjs";
+import { getAiConfig, saveAiConfig, runPromptTest } from "./ai.mjs";
 
 store.load();
 initAuth();
@@ -104,10 +105,23 @@ const server = http.createServer(async (req, res) => {
     if (p === "/api/state" && req.method === "GET") {
       return ok(res, { state: store.redacted(), services: await serviceHealth() });
     }
+
+    // Atomic config save (the form in the Config tab). This route was missing:
+    // the UI has always posted here, while only the per-step routes existed, so
+    // "Save config" answered 404. saveConfig() validates everything first and
+    // reports partial pushes instead of rolling back.
     if (p === "/api/config" && req.method === "POST") {
-      const result = await saveConfig(await readJson(req));
+      const body = await readJson(req);
+      const result = await saveConfig(body);
+      log(result.body?.success ? "info" : "warn", "config_save", {
+        status: result.status,
+        partial: result.body?.partial,
+        warnings: result.body?.warnings?.length || 0,
+      });
       return sendJson(res, result.status, result.body);
-    }    // STEP 01 — Gateway
+    }
+
+    // STEP 01 — Gateway
     if (p === "/api/gateway" && req.method === "POST") {
       const body = await readJson(req);
       if (!body.targetUrl) return fail(res, 400, "targetUrl is required");
@@ -263,6 +277,38 @@ const server = http.createServer(async (req, res) => {
       } catch (e) {
         return ok(res, { logs: [], unreachable: true, error: e.name === "AbortError" ? "timeout" : "unreachable" });
       } finally { clearTimeout(t); }
+    }
+
+    // ── AI settings: Liquid d1 router + Groq prompt engineering ──────────────
+    if (p === "/api/ai" && req.method === "GET") {
+      const r = await getAiConfig();
+      if (!r.ok) {
+        log("warn", "ai_config_unavailable", { error: r.error });
+        return ok(res, { unreachable: true, error: r.error, config: null });
+      }
+      return ok(res, { config: r.config });
+    }
+    if (p === "/api/ai" && req.method === "POST") {
+      const body = await readJson(req);
+      const r = await saveAiConfig(body);
+      if (!r.ok) return fail(res, r.status === 0 ? 502 : r.status, r.error);
+      log("info", "ai_config_saved", {
+        profile: r.config?.llm?.profile,
+        liquidConfigured: r.config?.liquid?.configured,
+        temperature: r.config?.llm?.temperature
+      });
+      return ok(res, { config: r.config });
+    }
+    if (p === "/api/ai/test" && req.method === "POST") {
+      const body = await readJson(req);
+      const r = await runPromptTest(body);
+      if (!r.ok) return fail(res, r.status === 0 ? 502 : r.status, r.error);
+      log("info", "ai_prompt_test_run", {
+        incidentId: r.incident?.incident?.id,
+        route: r.incident?.analysis?.routing?.route,
+        mode: r.incident?.analysis?.mode
+      });
+      return ok(res, { incident: r.incident });
     }
 
     // Live incident & AI analysis feed (proxied from agent-core).

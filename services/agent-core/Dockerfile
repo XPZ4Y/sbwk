@@ -3,7 +3,6 @@ FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 COPY *.mjs ./
-RUN mkdir -p /data && chown node:node /data
 EXPOSE 4200
 USER node
 CMD ["node", "server.mjs"]

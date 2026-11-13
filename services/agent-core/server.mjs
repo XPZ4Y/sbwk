@@ -7,14 +7,34 @@ import { inspectCodebase } from "./codebase.mjs";
 import { reason } from "./reason.mjs";
 import { notifyEngineer } from "./notify.mjs";
 import { createInvestigator, makeConnectorClient } from "./investigate.mjs";
+import { liquidTriage, DEFAULT_QUESTIONS, DEFAULT_ROUTE_POLICY } from "./liquid.mjs";
+import { listProfiles, resolvePromptSettings, PROMPT_PROFILES } from "./prompts.mjs";
 
 const log = (level, event, fields = {}) =>
   console.log(JSON.stringify({ level, event, service: "agent-core", timestamp: new Date().toISOString(), ...fields }));
 
 const store = new IncidentStore(config.MAX_CONTEXT_INCIDENTS, config.DATA_DIR);
 store.load();
-const investigator = createInvestigator({
-  store, investigateDependencies: makeConnectorClient(config), inspectCodebase, reason, notifyEngineer, config, services: investigateServices
+const investigatorDeps = {
+  store,
+  investigateDependencies: makeConnectorClient(config),
+  inspectCodebase,
+  reason,
+  notifyEngineer,
+  triage: input => liquidTriage(input, config),
+  config,
+  services: investigateServices
+};
+const investigator = createInvestigator(investigatorDeps);
+
+// Prompt-testing harness: runs the full pipeline (Liquid -> Groq) on a synthetic
+// incident without persisting it and without firing any engineer notification.
+// Nothing it does can pollute the retained context.
+const testStore = new IncidentStore(5);
+const testInvestigator = createInvestigator({
+  ...investigatorDeps,
+  store: testStore,
+  notifyEngineer: async () => ({ channel: "test-run", sent: false, reason: "test run — notification suppressed" })
 });
 
 function sendJson(res, status, obj) { res.writeHead(status, { "Content-Type": "application/json" }); res.end(JSON.stringify(obj)); }
@@ -38,6 +58,7 @@ function authed(req) {
 }
 
 function publicConfig() {
+  const prompt = resolvePromptSettings(config);
   return {
     mode: config.AGENT_MODE,
     monitoringActive: config.MONITORING_ACTIVE,
@@ -46,12 +67,84 @@ function publicConfig() {
     escalationThreshold: config.ESCALATION_CONFIDENCE_THRESHOLD,
     connectorUrl: config.CONNECTOR_URL,
     codebasePath: config.CODEBASE_PATH || null,
-    codebase: { repoUrl: config.codebase.repoUrl || null, fullName: config.codebase.fullName || null, commitCount: config.codebase.commits.length }
+    codebase: { repoUrl: config.codebase.repoUrl || null, fullName: config.codebase.fullName || null, commitCount: config.codebase.commits.length },
+    // Liquid d1 triage router. The key itself is never returned.
+    liquid: {
+      configured: Boolean(config.LIQUID_API_KEY) && config.LIQUID_ENABLED !== false,
+      hasKey: Boolean(config.LIQUID_API_KEY),
+      enabled: config.LIQUID_ENABLED !== false,
+      model: config.LIQUID_MODEL,
+      baseUrl: config.LIQUID_BASE_URL,
+      decisionsPath: config.LIQUID_DECISIONS_PATH,
+      timeoutMs: config.LIQUID_TIMEOUT_MS,
+      routePolicy: { ...DEFAULT_ROUTE_POLICY, ...(config.LIQUID_ROUTE_POLICY || {}) },
+      questions: config.LIQUID_QUESTIONS || DEFAULT_QUESTIONS
+    },
+    // Groq prompt configuration (everything here is safe to show and edit).
+    llm: {
+      mode: config.AGENT_MODE,
+      model: config.GROQ_MODEL,
+      baseUrl: config.GROQ_BASE_URL,
+      hasKey: Boolean(config.GROQ_API_KEY),
+      profile: prompt.profile,
+      isCustom: prompt.isCustom,
+      temperature: prompt.temperature,
+      maxTokens: prompt.maxTokens,
+      systemPrompt: prompt.systemPrompt,
+      userPromptTemplate: prompt.userPromptTemplate,
+      profiles: listProfiles()
+    },
+    aiDebug: config.AI_DEBUG
   };
+}
+
+const RESET = null; // sentinel: clear an override back to the env/profile default
+
+function applyLiquidConfig(liquid) {
+  if (!liquid || typeof liquid !== "object") return;
+  if (typeof liquid.apiKey === "string") config.LIQUID_API_KEY = liquid.apiKey.trim() || undefined;
+  if (typeof liquid.model === "string" && liquid.model.trim()) config.LIQUID_MODEL = liquid.model.trim().slice(0, 128);
+  if (typeof liquid.enabled === "boolean") config.LIQUID_ENABLED = liquid.enabled;
+  if (typeof liquid.baseUrl === "string" && liquid.baseUrl.trim()) config.LIQUID_BASE_URL = liquid.baseUrl.trim();
+  if (liquid.routePolicy && typeof liquid.routePolicy === "object") {
+    config.LIQUID_ROUTE_POLICY = { ...DEFAULT_ROUTE_POLICY, ...(config.LIQUID_ROUTE_POLICY || {}), ...liquid.routePolicy };
+  }
+  if (liquid.questions && typeof liquid.questions === "object") config.LIQUID_QUESTIONS = liquid.questions;
+}
+
+/**
+ * Prompt overrides for the Groq reasoner. Send `{ profile: "diff_first" }` to
+ * switch strategy, explicit `systemPrompt`/`userPromptTemplate` to go fully
+ * custom, or `{ reset: true }` to drop all overrides and return to the profile.
+ */
+function applyLlmConfig(llm) {
+  if (!llm || typeof llm !== "object") return;
+  if (llm.reset === true) { config.llm = {}; return; }
+  const next = { ...(config.llm || {}) };
+  if (typeof llm.profile === "string" && llm.profile.trim()) {
+    const id = llm.profile.trim();
+    if (!PROMPT_PROFILES[id]) { log("warn", "unknown_prompt_profile", { profile: id }); }
+    else {
+      next.profile = id;
+      // Switching profile clears custom text so the profile actually takes effect.
+      if (llm.systemPrompt === undefined) delete next.systemPrompt;
+      if (llm.userPromptTemplate === undefined) delete next.userPromptTemplate;
+    }
+  }
+  if (typeof llm.systemPrompt === "string") next.systemPrompt = llm.systemPrompt.trim() ? llm.systemPrompt : RESET;
+  if (typeof llm.userPromptTemplate === "string") next.userPromptTemplate = llm.userPromptTemplate.trim() ? llm.userPromptTemplate : RESET;
+  if (typeof llm.temperature === "number" && llm.temperature >= 0 && llm.temperature <= 2) next.temperature = llm.temperature;
+  if (typeof llm.maxTokens === "number" && llm.maxTokens >= 256 && llm.maxTokens <= 16000) next.maxTokens = Math.round(llm.maxTokens);
+  if (typeof llm.model === "string" && llm.model.trim()) config.GROQ_MODEL = llm.model.trim();
+  for (const k of Object.keys(next)) if (next[k] === RESET) delete next[k];
+  config.llm = next;
 }
 
 function applyConfig(body) {
   if (typeof body.escalationThreshold === "number" && body.escalationThreshold >= 0 && body.escalationThreshold <= 1) config.ESCALATION_CONFIDENCE_THRESHOLD = body.escalationThreshold;
+  if (typeof body.aiDebug === "boolean") config.AI_DEBUG = body.aiDebug;
+  applyLiquidConfig(body.liquid);
+  applyLlmConfig(body.llm);
   if (typeof body.dryRun === "boolean") config.DRY_RUN = body.dryRun;
   if (typeof body.autoRollback === "boolean") config.AUTO_ROLLBACK = body.autoRollback;
   if (typeof body.monitoringActive === "boolean") config.MONITORING_ACTIVE = body.monitoringActive;
@@ -61,6 +154,27 @@ function applyConfig(body) {
     if (Array.isArray(body.codebase.commits)) config.codebase.commits = body.codebase.commits.slice(0, 5);
   }
   log("info", "agent_core_config_updated", publicConfig());
+}
+
+/** Synthetic incident used by the prompt-testing harness (POST /incidents?test=true). */
+function syntheticIncident(body = {}) {
+  const id = `test-${randomUUID()}`;
+  const now = new Date().toISOString();
+  return {
+    id,
+    requestId: id,
+    source: "control-plane-test",
+    method: typeof body.method === "string" && body.method ? body.method : "POST",
+    path: typeof body.path === "string" && body.path ? body.path : "/checkout",
+    statusCode: Number.isInteger(body.statusCode) ? body.statusCode : 500,
+    durationMs: Number.isFinite(Number(body.durationMs)) ? Number(body.durationMs) : 1200,
+    upstream: typeof body.upstream === "string" && body.upstream ? body.upstream : "http://server:8000",
+    category: typeof body.category === "string" && body.category ? body.category : "server_error",
+    reason: typeof body.reason === "string" && body.reason ? body.reason : "HTTP 500 (prompt test)",
+    detectedAt: now,
+    ...(typeof body.error === "string" && body.error ? { error: body.error } : {}),
+    ...(typeof body.responseSample === "string" && body.responseSample ? { responseSample: body.responseSample } : {})
+  };
 }
 
 function validateIncident(b) {
@@ -97,6 +211,13 @@ const server = http.createServer(async (req, res) => {
 
     if (path === "/incidents" && req.method === "POST") {
       const body = await readJson(req);
+      // Prompt-testing harness: run the pipeline on a synthetic incident and
+      // return the full analysis (including aiDebug). Never stored, never notifies.
+      if (url.searchParams.get("test") === "true") {
+        const incident = syntheticIncident(body);
+        const record = await testInvestigator.runInvestigation(incident);
+        return sendJson(res, 200, { success: true, test: true, incident: record });
+      }
       const problem = validateIncident(body);
       if (problem) return err(res, 400, "VALIDATION_ERROR", problem);
       // Monitoring switch (onboarding "Start monitoring"): when paused, record but don't investigate.
@@ -150,7 +271,7 @@ const server = http.createServer(async (req, res) => {
   }
 });
 
-server.listen(config.PORT, () => log("info", "agent_core_listening", { port: config.PORT, mode: config.AGENT_MODE, connector: config.CONNECTOR_URL, codebase: config.CODEBASE_PATH || "(none)", llm: config.AGENT_MODE === "live" && config.GROQ_API_KEY ? config.GROQ_MODEL : "heuristic" }));
+server.listen(config.PORT, () => log("info", "agent_core_listening", { port: config.PORT, mode: config.AGENT_MODE, connector: config.CONNECTOR_URL, codebase: config.CODEBASE_PATH || "(none)", llm: config.AGENT_MODE === "live" && config.GROQ_API_KEY ? config.GROQ_MODEL : "heuristic", liquid: config.LIQUID_API_KEY && config.LIQUID_ENABLED !== false ? `${config.LIQUID_MODEL} triage` : "not configured (Groq default)" }));
 
 function shutdown(signal) {
   log("info", "agent_core_shutdown", { signal });

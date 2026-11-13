@@ -47,6 +47,21 @@ services:
       AGENT_MODE: ${AGENT_MODE:-mock}
       GROQ_API_KEY: ${GROQ_API_KEY:-}
       GROQ_MODEL: ${GROQ_MODEL:-llama-3.3-70b-versatile}
+      # Prompt engineering (prompts.mjs profiles + overrides).
+      GROQ_PROMPT_PROFILE: ${GROQ_PROMPT_PROFILE:-balanced}
+      GROQ_SYSTEM_PROMPT: ${GROQ_SYSTEM_PROMPT:-}
+      GROQ_PROMPT_TEMPLATE: ${GROQ_PROMPT_TEMPLATE:-}
+      GROQ_TEMPERATURE: ${GROQ_TEMPERATURE:-}
+      GROQ_MAX_TOKENS: ${GROQ_MAX_TOKENS:-}
+      # Liquid d1 triage router (engineer intervention vs Groq).
+      LIQUID_API_KEY: ${LIQUID_API_KEY:-}
+      LIQUID_MODEL: ${LIQUID_MODEL:-d1}
+      LIQUID_BASE_URL: ${LIQUID_BASE_URL:-https://api.liquid.ai}
+      LIQUID_DECISIONS_PATH: ${LIQUID_DECISIONS_PATH:-/decisions/v1/systemone}
+      LIQUID_TIMEOUT_MS: ${LIQUID_TIMEOUT_MS:-8000}
+      LIQUID_ENABLED: ${LIQUID_ENABLED:-true}
+      LIQUID_ROUTE_POLICY: ${LIQUID_ROUTE_POLICY:-}
+      AI_DEBUG: ${AI_DEBUG:-true}
       CONNECTOR_URL: http://agent-connector:4100
       CONNECTOR_API_TOKEN: ${CONNECTOR_API_TOKEN}
       INVESTIGATE_SERVICES: database,auth,external_api
