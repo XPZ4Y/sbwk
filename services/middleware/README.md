@@ -55,14 +55,62 @@ See `.env.example`. Key settings:
 | `DISPATCH_COOLDOWN_MS` | `15000` | De-dup window per method+path+status |
 | `RESPONSE_SAMPLE_BYTES` | `2048` | Max error-body bytes captured as evidence |
 
+## Lazy two-stage gate (`DETECT_MODE=batch`, opt-in)
+
+By default (`DETECT_MODE=immediate`, or the variable unset) the middleware behaves
+exactly as described above: every detected anomaly is dispatched as it happens.
+Nothing about that path changed.
+
+`DETECT_MODE=batch` turns the middleware into stage one of a lazy two-stage gate:
+
+1. **Buffer, don't page.** A bad request (still classified by `classifyStatus`, so
+   `DETECT_STATUS_MIN`, `DETECT_SLOW_MS` and `DETECT_UPSTREAM_ERRORS` keep their
+   meaning) goes into a bounded ring buffer (`BATCH_MAX_SIZE`). No AI-shaped work
+   happens — no connector, no LLM, no notification.
+2. **Wake on a pattern, not a request.** When `BATCH_MIN_BAD` bad requests land
+   inside `BATCH_WINDOW_MS`, the buffer flushes **once**: `POST /incidents/batch`
+   on Agent Core with a compact log digest (counts by category/status, top paths,
+   a few samples) plus the raw incidents.
+3. **Liquid decides if it matters.** Agent Core asks Liquid `d1` one `noul`
+   question about the digest. *Not anomalous* → the incidents are stored as
+   `skipped` with a synthetic "Liquid says normal" analysis (no Groq, no
+   notification, no cost). *Anomalous* → every buffered incident runs through the
+   **existing** per-incident investigator, unchanged.
+4. **A broken gate never drops signal.** If the batch endpoint is unreachable,
+   `LIQUID_BATCH_FALLBACK=investigate` (default) replays each incident through the
+   normal `dispatchIncident` path — a real agent still sees it. `skip` accepts the
+   miss and logs it at `error`.
+
+Because the incidents were already de-duplicated by `DispatchThrottle` before
+buffering, `DISPATCH_COOLDOWN_MS` keeps working exactly as it did.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `DETECT_MODE` | `immediate` | `immediate` = today's behaviour; `batch` = opt in to the gate |
+| `BATCH_MIN_BAD` | `5` | Bad requests needed to wake the agent |
+| `BATCH_WINDOW_MS` | `60000` | The window that count is measured over |
+| `BATCH_MAX_SIZE` | `50` | Bounded ring buffer size (overflow is counted, never grown) |
+| `BATCH_FLUSH_TIMEOUT_MS` | `0` | Optional trickle drain; `0` = only a threshold crossing wakes the agent |
+| `BATCH_SWEEP_MS` | `1000` | How often the window is re-evaluated (no I/O) |
+| `BATCH_TIMEOUT_MS` | `25000` | Timeout for the whole batch round trip |
+| `LIQUID_BATCH_FALLBACK` | `investigate` | Batch endpoint down → `investigate` (keep signal) or `skip` |
+
+The digest is built by the pure `digest.mjs` helpers and the ring buffer lives in
+`batch-buffer.mjs`; `GET /_sbwk/batch` exposes the buffer state, and
+`POST /_sbwk/batch/flush` forces a flush (demo/debug aid; a no-op in immediate
+mode). `node --test` and `node demo/run-batch-demo.mjs` cover both modes.
+
 ## Admin API
 
 All `/_sbwk/*` routes require `Authorization: Bearer <MIDDLEWARE_ADMIN_TOKEN>`.
 
 ```http
 GET /health                 # liveness (no auth)
-GET /_sbwk/status           # config + incident counts
+GET /_sbwk/status           # config + incident counts + batch buffer state
 GET /_sbwk/incidents?limit=50
+GET /_sbwk/logs?limit=100   # recent proxied requests
+GET /_sbwk/batch            # batch buffer state + last flush outcome
+POST /_sbwk/batch/flush     # force a flush (no-op in immediate mode)
 ```
 
 ## Incident payload (sent to Agent Core `POST /incidents`)
@@ -100,8 +148,10 @@ Compose network, set `TARGET_SERVER_URL=http://server:80` and
 ## Project layout
 
 ```text
-config.mjs     # env config (+ optional .env loader)
-detector.mjs   # status classification, throttle, incident builder
-server.mjs     # node:http reverse proxy + detection hooks + admin routes
-test/          # node --test
+config.mjs        # env config (+ optional .env loader)
+detector.mjs      # status classification, throttle, incident builder
+digest.mjs        # compact log digest of a batch (pure)
+batch-buffer.mjs  # lazy batch gate: bounded ring buffer + wake condition
+server.mjs        # node:http reverse proxy + detection hooks + admin routes
+test/             # node --test
 ```

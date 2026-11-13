@@ -74,6 +74,7 @@ GET  /incidents/context          # retained-context summary
 POST /incidents/:id/feedback     # {"status":"resolved|unresolved","note":"..."}
 GET  /config                     # current runtime config (no secrets)
 POST /config                     # {liquid,llm,safety,...} — see "Prompt engineering"
+POST /incidents/batch            # lazy gate: one batch (digest + incidents) from the Middleware
 POST /incidents?test=true        # run a synthetic incident, store nothing, notify nobody
 ```
 
@@ -112,10 +113,77 @@ with the full analysis (handy for demos and tests).
 }
 ```
 
-`mode` is now one of `live` (Groq answered), `mock` (heuristic fallback) or
-`engineer` (Liquid routed to a human; no LLM ran). `warnings[]` uses
+`mode` is now one of `live` (Groq answered), `mock` (heuristic fallback),
+`engineer` (Liquid routed to a human; no LLM ran) or `skipped` (the batch gate
+judged the whole batch ordinary noise; no LLM ran). `warnings[]` uses
 `severity: "error"` for a broken API call and `"notice"` for configuration gaps;
 the control plane paints the former red.
+
+## Lazy two-stage gate: `POST /incidents/batch`
+
+In `batch` mode the middleware stops paging per request: it buffers bad requests
+and, once `BATCH_MIN_BAD` of them land inside `BATCH_WINDOW_MS`, sends **one**
+call here with a compact digest. That is stage two of the gate, implemented in
+`batch.mjs`:
+
+1. **Admit** the batch (same field validation as `POST /incidents`, capped by
+   `BATCH_MAX_INCIDENTS`). No AI touches the incidents yet.
+2. **Ask Liquid `d1` one question** about the digest — `BATCH_QUESTIONS.
+   looks_anomalous`, a `noul` question ("do these logs look anomalous?"). The
+   `state` is a compact rendering of the digest (counts by category/status, top
+   paths, a few samples), never the raw firehose. `DEFAULT_QUESTIONS` is *not*
+   touched, so the per-incident router keeps sending exactly what it always did.
+3. **Branch**:
+   - probability `< BATCH_LIQUID_ANOMALY_THRESHOLD` → **skip**: every incident is
+     stored with `status: "skipped"` and a synthetic analysis
+     (`mode: "skipped"`, `escalate: false`, `batch.batchId`) explaining that
+     Liquid judged the pattern normal. No Groq call, no notification, no cost.
+   - probability `>=` threshold → **investigate**: each buffered incident runs
+     through the *existing* investigator (Liquid routing → Groq/heuristic →
+     escalation). The batch stage is a pre-gate, not a parallel pipeline.
+   - Liquid unavailable (`LIQUID_API_KEY` unset, `LIQUID_ENABLED=false`,
+     timeout, HTTP error, unusable answer) → `LIQUID_BATCH_FALLBACK`:
+     `investigate` (default, keeps signal) or `skip` (loud `error` log + a
+     `notice` on every skipped analysis).
+
+```http
+POST /incidents/batch                 # accept a batch (202, investigates in background)
+POST /incidents/batch?wait=true       # same, but block until investigations finish (200)
+GET  /incidents/batch                 # gate settings + recent batches
+```
+
+Request body (from the middleware):
+
+```json
+{
+  "batchId": "batch-1763000000000-1",
+  "batch": { "reason": "threshold", "minBad": 5, "windowMs": 60000, "dropped": 0 },
+  "digest": {
+    "count": 5,
+    "byCategory": { "server_error": 5 },
+    "byStatus": { "500": 5 },
+    "byMethod": { "GET": 5 },
+    "topPaths": [ { "path": "/checkout", "count": 5 } ],
+    "samples": [ { "method": "GET", "path": "/checkout", "statusCode": 500, "reason": "…" } ]
+  },
+  "incidents": [ { "...": "normal incident payloads" } ]
+}
+```
+
+Response (`batch` block): `{ batchId, action: "investigate"|"skip", reason,
+fallback, anomalyProbability, threshold, liquidStatus, accepted, rejected[],
+ids[], investigating?, skipped?, investigated? }` — `reason` is `anomalous`,
+`liquid_says_normal`, `liquid_unreachable`/`liquid_timeout`/… ,
+`liquid_answer_unusable` or `monitoring_inactive`.
+
+If `MONITORING_ACTIVE` is false the batch is recorded as `skipped` without
+calling Liquid at all, mirroring the per-incident "paused" behaviour.
+
+| Variable | Default | Meaning |
+| --- | --- | --- |
+| `BATCH_LIQUID_ANOMALY_THRESHOLD` | `0.6` | `noul` probability at/above which the batch is worth an LLM |
+| `LIQUID_BATCH_FALLBACK` | `investigate` | Liquid cannot answer the gate → keep signal or skip |
+| `BATCH_MAX_INCIDENTS` | `50` | Hard cap on incidents accepted per batch |
 
 ## Prompt engineering
 
@@ -166,6 +234,9 @@ See `.env.example`. Key settings:
 | `LIQUID_ENABLED` | `true` | Keep the key but bypass d1 |
 | `LIQUID_ROUTE_POLICY` | see `liquid.mjs` | JSON thresholds / engineer departments |
 | `LIQUID_QUESTIONS` | see `liquid.mjs` | JSON override of the d1 question set |
+| `BATCH_LIQUID_ANOMALY_THRESHOLD` | `0.6` | Batch gate: `noul` probability that means "investigate" |
+| `LIQUID_BATCH_FALLBACK` | `investigate` | Batch gate unavailable → `investigate` \| `skip` |
+| `BATCH_MAX_INCIDENTS` | `50` | Max incidents accepted in one batch |
 | `AI_DEBUG` | `true` | Attach the AI call records to each analysis |
 | `CONNECTOR_URL` | `http://localhost:4100` | Agent Connector base URL |
 | `CONNECTOR_API_TOKEN` | dev token | Shared secret with the connector |
@@ -190,7 +261,8 @@ application source read-only at `CODEBASE_PATH` so the agent can inspect it.
 config.mjs       # env config (+ optional .env loader)
 store.mjs        # context retention (in-memory + optional disk)
 codebase.mjs     # read-only codebase inspector
-liquid.mjs       # Liquid d1 triage: state builder, questions, routing policy
+liquid.mjs       # Liquid d1 triage: state builder, questions (DEFAULT_* + BATCH_*), policy
+batch.mjs        # lazy batch gate: digest -> Liquid d1 -> investigate | skip
 prompts.mjs      # prompt profiles, resolution order, {{variable}} templating
 ai-debug.mjs     # redacted, structured debug JSON for every AI call
 reason.mjs       # findings, heuristic reasoner, Groq reasoner, selector

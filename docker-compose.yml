@@ -30,6 +30,14 @@ services:
       DETECT_SLOW_MS: ${DETECT_SLOW_MS:-2000}
       DETECT_UPSTREAM_ERRORS: "true"
       DISPATCH_COOLDOWN_MS: ${DISPATCH_COOLDOWN_MS:-15000}
+      # Lazy two-stage gate (opt-in). Immediate = today's per-request dispatch.
+      DETECT_MODE: ${DETECT_MODE:-immediate}
+      BATCH_MIN_BAD: ${BATCH_MIN_BAD:-5}
+      BATCH_WINDOW_MS: ${BATCH_WINDOW_MS:-60000}
+      BATCH_MAX_SIZE: ${BATCH_MAX_SIZE:-50}
+      BATCH_FLUSH_TIMEOUT_MS: ${BATCH_FLUSH_TIMEOUT_MS:-0}
+      BATCH_TIMEOUT_MS: ${BATCH_TIMEOUT_MS:-25000}
+      LIQUID_BATCH_FALLBACK: ${LIQUID_BATCH_FALLBACK:-investigate}
     depends_on:
       - server
       - agent-core
@@ -61,6 +69,10 @@ services:
       LIQUID_TIMEOUT_MS: ${LIQUID_TIMEOUT_MS:-8000}
       LIQUID_ENABLED: ${LIQUID_ENABLED:-true}
       LIQUID_ROUTE_POLICY: ${LIQUID_ROUTE_POLICY:-}
+      # Lazy two-stage gate: Liquid decides if a batch of bad requests matters.
+      BATCH_LIQUID_ANOMALY_THRESHOLD: ${BATCH_LIQUID_ANOMALY_THRESHOLD:-0.6}
+      LIQUID_BATCH_FALLBACK: ${LIQUID_BATCH_FALLBACK:-investigate}
+      BATCH_MAX_INCIDENTS: ${BATCH_MAX_INCIDENTS:-50}
       AI_DEBUG: ${AI_DEBUG:-true}
       CONNECTOR_URL: http://agent-connector:4100
       CONNECTOR_API_TOKEN: ${CONNECTOR_API_TOKEN}

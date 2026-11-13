@@ -40,10 +40,22 @@ export class IncidentStore {
     return record;
   }
 
-  attachAnalysis(id, analysis) {
+  // `status` is optional so the existing "analyzed" behaviour is unchanged; the
+  // batch gate passes "skipped" for incidents Liquid judged ordinary.
+  attachAnalysis(id, analysis, status = "analyzed") {
     const r = this.records.get(id);
     if (!r) return undefined;
-    r.analysis = analysis; r.status = "analyzed"; r.updatedAt = new Date().toISOString();
+    r.analysis = analysis; r.status = status; r.updatedAt = new Date().toISOString();
+    this.persist();
+    return r;
+  }
+
+  /** Shallow-merge extra top-level fields onto a record (e.g. `batchId`). */
+  annotate(id, fields = {}) {
+    const r = this.records.get(id);
+    if (!r) return undefined;
+    Object.assign(r, fields);
+    r.updatedAt = new Date().toISOString();
     this.persist();
     return r;
   }

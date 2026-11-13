@@ -56,6 +56,16 @@ export const config = {
   LIQUID_ROUTE_POLICY: json(env.LIQUID_ROUTE_POLICY, undefined),
   LIQUID_QUESTIONS: json(env.LIQUID_QUESTIONS, undefined),
 
+  // --- Lazy two-stage gate (see batch.mjs) ----------------------------------
+  // Liquid answers ONE noul question over a log digest from the middleware.
+  // Probability at/above this threshold means "worth a real LLM" → investigate.
+  BATCH_LIQUID_ANOMALY_THRESHOLD: num(env.BATCH_LIQUID_ANOMALY_THRESHOLD, 0.6),
+  // When Liquid cannot answer the gate: "investigate" (default, keeps signal)
+  // or "skip" (accept the miss, logged loudly). Nothing is ever dropped silently.
+  LIQUID_BATCH_FALLBACK: str(env.LIQUID_BATCH_FALLBACK, "investigate").toLowerCase() === "skip" ? "skip" : "investigate",
+  // Hard cap on incidents accepted in one batch (middleware rings at 50).
+  BATCH_MAX_INCIDENTS: num(env.BATCH_MAX_INCIDENTS, 50),
+
   // Attach a redacted request/response record to each analysis (rendered in the UI).
   AI_DEBUG: bool(env.AI_DEBUG, true),
   CONNECTOR_URL: str(env.CONNECTOR_URL, "http://localhost:4100"),

@@ -6,6 +6,7 @@ import https from "node:https";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { config } from "./config.mjs";
 import { classifyStatus, categoryForUpstreamError, buildIncident, DispatchThrottle } from "./detector.mjs";
+import { LogBatchBuffer } from "./batch-buffer.mjs";
 
 const log = (level, event, fields = {}) =>
   console.log(JSON.stringify({ level, event, service: "middleware", timestamp: new Date().toISOString(), ...fields }));
@@ -56,9 +57,102 @@ function recordAndDispatch(incident) {
   const dispatch = throttle.shouldDispatch(incident);
   const entry = storeAdd({ incident, dispatched: dispatch });
   log("warn", "anomaly_detected", { incidentId: incident.id, requestId: incident.requestId, method: incident.method, path: incident.path, statusCode: incident.statusCode, category: incident.category, dispatched: dispatch });
-  if (dispatch) dispatchIncident(incident).then(ok => { entry.dispatchOk = ok; });
+  // Batch mode: buffer instead of paging. Nothing AI-shaped happens here — the
+  // buffer only wakes Agent Core once a pattern of bad requests has formed.
+  if (config.DETECT_MODE === "batch" && dispatch) {
+    const { flush } = batch.add(incident);
+    // `dispatched` keeps its existing meaning (throttle let it through); the
+    // additive `batched` flag says it went to the buffer instead of the wire.
+    entry.batched = true;
+    entry.dispatched = false;
+    if (flush) flush.catch(() => {});
+  } else if (dispatch) {
+    dispatchIncident(incident).then(ok => { entry.dispatchOk = ok; });
+  }
   return incident.id;
 }
+
+// ---------------------------------------------------------------------------
+// Stage one of the two-stage gate: buffer bad requests, never per-request.
+// In `batch` mode the middleware sends Agent Core ONE compact batch (digest +
+// raw incidents). Agent Core asks Liquid d1 whether the pattern is worth a Groq
+// call and answers with `{ action: "investigate" | "skip", ... }`.
+//
+// If the whole batch endpoint is unreachable, LIQUID_BATCH_FALLBACK decides:
+// "investigate" (default) replays the incidents through the existing
+// per-incident dispatchIncident path — the real agent path — so a broken batch
+// never silently drops signal; "skip" accepts the miss and logs it loudly.
+// ---------------------------------------------------------------------------
+let lastBatch = null;
+
+async function sendBatch(payload) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), config.BATCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(new URL("/incidents/batch", config.AGENT_CORE_URL), {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${config.AGENT_CORE_TOKEN}` },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    const text = await res.text();
+    let json;
+    try { json = text ? JSON.parse(text) : {}; } catch { json = { raw: text.slice(0, 500) }; }
+    if (!res.ok || json.success === false) {
+      log("warn", "batch_dispatch_rejected", { batchId: payload.batchId, status: res.status });
+      return { ok: false, retryable: res.status >= 500, status: res.status, body: json };
+    }
+    log("info", "batch_dispatched", { batchId: payload.batchId, count: payload.incidents?.length || 0, action: json.batch?.action ?? null });
+    return { ok: true, status: res.status, body: json };
+  } catch (e) {
+    log("warn", "batch_dispatch_failed", { batchId: payload.batchId, error: e?.message || String(e) });
+    return { ok: false, retryable: true, error: e?.message || String(e) };
+  } finally { clearTimeout(timeout); }
+}
+
+const batch = new LogBatchBuffer({
+  mode: config.DETECT_MODE,
+  minBad: config.BATCH_MIN_BAD,
+  windowMs: config.BATCH_WINDOW_MS,
+  maxSize: config.BATCH_MAX_SIZE,
+  flushTimeoutMs: config.BATCH_FLUSH_TIMEOUT_MS,
+  sweepMs: config.BATCH_SWEEP_MS,
+  onFlush: async ({ incidents, digest, meta }) => {
+    const payload = {
+      batchId: meta.batchId,
+      batch: { reason: meta.reason, minBad: meta.minBad, windowMs: meta.windowMs, dropped: meta.dropped, expired: meta.expired },
+      digest,
+      incidents
+    };
+    const sent = await sendBatch(payload);
+    const fallback = config.LIQUID_BATCH_FALLBACK;
+    const outcome = { batchId: meta.batchId, ...sent, fallback };
+
+    if (!sent.ok) {
+      outcome.fallbackAttempted = 0;
+      outcome.fallbackDispatched = 0;
+      if (fallback === "investigate") {
+        // The "actual agent" path: behave exactly as immediate mode would have.
+        log("warn", "batch_fallback_investigate", { batchId: meta.batchId, count: incidents.length, reason: sent.error || `HTTP ${sent.status}` });
+        outcome.fallbackAttempted = incidents.length;
+        const results = await Promise.all(incidents.map(i => dispatchIncident(i)));
+        outcome.fallbackDispatched = results.filter(Boolean).length;
+      } else {
+        log("error", "batch_fallback_skip", { batchId: meta.batchId, count: incidents.length, reason: sent.error || `HTTP ${sent.status}` });
+      }
+    } else {
+      const gateResult = sent.body?.batch || {};
+      outcome.action = gateResult.action ?? null;
+      outcome.reason = gateResult.reason ?? null;
+      outcome.liquidFallback = gateResult.fallback ?? null;
+      outcome.investigated = Array.isArray(gateResult.investigated) ? gateResult.investigated.length : null;
+      outcome.skipped = Array.isArray(gateResult.skipped) ? gateResult.skipped.length : null;
+    }
+    lastBatch = { ...outcome, at: new Date().toISOString(), count: incidents.length };
+    return outcome;
+  }
+});
+if (batch.enabled) batch.start();
 
 function sendJson(res, status, obj) { res.writeHead(status, { "Content-Type": "application/json" }); res.end(JSON.stringify(obj)); }
 
@@ -89,7 +183,15 @@ async function handleAdmin(req, res, url) {
   if (!adminAuthed(req)) return sendJson(res, 401, { success: false, error: { code: "UNAUTHORIZED", message: "Valid middleware admin bearer token required" } });
 
   if (url.pathname === "/_sbwk/status") {
-    return sendJson(res, 200, { success: true, service: "middleware", target: config.TARGET_SERVER_URL, agentCore: config.AGENT_CORE_URL, detection: { minStatus: config.DETECT_STATUS_MIN, slowMs: config.DETECT_SLOW_MS, upstreamErrors: config.DETECT_UPSTREAM_ERRORS, cooldownMs: config.DISPATCH_COOLDOWN_MS }, incidents: storeCounts(), totalRequests: requestLogs.length });
+    return sendJson(res, 200, { success: true, service: "middleware", target: config.TARGET_SERVER_URL, agentCore: config.AGENT_CORE_URL, detection: { minStatus: config.DETECT_STATUS_MIN, slowMs: config.DETECT_SLOW_MS, upstreamErrors: config.DETECT_UPSTREAM_ERRORS, cooldownMs: config.DISPATCH_COOLDOWN_MS }, mode: config.DETECT_MODE, batch: { ...batch.stats(), fallback: config.LIQUID_BATCH_FALLBACK, timeoutMs: config.BATCH_TIMEOUT_MS, last: lastBatch }, incidents: storeCounts(), totalRequests: requestLogs.length });
+  }
+  if (url.pathname === "/_sbwk/batch" && req.method === "GET") {
+    return sendJson(res, 200, { success: true, batch: batch.stats(), last: lastBatch });
+  }
+  // Force a flush of whatever is buffered (demo/debug aid; no-op in immediate mode).
+  if (url.pathname === "/_sbwk/batch/flush" && req.method === "POST") {
+    const result = await batch.flush("manual");
+    return sendJson(res, 200, { success: true, batch: batch.stats(), result });
   }
   if (url.pathname === "/_sbwk/incidents") {
     const limit = Math.min(Number(url.searchParams.get("limit")) || 50, config.MAX_RECENT_INCIDENTS);
@@ -211,7 +313,7 @@ const server = http.createServer((req, res) => {
   req.pipe(proxyReq);
 });
 
-server.listen(config.PORT, () => log("info", "middleware_listening", { port: config.PORT, target: config.TARGET_SERVER_URL, agentCore: config.AGENT_CORE_URL, detectStatusMin: config.DETECT_STATUS_MIN, detectSlowMs: config.DETECT_SLOW_MS }));
+server.listen(config.PORT, () => log("info", "middleware_listening", { port: config.PORT, target: config.TARGET_SERVER_URL, agentCore: config.AGENT_CORE_URL, detectStatusMin: config.DETECT_STATUS_MIN, detectSlowMs: config.DETECT_SLOW_MS, detectMode: config.DETECT_MODE, batch: { minBad: config.BATCH_MIN_BAD, windowMs: config.BATCH_WINDOW_MS, maxSize: config.BATCH_MAX_SIZE, fallback: config.LIQUID_BATCH_FALLBACK } }));
 
 function shutdown(signal) { log("info", "middleware_shutdown", { signal }); server.close(() => process.exit(0)); setTimeout(() => process.exit(1), 10000).unref(); }
 process.on("SIGTERM", () => shutdown("SIGTERM"));

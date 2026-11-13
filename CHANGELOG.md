@@ -4,6 +4,90 @@ All notable changes to SBWK (Sleepy Bot with Keys). Newest first.
 
 ---
 
+## v2.2.0 — lazy two-stage gate (opt-in batch detection)
+
+**Theme:** every bad request is cheaply buffered; only a *pattern* of bad
+requests wakes the agent; Liquid cheaply decides whether that pattern is worth a
+Groq call; and if Liquid is down the pattern still reaches a real agent instead
+of being dropped.
+
+Zero change to existing behaviour: `DETECT_MODE` defaults to `immediate`, so
+pulling the code without touching `.env` reproduces v2.1.0 byte-for-byte. The
+batch path is opt-in.
+
+### 1. Middleware buffers instead of paging (`services/middleware/batch-buffer.mjs` — new)
+
+* `DETECT_MODE=batch` puts every detected anomaly (still classified by
+  `classifyStatus`, so all detection settings keep their meaning) into a bounded
+  ring buffer (`BATCH_MAX_SIZE`) instead of dispatching it. No connector call, no
+  LLM, no notification.
+* Wake condition = count threshold: `BATCH_MIN_BAD` bad requests inside
+  `BATCH_WINDOW_MS`. The buffer then flushes **once** — one `POST
+  /incidents/batch` carrying a compact log digest plus the raw incidents.
+  `BATCH_FLUSH_TIMEOUT_MS` (default `0` = off) optionally drains a trickle.
+* A flush empties the buffer before awaiting, so a failing batch can never loop
+  on the same data; incidents arriving mid-flight are queued, not dropped.
+* Ring overflow and window expiry are counted (`stats().dropped` / `.expired`)
+  rather than growing memory.
+* `DispatchThrottle` still runs first, so de-duplication is unchanged.
+
+### 2. Compact log digest (`services/middleware/digest.mjs` — new)
+
+Pure helpers that turn a batch into counts by category/status/method, the
+noisiest paths, the slowest request and a few truncated samples — the only thing
+Liquid sees, so "nothing is wrong" costs the same whether 5 or 500 requests piled
+up.
+
+### 3. Liquid decides if it is even worth an LLM (`services/agent-core/batch.mjs` — new)
+
+* New endpoint `POST /incidents/batch` (+ `GET /incidents/batch` for settings and
+  recent batches). The middleware sends `{ batchId, batch{…}, digest, incidents }`.
+* `BATCH_QUESTIONS` (new constant) holds the one `noul` question the gate asks
+  d1: *"do these logs look anomalous?"* `DEFAULT_QUESTIONS` is untouched, so the
+  per-incident router sends exactly what it always did.
+* `noul` probability `< BATCH_LIQUID_ANOMALY_THRESHOLD` (default `0.6`) →
+  **skip**: incidents stored `status: "skipped"` with a synthetic "Liquid says
+  normal" analysis (`mode: "skipped"`), no Groq call, no notification, no cost.
+* At/above the threshold → **investigate**: each buffered incident runs through
+  the *existing* investigator (Liquid routing → Groq/heuristic → escalation).
+  The batch stage is a pre-gate, not a parallel pipeline.
+* Incidents in a batch carry `batchId` on their record; `BATCH_MAX_INCIDENTS`
+  caps the cost of one batch; `MONITORING_ACTIVE=false` records batches without
+  calling Liquid at all.
+
+### 4. `LIQUID_BATCH_FALLBACK` — a broken batch never drops signal
+
+| situation | action |
+| --- | --- |
+| d1 says anomalous / not anomalous | `investigate` / `skip` (as above) |
+| no `LIQUID_API_KEY`, `LIQUID_ENABLED=false`, timeout, HTTP error, unusable answer | `LIQUID_BATCH_FALLBACK` → `investigate` (default) or `skip` |
+| agent-core itself unreachable from the middleware | `LIQUID_BATCH_FALLBACK=investigate` replays each incident through the normal `dispatchIncident` path; `skip` logs it at `error` |
+
+### 5. Observability
+
+* `GET /_sbwk/status` gained `mode` + `batch{}` (buffered, in-window, flushes,
+  dropped, expired, last flush outcome, fallback) — additive, existing keys
+  unchanged.
+* New `GET /_sbwk/batch` and `POST /_sbwk/batch/flush` (demo/debug aid).
+* New log events: `batch_flush`, `batch_dispatched`, `batch_dispatch_failed`,
+  `batch_fallback_investigate`, `batch_fallback_skip`, `batch_received`,
+  `batch_skipped`, `batch_investigated`.
+
+### 6. Tests and demos
+
+* `services/middleware/test/batch-buffer.test.mjs` (17 vs. the buffer + digest,
+  injected clock) and `services/agent-core/test/batch.test.mjs` (24 vs. the gate
+  policy, both fallback modes, caps, monitoring switch).
+* `npm run demo:batch` (`demo/run-batch-demo.mjs`) boots the real services plus a
+  fake d1 and verifies: immediate mode unchanged, buffering below threshold, one
+  batch = one Liquid call → `skipped`, and Liquid-down → real investigation.
+* All 105 pre-existing tests still pass; `POST /incidents`, `classifyStatus`,
+  `buildIncident`, `createInvestigator`, `liquidTriage`, `routeFromDecision`,
+  `extractDecision`, `DEFAULT_QUESTIONS`, `ROUTES` and every existing route are
+  behaviourally untouched.
+
+---
+
 ## v2.1.0 — Liquid AI triage router, prompt engineering, diff rendering
 
 **Theme:** an incident now reaches the cheapest correct handler first. Liquid AI's
