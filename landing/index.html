@@ -81,7 +81,7 @@
             <div class="block w-full text-left px-5 py-3.5 border-l-4 border-cpBrown bg-cpMuted text-cpText font-bold uppercase tracking-[0.1em] text-[15px] rounded-r-lg">
                 Index
             </div>
-            <a href="https://github.com/caaplin/sbwk-fork.git" target="_blank" class="block w-full text-left px-5 py-3.5 border-l-4 border-transparent text-cpTextMid hover:text-cpText hover:bg-black/5 font-bold uppercase tracking-[0.1em] text-[15px] rounded-r-lg transition-colors">
+            <a href="https://github.com/XPZ4Y/sbwk.git" target="_blank" class="block w-full text-left px-5 py-3.5 border-l-4 border-transparent text-cpTextMid hover:text-cpText hover:bg-black/5 font-bold uppercase tracking-[0.1em] text-[15px] rounded-r-lg transition-colors">
                 GitHub Repo
             </a>
             <a href="https://hub.docker.com/u/caaplin" target="_blank" class="block w-full text-left px-5 py-3.5 border-l-4 border-transparent text-cpTextMid hover:text-cpText hover:bg-black/5 font-bold uppercase tracking-[0.1em] text-[15px] rounded-r-lg transition-colors">
@@ -132,8 +132,8 @@
                     </button>
                     
                     <pre class="p-6 md:p-8 overflow-x-auto text-sm md:text-[15px] leading-[1.7] whitespace-pre-wrap break-all md:break-normal" id="codeBlock"><code class="language-bash"><span class="text-cpTextMid block mb-1"># 1. Download configuration templates</span>
-curl -O https://raw.githubusercontent.com/caaplin/sbwk-fork/main/docker-compose.yml
-curl -O https://raw.githubusercontent.com/caaplin/sbwk-fork/main/.env.example
+curl -O https://raw.githubusercontent.com/XPZ4Y/sbwk/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/XPZ4Y/sbwk/main/.env.example
 
 <span class="text-cpTextMid block mb-1 mt-4"># 2. Setup your environment variables</span>
 mv .env.example .env   <span class="text-cpTextMid"># then edit the secrets inside</span>
@@ -144,6 +144,31 @@ docker compose up -d</code></pre>
                 </div>
             </section>
 
+            <!-- Documentation -->
+            <section class="space-y-5">
+                <h3 class="text-sm font-bold uppercase tracking-[0.12em] text-cpTextMid border-b border-cpLine pb-2.5 mb-5">
+                    Documentation Overview
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-cpSurface border border-cpLine rounded-xl p-6 shadow-cp-sm">
+                        <h4 class="font-bold text-lg mb-2">Middleware (Edge)</h4>
+                        <p class="text-[15px] text-cpTextMid leading-relaxed">Reverse proxy that intelligently detects anomalies (500s, slow responses) and dispatches them without halting traffic.</p>
+                    </div>
+                    <div class="bg-cpSurface border border-cpLine rounded-xl p-6 shadow-cp-sm">
+                        <h4 class="font-bold text-lg mb-2">Agent Core</h4>
+                        <p class="text-[15px] text-cpTextMid leading-relaxed">The AI reasoning engine. Uses Liquid d1 for rapid triage and Groq for generating root cause analysis and git-patch fixes.</p>
+                    </div>
+                    <div class="bg-cpSurface border border-cpLine rounded-xl p-6 shadow-cp-sm">
+                        <h4 class="font-bold text-lg mb-2">Agent Connector</h4>
+                        <p class="text-[15px] text-cpTextMid leading-relaxed">Read-only diagnostic tool that safely pulls metrics and logs from your DBs, Auth, and External APIs for the AI.</p>
+                    </div>
+                    <div class="bg-cpSurface border border-cpLine rounded-xl p-6 shadow-cp-sm">
+                        <h4 class="font-bold text-lg mb-2">Control Plane</h4>
+                        <p class="text-[15px] text-cpTextMid leading-relaxed">The UI dashboard for configuring the stack, setting safety limits, and monitoring the live AI diagnostic feed.</p>
+                    </div>
+                </div>
+            </section>
+
             <!-- Resources / Links -->
             <section>
                 <h3 class="text-sm font-bold uppercase tracking-[0.12em] text-cpTextMid border-b border-cpLine pb-2.5 mb-5">
@@ -151,11 +176,11 @@ docker compose up -d</code></pre>
                 </h3>
                 <div class="flex flex-col sm:flex-row gap-5">
                     
-                    <a href="https://github.com/caaplin/sbwk-fork.git" target="_blank" class="flex-1 flex items-center justify-center gap-4 bg-cpBrown text-cpSurface px-6 py-5 rounded-xl uppercase tracking-widest font-bold text-[15px] hover:bg-[#473625] transition-all duration-150 border border-cpBrown shadow-cp-sm hover:-translate-y-0.5">
+                    <a href="https://github.com/XPZ4Y/sbwk.git" target="_blank" class="flex-1 flex items-center justify-center gap-4 bg-cpBrown text-cpSurface px-6 py-5 rounded-xl uppercase tracking-widest font-bold text-[15px] hover:bg-[#473625] transition-all duration-150 border border-cpBrown shadow-cp-sm hover:-translate-y-0.5">
                         <svg class="w-7 h-7 fill-current" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                             <path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/>
                         </svg>
-                        GitHub Fork
+                        GitHub Repo
                     </a>
 
                     <a href="https://hub.docker.com/u/caaplin" target="_blank" class="flex-1 flex items-center justify-center gap-4 bg-transparent border-2 border-cpLine text-cpText px-6 py-5 rounded-xl uppercase tracking-widest font-bold text-[15px] hover:border-cpBrown hover:bg-cpMuted transition-all duration-150 hover:-translate-y-0.5">
@@ -179,8 +204,8 @@ docker compose up -d</code></pre>
     <script>
         function copyCode() {
             // Raw text to copy without HTML tags
-            const codeContent = `curl -O https://raw.githubusercontent.com/caaplin/sbwk-fork/main/docker-compose.yml
-curl -O https://raw.githubusercontent.com/caaplin/sbwk-fork/main/.env.example
+            const codeContent = `curl -O https://raw.githubusercontent.com/XPZ4Y/sbwk/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/XPZ4Y/sbwk/main/.env.example
 
 mv .env.example .env   # then edit the secrets inside
 
