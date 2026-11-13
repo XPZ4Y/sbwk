@@ -3,6 +3,9 @@
 import { config as defaultConfig } from "./config.mjs";
 import { inspectCodebase } from "./codebase.mjs";
 
+const log = (level, event, fields = {}) =>
+  console.log(JSON.stringify({ level, event, service: "agent-core", timestamp: new Date().toISOString(), ...fields }));
+
 const STATUS_RANK = { healthy: 0, unknown: 1, degraded: 2, unhealthy: 3, unreachable: 4 };
 const worst = (a, b) => (STATUS_RANK[a] >= STATUS_RANK[b] ? a : b);
 
@@ -300,6 +303,7 @@ async function executeTool(name, args, input, cfg) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MAX_TOOL_ITERATIONS = 6;
+const MAX_OUTPUT_TOKENS = 4000; // raised from 1400: 8 suggestedFixes with diffs overflowed 1400
 
 const SYSTEM_PROMPT = [
   "You are SBWK Agent Core, a read-only site-reliability assistant.",
@@ -315,38 +319,57 @@ const SYSTEM_PROMPT = [
   "severity (low|medium|high|critical), summary (string),",
   "rootCause {summary, confidence 0..1}, confidence (0..1),",
   "suggestedFixes (array of {title, description, kind: config|code|dependency|investigation, file?, diff? (optional unified diff string)}),",
-  "reasoning (string). Prefer dependency root causes when a dependency is unhealthy."
+  "reasoning (string). Prefer dependency root causes when a dependency is unhealthy.",
+  "confidence and rootCause.confidence MUST be JSON numbers between 0 and 1, not strings.",
+  "Return at most 3 suggestedFixes; omit diff unless it is short."
 ].join(" ");
 
+/**
+ * Tolerant final-answer parser. Handles the two failure modes we kept hitting:
+ *   - the model wraps the JSON in prose or a markdown fence;
+ *   - the model emits confidence (or rootCause.confidence) as a string.
+ * Returns null (never throws) when the shape is genuinely unusable.
+ */
 function parseFinalAnswer(content) {
-  if (!content) return null;
+  if (!content || typeof content !== "string") return null;
+
+  // 1. Extract the outermost JSON object regardless of surrounding prose/fences.
+  const first = content.indexOf("{");
+  const last = content.lastIndexOf("}");
+  if (first === -1 || last <= first) return null;
+
   let parsed;
-  try {
-    // Tolerate markdown fences if the model adds them despite instructions.
-    const cleaned = content.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
-    parsed = JSON.parse(cleaned);
-  } catch {
+  try { parsed = JSON.parse(content.slice(first, last + 1)); }
+  catch { return null; }
+
+  // 2. Coerce stringified numbers (the model frequently emits "0.82").
+  if (typeof parsed.confidence === "string") parsed.confidence = Number(parsed.confidence);
+  if (parsed.rootCause && typeof parsed.rootCause === "object" && typeof parsed.rootCause.confidence === "string") {
+    parsed.rootCause.confidence = Number(parsed.rootCause.confidence);
+  }
+
+  if (!parsed.severity || !parsed.rootCause ||
+      typeof parsed.confidence !== "number" || !Number.isFinite(parsed.confidence) ||
+      !Array.isArray(parsed.suggestedFixes)) {
     return null;
   }
-  if (!parsed.severity || !parsed.rootCause || typeof parsed.confidence !== "number" || !Array.isArray(parsed.suggestedFixes)) {
-    return null;
-  }
+
   return {
     mode: "live",
-    severity: parsed.severity,
+    severity: String(parsed.severity).toLowerCase(),
     summary: String(parsed.summary || ""),
     rootCause: {
       summary: String(parsed.rootCause.summary || ""),
-      confidence: Number(parsed.rootCause.confidence) || 0
+      confidence: Math.max(0, Math.min(1, Number(parsed.rootCause.confidence) || 0))
     },
     suggestedFixes: parsed.suggestedFixes.slice(0, 8),
-    confidence: Number(parsed.confidence),
+    confidence: Math.max(0, Math.min(1, Number(parsed.confidence))),
     reasoning: String(parsed.reasoning || "")
   };
 }
 
 export async function groqReason(input, cfg = defaultConfig) {
-  if (!cfg.GROQ_API_KEY) return null;
+  if (!cfg.GROQ_API_KEY) { log("warn", "llm_skipped", { reason: "no GROQ_API_KEY" }); return null; }
 
   const messages = [
     { role: "system", content: SYSTEM_PROMPT },
@@ -400,25 +423,39 @@ export async function groqReason(input, cfg = defaultConfig) {
           tools,
           tool_choice: "auto",
           temperature: 0.2,
-          max_tokens: 1400
+          max_tokens: MAX_OUTPUT_TOKENS
         })
       });
-      if (!res.ok) return null;
+      if (!res.ok) {
+        const body = await res.text().catch(() => "");
+        log("warn", "llm_http_error", { iteration: i, status: res.status, body: body.slice(0, 300) });
+        return null;
+      }
       data = await res.json();
-    } catch {
+    } catch (e) {
+      log("warn", "llm_fetch_failed", { iteration: i, error: e.name === "AbortError" ? "timeout" : e.message });
       return null;
     } finally {
       clearTimeout(timeout);
     }
 
     const msg = data.choices?.[0]?.message;
-    if (!msg) return null;
+    const finish = data.choices?.[0]?.finish_reason;
+    if (!msg) { log("warn", "llm_empty_message", { iteration: i, finish }); return null; }
 
     // Append the assistant message (may include tool_calls).
     messages.push(msg);
 
     if (!msg.tool_calls || msg.tool_calls.length === 0) {
-      return parseFinalAnswer(msg.content);
+      const parsed = parseFinalAnswer(msg.content);
+      if (!parsed) {
+        log("warn", "llm_parse_failed", {
+          iteration: i,
+          finish,
+          head: (msg.content || "").slice(0, 400)
+        });
+      }
+      return parsed;
     }
 
     // Execute tool calls in order; append each result with matching tool_call_id.
@@ -437,6 +474,7 @@ export async function groqReason(input, cfg = defaultConfig) {
   }
 
   // Hit iteration limit — force a final answer without tools.
+  log("warn", "llm_iteration_limit", { iterations: MAX_TOOL_ITERATIONS });
   messages.push({
     role: "user",
     content: "Stop calling tools. Return the final JSON diagnosis now using the evidence you have gathered."
@@ -456,14 +494,29 @@ export async function groqReason(input, cfg = defaultConfig) {
         model: cfg.GROQ_MODEL,
         messages,
         temperature: 0.2,
-        max_tokens: 1400,
+        max_tokens: MAX_OUTPUT_TOKENS,
         response_format: { type: "json_object" }
       })
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      const body = await res.text().catch(() => "");
+      log("warn", "llm_http_error", { stage: "forced_final", status: res.status, body: body.slice(0, 300) });
+      return null;
+    }
     const data = await res.json();
-    return parseFinalAnswer(data.choices?.[0]?.message?.content);
-  } catch {
+    const msg = data.choices?.[0]?.message;
+    const finish = data.choices?.[0]?.finish_reason;
+    const parsed = parseFinalAnswer(msg?.content);
+    if (!parsed) {
+      log("warn", "llm_parse_failed", {
+        stage: "forced_final",
+        finish,
+        head: (msg?.content || "").slice(0, 400)
+      });
+    }
+    return parsed;
+  } catch (e) {
+    log("warn", "llm_fetch_failed", { stage: "forced_final", error: e.name === "AbortError" ? "timeout" : e.message });
     return null;
   } finally {
     clearTimeout(timeout);
@@ -474,6 +527,10 @@ export async function reason(input, cfg = defaultConfig) {
   if (cfg.AGENT_MODE === "live" && cfg.GROQ_API_KEY) {
     const live = await groqReason(input, cfg);
     if (live) return live;
+    log("warn", "llm_fallback_to_heuristic", {
+      incidentId: input.incident?.id,
+      path: input.incident?.path
+    });
   }
   return heuristicReason(input);
 }
