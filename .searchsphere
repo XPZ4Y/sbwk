@@ -1,0 +1,11 @@
+./*/*/*.mjs
+./*/*/Dockerfile
+
+./*/*/*/*.mjs
+./*/*/*/*/*.mjs
+./*/*/*/*.ts
+
+./*/*/*/*/*.ts
+docker-*.yml
+package.json
+README.md
