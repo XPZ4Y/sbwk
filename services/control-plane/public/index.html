@@ -1,854 +1,513 @@
 <!DOCTYPE html>
-<html lang="en" class="scroll-smooth">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SLEEPY BOT // DEVELOPER ONBOARDING</title>
-<script src="https://cdn.tailwindcss.com"></script>
+<title>Sleepy Bot · Developer onboarding</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-<script>
-  tailwind.config = {
-    theme: { extend: { fontFamily: { mono: ['"Space Mono"', 'monospace'] } } }
-  }
-</script>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --cream: #f3f3e7;
-    --surface: #fbfaf7;
-    --surface-muted: #f0ece2;
-    --brown: #76583b;
-    --brown-dark: #57432f;
-    --brown-muted: #8b775f;
-    --line: #e4dbcc;
-  }
+:root{--bg:#f4f5f9;--panel:#ffffff;--panel2:#eceff7;--line:#dfe3ee;--tx:#14213d;--mu:#5b6785;--ice:#14213d;--ok:#1f8a70;--wake:#b7791f;--bad:#c2410c;
+--sans:'Canva Sans','DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,monospace;--head:var(--sans)}
+*{box-sizing:border-box;margin:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font:400 15px/1.7 var(--sans);-webkit-font-smoothing:antialiased;min-height:100vh;
+background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:48px 48px;background-attachment:fixed}
+body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse 70% 55% at 65% 0%,transparent,var(--bg) 85%),radial-gradient(circle at 80% 8%,rgba(20,33,61,.09),transparent 45%);pointer-events:none;z-index:0}
+::selection{background:var(--ice);color:var(--bg)}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--ice);outline-offset:3px}
+.rail{position:fixed;inset:0 auto 0 0;width:260px;padding:32px 24px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--line);background:rgba(244,245,249,.88);backdrop-filter:blur(12px);z-index:5}
+.brand{display:flex;align-items:center;gap:12px;font:700 17px var(--head);letter-spacing:-.01em}
+.moon{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 70% 30%,transparent 52%,var(--ice) 54%);box-shadow:0 0 18px rgba(20,33,61,.35);transform:rotate(-20deg)}
+.steps{list-style:none;padding:0;margin:0;position:relative}
+.steps::before{content:"";position:absolute;left:11px;top:14px;bottom:14px;width:1px;background:var(--line)}
+.steps a{display:flex;align-items:center;gap:14px;padding:9px 0;color:var(--mu);cursor:pointer;position:relative;transition:color .2s}
+.steps i{width:23px;height:23px;border-radius:50%;background:var(--bg);border:1px solid var(--line);display:grid;place-items:center;font:500 10px var(--mono);font-style:normal;flex:none;transition:.2s}
+.steps a:hover{color:var(--tx)}
+.steps a.is-active{color:var(--tx)}
+.steps a.is-active i{border-color:var(--ice);color:var(--bg);background:var(--ice);box-shadow:0 0 14px rgba(20,33,61,.35)}
+.live{display:flex;align-items:center;gap:8px;color:var(--mu);font-size:12px}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(31,138,112,.45);animation:p 2.4s infinite}
+@keyframes p{70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
+main{position:relative;z-index:1;margin-left:260px;padding:0 clamp(20px,5vw,72px)}
+.wrap{max-width:860px;margin:0 auto}
+.mbar{display:none}
+/* hero */
+#top{padding:96px 0 72px}
+.tag{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:5px 14px;font-size:12px;color:var(--mu);margin-bottom:28px}
+h1{font:700 clamp(44px,8vw,92px)/.95 var(--head);letter-spacing:-.04em;margin-bottom:24px}
+h1 span{display:block;color:transparent;-webkit-text-stroke:1px var(--ice)}
+.lead{font-size:18px;max-width:560px;color:var(--tx);margin-bottom:10px}
+.sub{max-width:560px;color:var(--mu);margin-bottom:36px}
+.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.term{margin-top:56px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 30px 80px -30px rgba(20,33,61,.22),0 0 0 1px rgba(20,33,61,.05)}
+.term-h{display:flex;gap:7px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel2);align-items:center}
+.term-h b{width:10px;height:10px;border-radius:50%;background:var(--line)}
+.term-h span{margin-left:auto;font-size:11px;color:var(--mu)}
+.term pre{font:400 13px/1.9 var(--mono);padding:20px;overflow-x:auto;color:var(--mu)}
+.term pre div{opacity:0;animation:in .4s forwards}
+.term pre div:nth-child(1){animation-delay:.3s}.term pre div:nth-child(2){animation-delay:1s}.term pre div:nth-child(3){animation-delay:1.7s}.term pre div:nth-child(4){animation-delay:2.4s}.term pre div:nth-child(5){animation-delay:3.1s}
+@keyframes in{to{opacity:1}}
+.t-ok{color:var(--ok)}.t-bad{color:var(--bad)}.t-wake{color:var(--wake)}.t-ice{color:var(--ice)}
+/* buttons + fields */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 22px;border-radius:8px;border:1px solid var(--ice);background:var(--ice);color:var(--bg);font:700 14px var(--sans);cursor:pointer;transition:.2s}
+.btn:hover{box-shadow:0 0 24px rgba(20,33,61,.3);transform:translateY(-1px)}
+.btn-ghost{background:transparent;color:var(--tx);border-color:var(--line)}
+.btn-ghost:hover{border-color:var(--ice);box-shadow:none}
+.btn:disabled{opacity:.5;cursor:wait;transform:none;box-shadow:none}
+.link{color:var(--mu);padding:12px 6px}.link:hover{color:var(--tx)}
+label{display:block;font-size:12px;color:var(--mu);margin-bottom:8px}
+.field{width:100%;padding:13px 16px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--tx);font:500 15px var(--sans);transition:.2s}
+.field::placeholder{color:#a3abc4;font-weight:400}
+.field:focus{outline:none;border-color:var(--ice);box-shadow:0 0 0 3px rgba(20,33,61,.12)}
+/* sections */
+h2{font:700 clamp(28px,4.5vw,44px)/1.05 var(--head);letter-spacing:-.03em;margin-bottom:28px}
+.kicker{color:var(--ice);font-size:12px;margin-bottom:14px}
+#how{padding:48px 0 96px}
+.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;position:relative;overflow:hidden}
+.card::after{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,var(--ice),transparent)}
+.card h3{font:700 17px var(--head);margin:14px 0 8px}
+.card p{font-size:12.5px;color:var(--mu);line-height:1.65}
+.card .n{font-size:11px;color:var(--ice)}
+.wizard-step{display:none;padding:72px 0 96px}
+body.is-wizard #top,body.is-wizard #how{display:none}
+body.is-wizard .wizard-step.is-current{display:block;animation:in .35s both}
+.copy{font-size:16px;margin-bottom:8px;max-width:600px}
+.copy2{color:var(--mu);max-width:600px;margin-bottom:32px}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:clamp(20px,4vw,32px)}
+.stack{display:grid;gap:20px}
+.actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:8px}
+.actions .row{margin-left:auto}
+.stat{margin-top:24px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--mu)}
+.badge{display:inline-block;font-size:11px;padding:2px 10px;border-radius:99px;border:1px solid var(--line);margin-bottom:10px;color:var(--mu)}
+.ok{color:var(--ok)!important}
+.progress{padding:48px 0 0;margin-bottom:-32px}
+.progress .top{display:flex;justify-content:space-between;font-size:12px;color:var(--mu);margin-bottom:10px}
+.track{height:3px;background:var(--line);border-radius:3px;overflow:hidden}
+.track span{display:block;height:100%;width:25%;background:linear-gradient(90deg,var(--ice),var(--ok));transition:width .3s}
+.dim{font-size:12px;color:var(--mu)}
+.commit{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:10px 14px;font-size:12px;margin-top:8px}
+.commit small{display:block;color:var(--mu);font-size:11px}
+/* toggles */
+.opt{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;padding:22px 0;border-bottom:1px solid var(--line)}
+.opt:first-child{padding-top:0}
+.opt b{display:block;font:700 16px var(--head);margin-bottom:4px}
+.opt p{font-size:12.5px;color:var(--mu);max-width:380px}
+.toggle{position:relative;width:52px;height:28px;flex:none;border:1px solid var(--line);border-radius:99px;background:var(--bg);cursor:pointer;padding:0;transition:.2s}
+.toggle .knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--mu);transition:.2s}
+.toggle[aria-checked="true"]{border-color:var(--ok);background:rgba(31,138,112,.12)}
+.toggle[aria-checked="true"] .knob{transform:translateX(24px);background:var(--ok);box-shadow:0 0 12px rgba(31,138,112,.45)}
+/* final */
+.final{margin-top:40px;background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--ice);border-radius:12px;padding:clamp(24px,4vw,40px);box-shadow:0 0 60px -20px rgba(20,33,61,.25)}
+.final h3{font:700 28px var(--head);letter-spacing:-.02em;margin-bottom:8px}
+.final p{color:var(--mu);max-width:420px;margin-bottom:24px}
+#incident-feed{display:grid;gap:12px;margin-top:20px}
+.inc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:16px;font-size:12.5px}
+.inc-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--line)}
+.chip{display:inline-block;font-size:10.5px;padding:1px 9px;border-radius:99px;background:var(--panel2);color:var(--tx);margin-left:4px}
+.sev-high{background:rgba(194,65,12,.12);color:var(--bad)}
+.esc{background:rgba(183,121,31,.15);color:var(--wake)}
+.fix{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
+.diff-view{background:var(--bg);border:1px solid var(--line);border-radius:6px;margin-top:8px;font-size:11px;overflow-x:auto}
+.diff-view .line{padding:0 10px;white-space:pre}
+.diff-add{background:rgba(31,138,112,.1);color:var(--ok)}.diff-del{background:rgba(194,65,12,.1);color:var(--bad)}.diff-hdr{color:var(--mu)}
+footer{padding:48px 0;border-top:1px solid var(--line);color:var(--mu);font-size:12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+@media(max-width:1023px){
+.rail{display:none}main{margin-left:0}
+.mbar{display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:6;margin:0 calc(-1*clamp(20px,5vw,72px));padding:14px clamp(20px,5vw,72px);background:rgba(244,245,249,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+#top{padding-top:56px}
+}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.term pre div{opacity:1}}
 
-  html { scroll-behavior: smooth; scroll-padding-top: 5rem; }
-  body {
-    background: var(--cream) !important;
-    color: var(--brown-dark) !important;
-    font-family: 'Space Mono', monospace;
-    -webkit-font-smoothing: antialiased;
-  }
-  ::selection { background: #e9e1d4; color: var(--brown-dark); }
-  ::-webkit-scrollbar { width: 10px; }
-  ::-webkit-scrollbar-track { background: var(--cream); }
-  ::-webkit-scrollbar-thumb { background: #d6cbb9; border-radius: 1rem; }
-  * { -webkit-tap-highlight-color: transparent; }
-
-  .text-black { color: var(--brown-dark) !important; }
-  .text-white { color: var(--cream) !important; }
-  [class*="text-neutral-"] { color: var(--brown-muted) !important; }
-  .bg-white { background: var(--surface) !important; }
-  .bg-neutral-100 { background: var(--surface-muted) !important; }
-  .bg-black { background: var(--brown) !important; border-radius: .7rem; }
-  .bg-black [class*="text-neutral-"] { color: #e5d9c8 !important; }
-
-  aside, header.lg\:hidden { background: var(--surface) !important; }
-  aside { border-right: 1px solid var(--line); }
-  header.lg\:hidden {
-    border-bottom: 1px solid var(--line);
-    box-shadow: 0 6px 20px rgba(87, 67, 47, .06) !important;
-  }
-  #mobileNav { background: var(--cream) !important; }
-
-  .brand-mark {
-    display: flex;
-    align-items: center;
-    gap: .6rem;
-    text-decoration: none;
-  }
-  .brand-dot {
-    width: .7rem;
-    height: .7rem;
-    border-radius: 50%;
-    background: var(--brown);
-    flex: none;
-  }
-  .brand-text {
-    font-size: .62rem;
-    font-weight: 700;
-    letter-spacing: .22em;
-    text-transform: uppercase;
-    line-height: 1.4;
-    color: var(--brown-dark);
-  }
-  aside .brand-mark { margin-bottom: 2rem; }
-  header .brand-mark { max-width: 55vw; }
-
-  main { min-height: 100vh; }
-  #top { border-bottom: 1px solid var(--line); }
-  #how .grid > div {
-    background: var(--surface) !important;
-    border: 1px solid var(--line);
-    border-radius: .8rem;
-    box-shadow: 0 6px 20px rgba(87, 67, 47, .035);
-  }
-
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: .65rem;
-    padding: 1rem 1.75rem;
-    border: 1px solid var(--brown);
-    border-radius: .5rem;
-    background: var(--brown);
-    color: var(--cream);
-    cursor: pointer;
-    font: 700 .72rem 'Space Mono', monospace;
-    letter-spacing: .12em;
-    text-transform: uppercase;
-    transition: background-color .2s ease, transform .2s ease;
-  }
-  .btn:hover { background: var(--brown-dark); transform: translateY(-1px); }
-  .btn-invert { background: var(--cream); color: var(--brown-dark); border-color: var(--line); }
-  .btn-invert:hover { background: var(--surface-muted); }
-  .btn:disabled { opacity: .5; cursor: wait; transform: none; }
-
-  .field {
-    width: 100%;
-    padding: 1rem 1.15rem;
-    border: 1px solid var(--line);
-    border-radius: .5rem;
-    background: var(--surface);
-    color: var(--brown-dark);
-    font: 700 .9rem 'Space Mono', monospace;
-    transition: border-color .2s ease, box-shadow .2s ease;
-  }
-  .field::placeholder { color: #9b866d; font-weight: 400; }
-  .field:focus { outline: none; border-color: #baa98f; box-shadow: 0 0 0 3px rgba(118, 88, 59, .09); }
-
-  .nav-link {
-    display: flex;
-    align-items: center;
-    gap: .85rem;
-    padding: .7rem .85rem;
-    border-radius: .5rem;
-    color: var(--brown-muted);
-    font-size: 11px;
-    font-weight: 700;
-    letter-spacing: .16em;
-    text-transform: uppercase;
-    transition: background-color .2s ease, color .2s ease;
-  }
-  .nav-link:hover { background: var(--surface-muted); color: var(--brown-dark); }
-  .nav-link.is-active { background: #e9e2d6; color: var(--brown-dark); }
-
-  .toggle {
-    position: relative;
-    width: 4rem;
-    height: 2rem;
-    flex: none;
-    padding: 0;
-    border: 0;
-    border-radius: 999px;
-    background: #e5ded2;
-    cursor: pointer;
-    transition: background-color .2s ease;
-  }
-  .toggle .knob {
-    position: absolute;
-    top: .3rem;
-    left: .3rem;
-    width: 1.4rem;
-    height: 1.4rem;
-    border-radius: 50%;
-    background: var(--brown);
-    transition: transform .2s ease, background-color .2s ease;
-  }
-  .toggle[aria-checked="true"] { background: #cfc1ad; }
-  .toggle[aria-checked="true"] .knob { transform: translateX(2rem); background: var(--brown-dark); }
-  a:focus-visible, button:focus-visible { outline: 2px solid #9b866d; outline-offset: 3px; }
-
-  #repo-commits > div, #incident-feed > div {
-    border: 1px solid var(--line);
-    border-radius: .55rem;
-  }
-  footer { border-top: 1px solid var(--line); }
-
-  @media (max-width: 640px) {
-    #how .grid > div { padding: 1.5rem; }
-  }
-  .wizard-step { display: none; }
-  body.is-wizard #top, body.is-wizard #how { display: none; }
-  body.is-wizard #wizardProgress { display: block; }
-  body.is-wizard .wizard-step.is-current { display: block; }
-  .wizard-progress { margin: 0 0 2.5rem; padding-top: 2rem; }
-  .wizard-progress-track { height: 3px; overflow: hidden; background: var(--surface-muted); }
-  .wizard-progress-bar { display: block; width: 25%; height: 100%; background: var(--brown); transition: width .25s ease; }
-  .wizard-actions { display: flex; align-items: center; justify-content: space-between; gap: 1rem; margin-top: 1.5rem; }
-  .wizard-actions.justify-start { justify-content: flex-start; }
-
-  .diff-view { background: var(--surface-muted); border: 1px solid var(--line); border-radius: .5rem; }
-  .diff-view .line { padding: 0 .6rem; white-space: pre; }
-  .diff-add { background: #e6f4ea; color: #137333; }
-  .diff-del { background: #fce8e6; color: #c5221f; }
-  .diff-hdr { color: var(--brown-muted); }
-  .sev-high { background: #f6ddd9; color: #9c2f24; }
-  .sev-low { background: var(--surface-muted); color: var(--brown-dark); }
+/* navy refresh */
+h1{letter-spacing:-.045em;font-weight:700}
+h2{letter-spacing:-.035em}
+.panel,.card,.final,.inc,.term{border-radius:18px}
+.panel,.card{box-shadow:0 18px 50px -28px rgba(20,33,61,.28)}
+.btn{border-radius:10px;font-weight:500}
+.btn-ghost{background:#fff}
+.field{border-radius:10px;background:#f9fafc}
+.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.02em}
+.status-mono,#status-gateway,#status-test,#status-repo,#status-monitor{font-family:var(--mono);font-size:12.5px}
+.term{background:#0f1a33;border-color:#1c2d57;box-shadow:0 40px 80px -40px rgba(20,33,61,.7)}
+.term-h{background:#16224a;border-color:#1c2d57}
+.term-h b{background:rgba(255,255,255,.22)}
+.term-h span{color:#8e9bc4}
+.term pre{color:#b8c2e0}
+.term .t-ok{color:#5eead4}.term .t-bad{color:#ff8a8a}.term .t-wake{color:#ffc66b}.term .t-ice{color:#8fa8ff}
+.final{background:linear-gradient(160deg,#1c2d57,#0f1a33);border-color:#1c2d57;color:#fff;box-shadow:0 30px 70px -30px rgba(20,33,61,.7)}
+.final .kicker{color:#8fa8ff}
+.final p,.final .dim{color:#aeb8d6}
+.final .btn{background:#fff;color:#14213d;border-color:#fff}
+.final .btn:hover{box-shadow:0 0 28px rgba(143,168,255,.45)}
+.final .ok{color:#5eead4!important}
+.inc{color:var(--tx)}.inc .dim{color:var(--mu)}
+.final .inc .t-wake{color:var(--wake)}
+.card::after{background:linear-gradient(90deg,#14213d,#5b7bd5,transparent)}
+.track span{background:linear-gradient(90deg,#14213d,#5b7bd5)}
+.toggle[aria-checked="true"]{border-color:var(--ice);background:var(--ice)}
+.toggle[aria-checked="true"] .knob{background:#fff;box-shadow:none}
 </style>
 </head>
+<body>
 
-<body class="font-mono bg-white text-black antialiased overflow-x-hidden">
-
-<!-- ══════════════════ MOBILE HEADER ══════════════════ -->
-<header class="lg:hidden sticky top-0 z-40 bg-white px-6 py-5 flex items-center justify-between"
-        style="box-shadow:0 12px 32px -20px rgba(0,0,0,.45)">
-  <a href="#top" class="brand-mark" aria-label="Sleepy Bot home">
-    <span class="brand-dot"></span>
-    <span class="brand-text">Sleepy Bot</span>
-  </a>
-  <button onclick="toggleMobileNav()" class="btn" style="padding:.6rem 1.1rem; font-size:.65rem;">Menu</button>
-</header>
-
-<!-- ══════════════════ MOBILE NAV ══════════════════ -->
-<div id="mobileNav" class="hidden fixed inset-0 z-50 bg-white p-6 flex flex-col justify-between overflow-y-auto">
+<aside class="rail">
   <div>
-    <div class="flex items-center justify-between mb-14">
-      <span class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400">// Setup Steps</span>
-      <button onclick="toggleMobileNav()" class="btn" style="padding:.6rem 1.1rem; font-size:.65rem;">Close</button>
-    </div>
-    <nav class="space-y-1">
-      <a href="#step-01" onclick="toggleMobileNav()" class="block text-2xl font-bold uppercase tracking-tight py-3">01 — Gateway</a>
-      <a href="#step-02" onclick="toggleMobileNav()" class="block text-2xl font-bold uppercase tracking-tight py-3">02 — External</a>
-      <a href="#step-03" onclick="toggleMobileNav()" class="block text-2xl font-bold uppercase tracking-tight py-3">03 — Codebase</a>
-      <a href="#step-04" onclick="toggleMobileNav()" class="block text-2xl font-bold uppercase tracking-tight py-3">04 — Safety</a>
-    </nav>
+    <a href="#top" class="brand"><span class="moon"></span>Sleepy Bot</a>
+    <p class="dim" style="margin:10px 0 44px">Developer onboarding</p>
+    <ol class="steps" id="sidebarNav">
+      <li><a class="nav-link"><i>1</i>Gateway</a></li>
+      <li><a class="nav-link"><i>2</i>External access</a></li>
+      <li><a class="nav-link"><i>3</i>Codebase</a></li>
+      <li><a class="nav-link"><i>4</i>Safety limits</a></li>
+    </ol>
   </div>
-  <div class="text-[10px] font-bold uppercase tracking-[0.25em] text-neutral-400 pt-10">
-    System status: ready
-  </div>
-</div>
-
-<!-- ══════════════════ SIDEBAR ══════════════════ -->
-<aside class="hidden lg:flex fixed top-0 left-0 h-screen w-[20%] flex-col justify-between p-8 xl:p-10 z-30 bg-white">
-  <div>
-    <a href="#top" class="brand-mark" aria-label="Sleepy Bot home">
-      <span class="brand-dot"></span>
-      <span class="brand-text">Sleepy Bot<br>with Keys</span>
-    </a>
-    <h2 class="text-sm font-bold uppercase tracking-[0.16em] leading-relaxed">
-      Developer<br>Onboarding
-    </h2>
-  </div>
-
-  <nav id="sidebarNav" class="space-y-1">
-    <a href="#step-01" class="nav-link"><span class="text-[10px] opacity-60">01</span> Gateway</a>
-    <a href="#step-02" class="nav-link"><span class="text-[10px] opacity-60">02</span> External</a>
-    <a href="#step-03" class="nav-link"><span class="text-[10px] opacity-60">03</span> Codebase</a>
-    <a href="#step-04" class="nav-link"><span class="text-[10px] opacity-60">04</span> Safety</a>
-  </nav>
-
-  <div class="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 space-y-2">
-    <div class="flex items-center gap-2">
-      <span class="w-1.5 h-1.5 bg-black inline-block"></span> Status: ready
-    </div>
-    <div>EG Software // 2026</div>
-  </div>
+  <div class="live"><span class="pulse"></span>Agent ready · v0.1</div>
 </aside>
 
-<!-- ══════════════════ MAIN ══════════════════ -->
-<main class="lg:ml-[20%] px-6 sm:px-12 lg:px-16 xl:px-24">
-<div class="mx-auto max-w-5xl">
-  <div id="wizardProgress" class="wizard-progress" hidden aria-live="polite">
-    <div class="flex items-center justify-between gap-4 mb-3">
-      <span id="wizardStepLabel" class="text-[11px] font-bold uppercase tracking-[0.2em]">Step 1 of 4</span>
-      <span class="text-[11px] font-bold text-neutral-400">Setup</span>
-    </div>
-    <div class="wizard-progress-track" role="progressbar" aria-label="Setup progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="25">
-      <span id="wizardProgressBar" class="wizard-progress-bar"></span>
-    </div>
+<main>
+<div class="mbar"><a href="#top" class="brand"><span class="moon"></span>Sleepy Bot</a><span class="live"><span class="pulse"></span>ready</span></div>
+<div class="wrap">
+
+  <div id="wizardProgress" class="progress" hidden aria-live="polite">
+    <div class="top"><span id="wizardStepLabel">Step 1 of 4</span><span>Setup</span></div>
+    <div class="track" role="progressbar" aria-label="Setup progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="25"><span id="wizardProgressBar"></span></div>
   </div>
 
-  <!-- ─────────── HERO ─────────── -->
-  <section id="top" class="pt-16 sm:pt-24 pb-20 sm:pb-28">
-    <div class="inline-block bg-black text-white text-[10px] font-bold uppercase tracking-[0.3em] px-3 py-1.5 mb-10">
-      System Initialization
-    </div>
-
-    <h1 class="font-bold uppercase tracking-tighter leading-[0.85] mb-10">
-      <span class="block text-[13vw] sm:text-6xl md:text-7xl xl:text-8xl">Sleepy Bot</span>
-      <span class="block text-[8.5vw] sm:text-4xl md:text-5xl text-neutral-300">Never sleeps</span>
-    </h1>
-
-    <p class="text-lg sm:text-2xl font-bold leading-snug max-w-2xl mb-4">
-      An all-seeing middleware agent for your stack.
-    </p>
-    <p class="text-base sm:text-lg font-bold leading-relaxed max-w-2xl text-neutral-600 mb-12">
-      It reads every request, pulls your logs, reads your code — and tells you exactly
-      where the problem is. If things don't work out, it wakes the human engineer.
-    </p>
-
-    <div class="flex flex-wrap items-center gap-4">
+  <section id="top">
+    <div class="tag"><span class="pulse"></span>Middleware agent for your stack</div>
+    <h1>Sleepy Bot<span>never sleeps.</span></h1>
+    <p class="lead">It reads every request, pulls your logs, reads your code, and tells you where the problem is.</p>
+    <p class="sub">If it isn't confident in a fix, it wakes the human engineer.</p>
+    <div class="row">
       <button id="btn-begin" type="button" class="btn">Start setup</button>
-      <a href="#how" class="text-[11px] font-bold uppercase tracking-[0.2em] px-2 py-3">How it works</a>
+      <a href="#how" class="link">How it works</a>
     </div>
-
-    <div class="mt-16 text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400">
-      v0.1 // SBWK
-    </div>
-  </section>
-
-  <!-- ─────────── HOW IT WORKS ─────────── -->
-  <section id="how" class="py-20 sm:py-28 scroll-mt-24">
-    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-4">// How it works</div>
-    <h2 class="text-3xl sm:text-5xl font-bold uppercase tracking-tighter leading-none mb-14">The pipeline</h2>
-
-    <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4">
-      <div class="bg-neutral-100 p-8">
-        <div class="text-[11px] font-bold tracking-[0.25em] text-neutral-400 mb-8">01</div>
-        <h3 class="text-base font-bold uppercase mb-3">Intercept</h3>
-        <p class="text-xs font-bold text-neutral-600 leading-relaxed">
-          A container takes inbound traffic and forwards it to your server, Cloudflare-style.
-          Nothing reaches the app unread.
-        </p>
-      </div>
-
-      <div class="bg-neutral-100 p-8">
-        <div class="text-[11px] font-bold tracking-[0.25em] text-neutral-400 mb-8">02</div>
-        <h3 class="text-base font-bold uppercase mb-3">Detect</h3>
-        <p class="text-xs font-bold text-neutral-600 leading-relaxed">
-          A built-in detector flags anomalies. 404s, 500s, slow responses — anything unusual
-          gets dispatched to the core agent.
-        </p>
-      </div>
-
-      <div class="bg-neutral-100 p-8">
-        <div class="text-[11px] font-bold tracking-[0.25em] text-neutral-400 mb-8">03</div>
-        <h3 class="text-base font-bold uppercase mb-3">Diagnose</h3>
-        <p class="text-xs font-bold text-neutral-600 leading-relaxed">
-          The agent pulls logs from your auth and database providers, then reads your codebase
-          and compares it to recent commits.
-        </p>
-      </div>
-
-      <div class="bg-neutral-100 p-8">
-        <div class="text-[11px] font-bold tracking-[0.25em] text-neutral-400 mb-8">04</div>
-        <h3 class="text-base font-bold uppercase mb-3">Escalate</h3>
-        <p class="text-xs font-bold text-neutral-600 leading-relaxed">
-          It proposes a fix. If confidence drops below your threshold, it stops and wakes
-          the human engineer.
-        </p>
-      </div>
+    <div class="term" aria-hidden="true">
+      <div class="term-h"><b></b><b></b><b></b><span>sleepy-bot · edge</span></div>
+<pre><div><span class="t-ice">GET</span> /api/checkout <span class="t-bad">→ 500</span> (2140ms)</div><div>detector  anomaly flagged, dispatching agent</div><div>logs      auth <span class="t-ok">ok</span> · db <span class="t-bad">connection pool exhausted</span></div><div>code      commit a41f9c2 lowered pool size 50 → 5</div><div><span class="t-wake">confidence 91%</span>  fix proposed, awaiting approval</div></pre>
     </div>
   </section>
 
-  <!-- ─────────── STEP 01 ─────────── -->
-  <article id="step-01" class="wizard-step py-20 sm:py-28 scroll-mt-20">
-    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-5">
-      // Step 01 <span class="text-neutral-300">/ 04</span>
+  <section id="how">
+    <div class="kicker">How it works</div>
+    <h2>From request to root cause</h2>
+    <div class="grid">
+      <div class="card"><span class="n">1</span><h3>Intercept</h3><p>A container takes inbound traffic and forwards it to your server. Nothing reaches the app unread.</p></div>
+      <div class="card"><span class="n">2</span><h3>Detect</h3><p>A built-in detector flags 404s, 500s and slow responses, then dispatches the core agent.</p></div>
+      <div class="card"><span class="n">3</span><h3>Diagnose</h3><p>The agent pulls auth and database logs, then compares your codebase to recent commits.</p></div>
+      <div class="card"><span class="n">4</span><h3>Escalate</h3><p>It proposes a fix. Below your confidence threshold, it stops and wakes the human engineer.</p></div>
     </div>
-    <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold uppercase tracking-tighter leading-none mb-10">
-      Network<br>Gateway
-    </h2>
+  </section>
 
-    <div class="max-w-3xl space-y-8">
-      <p class="text-lg sm:text-xl font-bold leading-snug">
-        Sleepy Bot sits between the client and the server. It receives all traffic.
-      </p>
-      <p class="text-base font-bold leading-relaxed text-neutral-600">
-        Point your DNS at the Sleepy Bot edge container. Your server stops receiving traffic
-        directly — every request passes through the agent first.
-      </p>
-
-      <div class="bg-black text-white p-7 sm:p-10">
-        <div class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-6">
-          // Configuration required
+  <!-- STEP 1 -->
+  <article id="step-01" class="wizard-step">
+    <div class="kicker">Step 1 of 4</div>
+    <h2>Network gateway</h2>
+    <p class="copy">Sleepy Bot sits between the client and your server and receives all traffic.</p>
+    <p class="copy2">Point your DNS at the Sleepy Bot edge container. Every request passes through the agent first.</p>
+    <div class="panel">
+      <form class="stack" onsubmit="return false;">
+        <div><label for="gateway-target">Target URL</label><input id="gateway-target" type="text" class="field" placeholder="https://your-production-app.com"></div>
+        <div><label for="gateway-port">Edge port</label><input id="gateway-port" type="number" class="field" placeholder="8080" value="8080"></div>
+        <div class="row">
+          <button type="button" id="btn-gateway-save" class="btn btn-ghost">Save target</button>
+          <button type="button" id="btn-gateway-check" class="btn btn-ghost">Check reachability</button>
+          <button type="button" id="btn-gateway" class="btn" style="margin-left:auto">Next</button>
         </div>
-        <form class="space-y-5" onsubmit="return false;">
-          <div>
-            <label for="gateway-target" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">Target URL</label>
-            <input id="gateway-target" type="text" class="field" placeholder="https://your-production-app.com">
-          </div>
-          <div>
-            <label for="gateway-port" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">Edge port</label>
-            <input id="gateway-port" type="number" class="field" placeholder="8080" value="8080">
-          </div>
-          <div class="flex flex-wrap gap-3 pt-2">
-            <button type="button" id="btn-gateway-save" class="btn btn-invert">Save target</button>
-            <button type="button" id="btn-gateway-check" class="btn btn-invert">Check reachability</button>
-            <button type="button" id="btn-gateway" class="btn">Next</button>
-          </div>
-        </form>
-
-        <div class="mt-8">
-          <div class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-2">
-            // Edge status
-          </div>
-          <div id="status-gateway-badge" class="text-[10px] font-bold uppercase tracking-[0.18em] text-neutral-400 mb-4">UNCHECKED</div>
-          <div class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-4">
-            // Diagnostic
-          </div>
-          <div id="status-gateway" class="text-xs sm:text-sm leading-loose font-mono font-bold text-white">
-            &gt; awaiting configuration
-          </div>
-        </div>
+      </form>
+      <div class="stat">
+        <span id="status-gateway-badge" class="badge">Unchecked</span>
+        <div id="status-gateway">&gt; awaiting configuration</div>
       </div>
     </div>
   </article>
 
-  <!-- ─────────── STEP 02 ─────────── -->
-  <article id="step-02" class="wizard-step py-20 sm:py-28 scroll-mt-20">
-    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-5">
-      // Step 02 <span class="text-neutral-300">/ 04</span>
-    </div>
-    <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold uppercase tracking-tighter leading-none mb-10">
-      External<br>Access
-    </h2>
-
-    <div class="max-w-3xl space-y-8">
-      <p class="text-lg sm:text-xl font-bold leading-snug">
-        The agent needs logs from your external services — authentication and database.
-      </p>
-      <p class="text-base font-bold leading-relaxed text-neutral-600">
-        Provide read-only credentials only. The agent must never have write access.
-      </p>
-
-      <form class="space-y-6" onsubmit="return false;">
-        <div>
-          <label for="auth-endpoint" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
-            Auth provider endpoint
-          </label>
-          <input id="auth-endpoint" type="text" class="field" placeholder="https://auth.your-app.com/logs">
-        </div>
-        <div>
-          <label for="api-key" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
-            Read-only API key
-          </label>
-          <input id="api-key" type="password" class="field" placeholder="••••••••••••••••••••">
-        </div>
-        <div>
-          <label for="db-endpoint" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
-            Database provider endpoint
-          </label>
-          <input id="db-endpoint" type="text" class="field" placeholder="mongodb+srv://readonly@cluster.mongodb.net">
-        </div>
-
-        <div class="pt-4">
-          <div class="wizard-actions">
-            <button type="button" class="btn btn-invert" onclick="goToStep(1)">Back</button>
-            <div class="flex flex-wrap gap-3">
-              <button type="button" id="btn-test-save" class="btn btn-invert">Save</button>
-              <button type="button" id="btn-test" class="btn">Test &amp; next</button>
-            </div>
-          </div>
-          <div class="mt-5">
-            <span id="status-test" class="text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">
-              // awaiting input
-            </span>
+  <!-- STEP 2 -->
+  <article id="step-02" class="wizard-step">
+    <div class="kicker">Step 2 of 4</div>
+    <h2>External access</h2>
+    <p class="copy">The agent needs logs from your authentication and database services.</p>
+    <p class="copy2">Provide read-only credentials only. The agent must never have write access.</p>
+    <div class="panel">
+      <form class="stack" onsubmit="return false;">
+        <div><label for="auth-endpoint">Auth provider endpoint</label><input id="auth-endpoint" type="text" class="field" placeholder="https://auth.your-app.com/logs"></div>
+        <div><label for="api-key">Read-only API key</label><input id="api-key" type="password" class="field" placeholder="••••••••••••••••••••"></div>
+        <div><label for="db-endpoint">Database provider endpoint</label><input id="db-endpoint" type="text" class="field" placeholder="mongodb+srv://readonly@cluster.mongodb.net"></div>
+        <div class="actions">
+          <button type="button" class="btn btn-ghost" onclick="goToStep(1)">Back</button>
+          <div class="row">
+            <button type="button" id="btn-test-save" class="btn btn-ghost">Save</button>
+            <button type="button" id="btn-test" class="btn">Test and continue</button>
           </div>
         </div>
+        <span id="status-test" class="dim">// awaiting input</span>
       </form>
     </div>
   </article>
 
-  <!-- ─────────── STEP 03 ─────────── -->
-  <article id="step-03" class="wizard-step py-20 sm:py-28 scroll-mt-20">
-    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-5">
-      // Step 03 <span class="text-neutral-300">/ 04</span>
-    </div>
-    <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold uppercase tracking-tighter leading-none mb-10">
-      Codebase<br>Link
-    </h2>
-
-    <div class="max-w-3xl space-y-8">
-      <p class="text-lg sm:text-xl font-bold leading-snug">
-        The agent reads your source code to find the root cause.
-      </p>
-      <p class="text-base font-bold leading-relaxed text-neutral-600">
-        Connect the repository. The agent reads the last five commits and correlates them
-        with the failing requests. <span class="text-neutral-400">Optional — skip to rely on local inspection only.</span>
-      </p>
-
-      <form class="space-y-6" onsubmit="return false;">
-        <div>
-          <label for="repo-url" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
-            Repository URL
-          </label>
-          <input id="repo-url" type="text" class="field" placeholder="https://github.com/your-org/your-repo">
-        </div>
-        <div>
-          <label for="repo-token" class="block text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">
-            Personal access token
-          </label>
-          <input id="repo-token" type="password" class="field" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx">
-        </div>
-
-        <div class="pt-4">
-          <div class="wizard-actions">
-            <button type="button" class="btn btn-invert" onclick="goToStep(2)">Back</button>
-            <div class="flex flex-wrap gap-3">
-              <button type="button" id="btn-repo-skip" class="btn btn-invert">Skip</button>
-              <button type="button" id="btn-repo" class="btn">Link &amp; next</button>
-            </div>
-          </div>
-          <div class="mt-5">
-            <span id="status-repo" class="text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">
-              // not connected
-            </span>
-            <div id="repo-commits" class="mt-6 space-y-2"></div>
+  <!-- STEP 3 -->
+  <article id="step-03" class="wizard-step">
+    <div class="kicker">Step 3 of 4</div>
+    <h2>Codebase link</h2>
+    <p class="copy">The agent reads your source code to find the root cause.</p>
+    <p class="copy2">Connect the repository and it reads the last five commits, then matches them to failing requests. Optional: skip to use local inspection only.</p>
+    <div class="panel">
+      <form class="stack" onsubmit="return false;">
+        <div><label for="repo-url">Repository URL</label><input id="repo-url" type="text" class="field" placeholder="https://github.com/your-org/your-repo"></div>
+        <div><label for="repo-token">Personal access token</label><input id="repo-token" type="password" class="field" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"></div>
+        <div class="actions">
+          <button type="button" class="btn btn-ghost" onclick="goToStep(2)">Back</button>
+          <div class="row">
+            <button type="button" id="btn-repo-skip" class="btn btn-ghost">Skip</button>
+            <button type="button" id="btn-repo" class="btn">Link and continue</button>
           </div>
         </div>
+        <span id="status-repo" class="dim">// not connected</span>
+        <div id="repo-commits"></div>
       </form>
     </div>
   </article>
 
-  <!-- ─────────── STEP 04 ─────────── -->
-  <article id="step-04" class="wizard-step py-20 sm:py-28 scroll-mt-20">
-    <div class="text-[11px] font-bold uppercase tracking-[0.3em] text-neutral-400 mb-5">
-      // Step 04 <span class="text-neutral-300">/ 04</span>
+  <!-- STEP 4 -->
+  <article id="step-04" class="wizard-step">
+    <div class="kicker">Step 4 of 4</div>
+    <h2>Safety limits</h2>
+    <p class="copy2">The agent acts automatically. Set the limits before it does.</p>
+    <div class="panel">
+      <div class="opt"><div><b>Dry-run mode</b><p>The agent suggests actions but does not run them. You approve each one.</p></div>
+        <button id="toggle-dryrun" class="toggle" role="switch" aria-checked="true" aria-label="Dry-run mode"><span class="knob"></span></button></div>
+      <div class="opt"><div><b>Auto-rollback on failure</b><p>If a fix doesn't clear the error within 60 seconds, the change is reverted.</p></div>
+        <button id="toggle-rollback" class="toggle" role="switch" aria-checked="true" aria-label="Auto-rollback on failure"><span class="knob"></span></button></div>
+      <div class="opt" style="border:0;padding-bottom:0"><div><b>Escalation window</b><p>Below 80% confidence, the agent stops and wakes the human engineer.</p></div>
+        <button id="toggle-escalation" class="toggle" role="switch" aria-checked="true" aria-label="Escalation window"><span class="knob"></span></button></div>
     </div>
-    <h2 class="text-3xl sm:text-5xl lg:text-6xl font-bold uppercase tracking-tighter leading-none mb-10">
-      Safety<br>Limits
-    </h2>
+    <div class="actions" style="margin-top:20px"><button type="button" class="btn btn-ghost" onclick="goToStep(3)">Back</button></div>
 
-    <div class="max-w-3xl">
-      <p class="text-lg sm:text-xl font-bold leading-snug mb-12">
-        The agent acts automatically. Set the limits before it does.
-      </p>
-
-      <div class="space-y-12">
-        <div class="flex items-start justify-between gap-8">
-          <div>
-            <div class="text-base font-bold uppercase mb-2">Dry-run mode</div>
-            <p class="text-xs font-bold text-neutral-500 leading-relaxed max-w-sm">
-              The agent suggests actions. It does not execute them. You approve manually.
-            </p>
-          </div>
-          <button id="toggle-dryrun" class="toggle" role="switch" aria-checked="true" aria-label="Dry-run mode">
-            <span class="knob"></span>
-          </button>
-        </div>
-
-        <div class="flex items-start justify-between gap-8">
-          <div>
-            <div class="text-base font-bold uppercase mb-2">Auto-rollback on failure</div>
-            <p class="text-xs font-bold text-neutral-500 leading-relaxed max-w-sm">
-              If a fix fails to resolve the error within 60 seconds, revert the change.
-            </p>
-          </div>
-          <button id="toggle-rollback" class="toggle" role="switch" aria-checked="true" aria-label="Auto-rollback on failure">
-            <span class="knob"></span>
-          </button>
-        </div>
-
-        <div class="flex items-start justify-between gap-8">
-          <div>
-            <div class="text-base font-bold uppercase mb-2">Escalation window</div>
-            <p class="text-xs font-bold text-neutral-500 leading-relaxed max-w-sm">
-              Below 80% confidence, the agent stops and wakes the human engineer.
-            </p>
-          </div>
-          <button id="toggle-escalation" class="toggle" role="switch" aria-checked="true" aria-label="Escalation window">
-            <span class="knob"></span>
-          </button>
-        </div>
-      </div>
-
-      <div class="wizard-actions justify-start">
-        <button type="button" class="btn btn-invert" onclick="goToStep(3)">Back</button>
-      </div>
-
-      <!-- FINAL ACTION -->
-      <div class="bg-black text-white p-8 sm:p-12 mt-20">
-        <div class="text-[10px] font-bold uppercase tracking-[0.3em] text-neutral-500 mb-6">
-          // Final step
-        </div>
-        <h3 class="text-2xl sm:text-3xl font-bold uppercase tracking-tight mb-4">Initialize agent</h3>
-        <p class="text-sm font-bold text-neutral-400 leading-relaxed max-w-md mb-9">
-          All steps complete. The agent is ready to watch. It will not sleep.
-        </p>
-        <button id="btn-start" class="btn btn-invert">Go</button>
-        <div id="status-monitor" class="mt-6 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">// monitoring inactive</div>
-        <div id="incident-feed" class="mt-6 space-y-3"></div>
-      </div>
+    <div class="final">
+      <div class="kicker">Final step</div>
+      <h3>Initialize agent</h3>
+      <p>Setup is complete. Start monitoring and the agent will watch every request.</p>
+      <button id="btn-start" class="btn">Start monitoring</button>
+      <div id="status-monitor" class="dim" style="margin-top:18px">// monitoring inactive</div>
+      <div id="incident-feed"></div>
     </div>
   </article>
 
-  <!-- ─────────── FOOTER ─────────── -->
-  <footer class="py-16 sm:py-20 text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400
-                 flex flex-col sm:flex-row justify-between gap-6">
-    <div>Sleepy Bot // SBWK — EG Software, 2026</div>
-    <a href="#top" class="hover:text-black w-fit">[ top of page ]</a>
-  </footer>
-
+  <footer><span>Sleepy Bot · EG Software, 2026</span><a href="#top">Back to top</a></footer>
 </div>
 </main>
 
 <script>
-  /* ---------- API WIRING (same endpoints as control plane, no fake timeouts) ---------- */
-  const $ = id => document.getElementById(id);
-  const api = async (path, body) => {
-    const res = await fetch(path, body
-      ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
-      : undefined);
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.success === false) throw new Error(data.error || ('HTTP ' + res.status));
-    return data;
-  };
-  const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const setStatus = (el, text, ok) => { el.textContent = text; el.classList.toggle('text-neutral-400', !ok); el.classList.toggle('text-black', ok); };
+const $ = id => document.getElementById(id);
+const api = async (path, body) => {
+  const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : undefined);
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) throw new Error(data.error || ('HTTP ' + res.status));
+  return data;
+};
+const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const setStatus = (el, text, ok) => { el.textContent = text; el.classList.toggle('ok', !!ok); };
 
-  /* ---------- WIZARD ---------- */
-  const wizardTitles = ['Network Gateway', 'External Access', 'Codebase Link', 'Safety Limits'];
-  function goToStep(step) {
-    const steps = document.querySelectorAll('.wizard-step');
-    if (step < 1 || step > steps.length) return;
-    document.body.classList.add('is-wizard');
-    $('wizardProgress').hidden = false;
-    steps.forEach((article, index) => article.classList.toggle('is-current', index === step - 1));
-    $('wizardStepLabel').textContent = `Step ${step} of ${steps.length} / ${wizardTitles[step - 1]}`;
-    const progress = step / steps.length * 100;
-    $('wizardProgressBar').style.width = `${progress}%`;
-    $('wizardProgressBar').parentElement.setAttribute('aria-valuenow', String(Math.round(progress)));
-    document.querySelectorAll('#sidebarNav .nav-link').forEach((link, i) => link.classList.toggle('is-active', i === step - 1));
-    requestAnimationFrame(() => steps[step - 1].scrollIntoView({ behavior: 'smooth', block: 'start' }));
-  }
+const wizardTitles = ['Network gateway', 'External access', 'Codebase link', 'Safety limits'];
+function goToStep(step) {
+  const steps = document.querySelectorAll('.wizard-step');
+  if (step < 1 || step > steps.length) return;
+  document.body.classList.add('is-wizard');
+  $('wizardProgress').hidden = false;
+  steps.forEach((a, i) => a.classList.toggle('is-current', i === step - 1));
+  $('wizardStepLabel').textContent = `Step ${step} of ${steps.length} · ${wizardTitles[step - 1]}`;
+  const p = step / steps.length * 100;
+  $('wizardProgressBar').style.width = p + '%';
+  $('wizardProgressBar').parentElement.setAttribute('aria-valuenow', String(Math.round(p)));
+  document.querySelectorAll('#sidebarNav .nav-link').forEach((l, i) => l.classList.toggle('is-active', i === step - 1));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+$('btn-begin').addEventListener('click', () => goToStep(1));
 
-  function toggleMobileNav() { $('mobileNav').classList.toggle('hidden'); document.body.classList.toggle('overflow-hidden'); }
-  $('btn-begin').addEventListener('click', () => goToStep(1));
+/* STEP 1 */
+async function saveGateway() {
+  const targetUrl = $('gateway-target').value.trim(), port = $('gateway-port').value.trim();
+  if (!targetUrl) throw new Error('enter a target URL');
+  await api('/api/gateway', { targetUrl, port });
+  return targetUrl;
+}
+const reach = (check) => check.reachable
+  ? `> [OK] EDGE CONNECTED. SERVER REACHABLE (${check.method === 'http' ? 'HTTP ' + check.status : check.method}, ${check.latencyMs}ms)`
+  : `> [FAIL] SERVER UNREACHABLE: ${check.error}`;
+const badge = c => c.reachable ? `HTTP ${c.status} (${c.latencyMs}ms)` : 'Unreachable';
 
-  /* STEP 01 — Gateway: save config + real reachability healthcheck */
-  async function saveGateway() {
-    const targetUrl = $('gateway-target').value.trim(), port = $('gateway-port').value.trim();
-    if (!targetUrl) throw new Error('enter a target URL');
-    await api('/api/gateway', { targetUrl, port });
-    return targetUrl;
-  }
+$('btn-gateway-save').addEventListener('click', async () => {
+  const btn = $('btn-gateway-save'), s = $('status-gateway');
+  btn.disabled = true; s.textContent = '> saving target…';
+  try { const u = await saveGateway(); s.textContent = `> [OK] TARGET SAVED: ${u}`; setStatus($('status-gateway-badge'), 'Saved', true); }
+  catch (e) { s.textContent = '> [ERROR] ' + e.message; }
+  finally { btn.disabled = false; }
+});
+$('btn-gateway-check').addEventListener('click', async () => {
+  const btn = $('btn-gateway-check'), s = $('status-gateway'), b = $('status-gateway-badge');
+  btn.disabled = true; s.textContent = '> checking edge reachability…';
+  try { await saveGateway(); const { check } = await api('/api/gateway/check', {}); s.textContent = reach(check); setStatus(b, badge(check), check.reachable); }
+  catch (e) { s.textContent = '> [ERROR] ' + e.message; setStatus(b, 'Error', false); }
+  finally { btn.disabled = false; }
+});
+$('btn-gateway').addEventListener('click', async () => {
+  const btn = $('btn-gateway'), s = $('status-gateway'), b = $('status-gateway-badge');
+  btn.disabled = true; s.textContent = '> saving + checking edge…';
+  try { await saveGateway(); const { check } = await api('/api/gateway/check', {}); s.textContent = reach(check); setStatus(b, badge(check), check.reachable); goToStep(2); }
+  catch (e) { s.textContent = '> [ERROR] ' + e.message; }
+  finally { btn.disabled = false; }
+});
 
-  $('btn-gateway-save').addEventListener('click', async () => {
-    const btn = $('btn-gateway-save'), s = $('status-gateway'), badge = $('status-gateway-badge');
-    btn.disabled = true; s.textContent = '> saving target…';
-    try {
-      const targetUrl = await saveGateway();
-      s.textContent = `> [OK] TARGET SAVED: ${targetUrl}`;
-      setStatus(badge, 'SAVED', true);
-    } catch (e) { s.textContent = '> [ERROR] ' + e.message; }
-    finally { btn.disabled = false; }
+/* STEP 2 */
+async function saveExternal() {
+  await api('/api/external', { authEndpoint: $('auth-endpoint').value.trim(), apiKey: $('api-key').value, databaseEndpoint: $('db-endpoint').value.trim() });
+}
+$('btn-test-save').addEventListener('click', async () => {
+  const btn = $('btn-test-save'), s = $('status-test');
+  btn.disabled = true; setStatus(s, '> saving…', false);
+  try { await saveExternal(); setStatus(s, '> [OK] EXTERNAL ENDPOINTS SAVED', true); }
+  catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
+  finally { btn.disabled = false; }
+});
+$('btn-test').addEventListener('click', async () => {
+  const btn = $('btn-test'), s = $('status-test');
+  btn.disabled = true; setStatus(s, '> validating…', false);
+  try {
+    await saveExternal();
+    const r = await api('/api/external/test', {});
+    const detail = `auth:${r.auth?.reachable ? 'OK' : 'FAIL'} db:${r.database?.reachable ? 'OK' : 'FAIL'}`;
+    setStatus(s, `> [${r.reachable === r.total ? 'OK' : 'WARN'}] ${r.reachable}/${r.total} SERVICES REACHABLE (${detail})`, r.reachable > 0);
+    goToStep(3);
+  } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
+  finally { btn.disabled = false; }
+});
+
+/* STEP 3 */
+function renderCommits(commits) {
+  const box = $('repo-commits');
+  if (!commits || !commits.length) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="dim" style="margin-top:12px">// last ${commits.length} commits</div>` +
+    commits.map(c => `<div class="commit"><span class="t-ice">${escapeHtml((c.sha || '').slice(0, 7))}</span> ${escapeHtml((c.message || '').split('\n')[0])}<small>${escapeHtml(c.author || '')} · ${escapeHtml(c.date || '')}</small></div>`).join('');
+}
+$('btn-repo').addEventListener('click', async () => {
+  const btn = $('btn-repo'), s = $('status-repo');
+  btn.disabled = true; setStatus(s, '> cloning metadata…', false); $('repo-commits').innerHTML = '';
+  try {
+    const r = await api('/api/codebase', { repoUrl: $('repo-url').value.trim(), token: $('repo-token').value });
+    setStatus(s, `> [OK] REPOSITORY LINKED — ${r.codebase.fullName} (${r.codebase.commits.length} commits)`, true);
+    renderCommits(r.codebase.commits);
+    goToStep(4);
+  } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
+  finally { btn.disabled = false; }
+});
+$('btn-repo-skip').addEventListener('click', async () => {
+  const btn = $('btn-repo-skip'), s = $('status-repo');
+  btn.disabled = true; setStatus(s, '> clearing git link…', false);
+  try {
+    $('repo-url').value = ''; $('repo-token').value = ''; $('repo-commits').innerHTML = '';
+    const r = await api('/api/codebase', { repoUrl: '', token: '' });
+    setStatus(s, r.skipped ? '> [SKIPPED] GIT CLEARED — LOCAL INSPECTION ONLY' : '> [OK] REPOSITORY LINKED', true);
+    goToStep(4);
+  } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
+  finally { btn.disabled = false; }
+});
+
+/* STEP 4 */
+const safetyPayload = () => ({
+  dryRun: $('toggle-dryrun').getAttribute('aria-checked') === 'true',
+  autoRollback: $('toggle-rollback').getAttribute('aria-checked') === 'true',
+  escalationThreshold: $('toggle-escalation').getAttribute('aria-checked') === 'true' ? 0.8 : 0
+});
+async function pushSafety() { try { await api('/api/safety', safetyPayload()); } catch (e) { console.error(e); } }
+['toggle-dryrun', 'toggle-rollback', 'toggle-escalation'].forEach(id => {
+  $(id).addEventListener('click', function () {
+    this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
+    pushSafety();
   });
+});
 
-  $('btn-gateway-check').addEventListener('click', async () => {
-    const btn = $('btn-gateway-check'), s = $('status-gateway'), badge = $('status-gateway-badge');
-    btn.disabled = true; s.textContent = '> checking edge reachability…';
-    try {
-      await saveGateway();
-      const { check } = await api('/api/gateway/check', {});
-      s.textContent = check.reachable
-        ? `> [OK] EDGE CONNECTED. SERVER REACHABLE (${check.method === 'http' ? 'HTTP ' + check.status : check.method}, ${check.latencyMs}ms)`
-        : `> [FAIL] SERVER UNREACHABLE: ${check.error}`;
-      setStatus(badge, check.reachable ? `HTTP ${check.status} (${check.latencyMs}ms)` : 'UNREACHABLE', check.reachable);
-    } catch (e) { s.textContent = '> [ERROR] ' + e.message; setStatus(badge, 'ERROR', false); }
-    finally { btn.disabled = false; }
-  });
+function formatDiff(diffText) {
+  if (!diffText) return '';
+  const lines = String(diffText).split('\n').map(line => {
+    const cls = (line.startsWith('+++') || line.startsWith('---') || line.startsWith('@@')) ? 'diff-hdr' : line.startsWith('+') ? 'diff-add' : line.startsWith('-') ? 'diff-del' : '';
+    return `<div class="line ${cls}">${escapeHtml(line) || ' '}</div>`;
+  }).join('');
+  return `<div class="diff-view">${lines}</div>`;
+}
 
-  $('btn-gateway').addEventListener('click', async () => {
-    const btn = $('btn-gateway'), s = $('status-gateway'), badge = $('status-gateway-badge');
-    btn.disabled = true; s.textContent = '> saving + checking edge…';
-    try {
-      await saveGateway();
-      const { check } = await api('/api/gateway/check', {});
-      s.textContent = check.reachable
-        ? `> [OK] EDGE CONNECTED. SERVER REACHABLE (${check.method === 'http' ? 'HTTP ' + check.status : check.method}, ${check.latencyMs}ms)`
-        : `> [FAIL] SERVER UNREACHABLE: ${check.error}`;
-      setStatus(badge, check.reachable ? `HTTP ${check.status} (${check.latencyMs}ms)` : 'UNREACHABLE', check.reachable);
-      goToStep(2);
-    } catch (e) { s.textContent = '> [ERROR] ' + e.message; }
-    finally { btn.disabled = false; }
-  });
-
-  /* STEP 02 — External: save endpoints + real connection tests */
-  async function saveExternal() {
-    await api('/api/external', {
-      authEndpoint: $('auth-endpoint').value.trim(),
-      apiKey: $('api-key').value,
-      databaseEndpoint: $('db-endpoint').value.trim()
-    });
-  }
-
-  $('btn-test-save').addEventListener('click', async () => {
-    const btn = $('btn-test-save'), s = $('status-test');
-    btn.disabled = true; setStatus(s, '> saving…', false);
-    try { await saveExternal(); setStatus(s, '> [OK] EXTERNAL ENDPOINTS SAVED', true); }
-    catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
-    finally { btn.disabled = false; }
-  });
-
-  $('btn-test').addEventListener('click', async () => {
-    const btn = $('btn-test'), s = $('status-test');
-    btn.disabled = true; setStatus(s, '> validating…', false);
-    try {
-      await saveExternal();
-      const r = await api('/api/external/test', {});
-      const detail = `auth:${r.auth?.reachable ? 'OK' : 'FAIL'} db:${r.database?.reachable ? 'OK' : 'FAIL'}`;
-      setStatus(s, `> [${r.reachable === r.total ? 'OK' : 'WARN'}] ${r.reachable}/${r.total} SERVICES REACHABLE (${detail})`, r.reachable > 0);
-      goToStep(3);
-    } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
-    finally { btn.disabled = false; }
-  });
-
-  /* STEP 03 — Codebase: real GitHub repo metadata + last commits (skippable) */
-  function renderCommits(commits) {
-    const box = $('repo-commits');
-    if (!commits || !commits.length) { box.innerHTML = ''; return; }
-    box.innerHTML = '<div class="text-[10px] font-bold uppercase tracking-[0.2em] text-neutral-400 mb-2">// last ' + commits.length + ' commits</div>' +
-      commits.map(c => `<div class="bg-neutral-100 p-3 text-xs font-bold"><span class="text-neutral-400">${escapeHtml((c.sha || '').slice(0, 7))}</span> ${escapeHtml((c.message || '').split('\n')[0])}<div class="text-[10px] text-neutral-400 mt-1">${escapeHtml(c.author || '')} · ${escapeHtml(c.date || '')}</div></div>`).join('');
-  }
-
-  $('btn-repo').addEventListener('click', async () => {
-    const btn = $('btn-repo'), s = $('status-repo');
-    btn.disabled = true; setStatus(s, '> cloning metadata…', false); $('repo-commits').innerHTML = '';
-    try {
-      const r = await api('/api/codebase', { repoUrl: $('repo-url').value.trim(), token: $('repo-token').value });
-      setStatus(s, `> [OK] REPOSITORY LINKED — ${r.codebase.fullName} (${r.codebase.commits.length} commits)`, true);
-      renderCommits(r.codebase.commits);
-      goToStep(4);
-    } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
-    finally { btn.disabled = false; }
-  });
-
-  $('btn-repo-skip').addEventListener('click', async () => {
-    const btn = $('btn-repo-skip'), s = $('status-repo');
-    btn.disabled = true; setStatus(s, '> clearing git link…', false);
-    try {
-      $('repo-url').value = ''; $('repo-token').value = ''; $('repo-commits').innerHTML = '';
-      const r = await api('/api/codebase', { repoUrl: '', token: '' });
-      setStatus(s, r.skipped ? '> [SKIPPED] GIT CLEARED — LOCAL INSPECTION ONLY' : '> [OK] REPOSITORY LINKED', true);
-      goToStep(4);
-    } catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
-    finally { btn.disabled = false; }
-  });
-
-  /* STEP 04 — Safety: persist toggles to the agent */
-  const safetyPayload = () => ({
-    dryRun: $('toggle-dryrun').getAttribute('aria-checked') === 'true',
-    autoRollback: $('toggle-rollback').getAttribute('aria-checked') === 'true',
-    escalationThreshold: $('toggle-escalation').getAttribute('aria-checked') === 'true' ? 0.8 : 0
-  });
-  async function pushSafety() { try { await api('/api/safety', safetyPayload()); } catch (e) { console.error(e); } }
-  ['toggle-dryrun', 'toggle-rollback', 'toggle-escalation'].forEach(id => {
-    $(id).addEventListener('click', function () {
-      const on = this.getAttribute('aria-checked') === 'true';
-      this.setAttribute('aria-checked', on ? 'false' : 'true');
-      pushSafety();
-    });
-  });
-
-  /* Monitoring: real start + live incident feed */
-  function formatDiff(diffText) {
-    if (!diffText) return '';
-    const lines = String(diffText).split('\n').map(line => {
-      const cls = (line.startsWith('+++') || line.startsWith('---') || line.startsWith('@@')) ? 'diff-hdr'
-        : line.startsWith('+') ? 'diff-add'
-        : line.startsWith('-') ? 'diff-del' : '';
-      return `<div class="line ${cls}">${escapeHtml(line) || ' '}</div>`;
+async function refreshIncidents() {
+  try {
+    const r = await api('/api/incidents?limit=10');
+    const feed = $('incident-feed');
+    if (!r.incidents || !r.incidents.length) {
+      feed.innerHTML = '<div class="dim">// no incidents yet. Trigger one through the edge, e.g. /status/500</div>';
+      return;
+    }
+    feed.innerHTML = r.incidents.map(rec => {
+      const inc = rec.incident || {}, a = rec.analysis;
+      const when = inc.detectedAt ? new Date(inc.detectedAt).toLocaleTimeString() : '';
+      if (!a) {
+        return `<div class="inc"><div class="inc-h"><span>${escapeHtml(inc.method)} ${escapeHtml(inc.path)} → ${escapeHtml(inc.statusCode)}</span><span class="t-wake">${escapeHtml((rec.status || 'investigating').toUpperCase())}</span></div>
+          <div class="dim" style="margin-top:8px">detected ${escapeHtml(when)} — ${escapeHtml(inc.reason)}</div></div>`;
+      }
+      const sev = (a.severity === 'critical' || a.severity === 'high') ? 'sev-high' : '';
+      const deps = (a.dependencyFindings || []).map(d => `<span class="chip">${escapeHtml(d.service)}: ${escapeHtml(d.status)}</span>`).join('');
+      const fixes = (a.suggestedFixes || []).map(f => `<div class="fix">
+        <div class="inc-h" style="border:0;padding:0"><b>${escapeHtml(f.title)}</b><span class="chip">${escapeHtml(f.kind)}${f.file ? ' · ' + escapeHtml(f.file) : ''}</span></div>
+        <p class="dim" style="margin-top:4px">${escapeHtml(f.description)}</p>${formatDiff(f.diff)}</div>`).join('');
+      return `<div class="inc">
+        <div class="inc-h"><span>${escapeHtml(inc.method)} ${escapeHtml(inc.path)} → ${escapeHtml(inc.statusCode)} <span class="dim">(${Math.round(inc.durationMs || 0)}ms)</span></span>
+          <span><span class="chip ${sev}">${escapeHtml(a.severity)}</span><span class="chip">${Math.round((a.confidence || 0) * 100)}% confidence</span>${a.escalate ? '<span class="chip esc">Escalated</span>' : ''}</span></div>
+        <div style="margin-top:10px">${escapeHtml(a.summary)}</div>
+        <div class="dim" style="margin-top:4px">Root cause: ${escapeHtml(a.rootCause?.summary)}</div>
+        ${a.reasoning ? `<div class="dim" style="margin-top:4px">${escapeHtml(a.reasoning)}</div>` : ''}
+        ${a.escalationReason ? `<div class="t-wake" style="margin-top:4px">${escapeHtml(a.escalationReason)}</div>` : ''}
+        ${deps ? `<div style="margin-top:10px">${deps}</div>` : ''}${fixes}</div>`;
     }).join('');
-    return `<div class="diff-view mt-2 text-[11px] overflow-x-auto leading-relaxed">${lines}</div>`;
-  }
+  } catch (e) { /* backend not reachable yet */ }
+}
 
-  async function refreshIncidents() {
-    try {
-      const r = await api('/api/incidents?limit=10');
-      const feed = $('incident-feed');
-      if (!r.incidents || !r.incidents.length) {
-        feed.innerHTML = '<div class="text-[11px] font-bold text-neutral-500 p-3">// no incidents yet — trigger one via the edge (e.g. /status/500)</div>';
-        return;
-      }
-      feed.innerHTML = r.incidents.map(rec => {
-        const inc = rec.incident || {};
-        const a = rec.analysis;
-        const when = inc.detectedAt ? new Date(inc.detectedAt).toLocaleTimeString() : '';
+let feedTimer = null;
+$('btn-start').addEventListener('click', async () => {
+  const btn = $('btn-start'), s = $('status-monitor');
+  btn.disabled = true; s.textContent = '> starting…';
+  try {
+    await pushSafety();
+    await api('/api/monitoring/start', {});
+    btn.textContent = 'Monitoring active'; setStatus(s, '> [OK] AGENT WATCHING. IT WILL NOT SLEEP.', true);
+    await refreshIncidents();
+    if (!feedTimer) feedTimer = setInterval(refreshIncidents, 4000);
+  } catch (e) { s.textContent = '> [ERROR] ' + e.message; btn.disabled = false; }
+});
 
-        if (!a) {
-          return `<div class="bg-white text-black p-4 text-xs font-bold">
-            <div class="flex justify-between gap-4">
-              <span>${escapeHtml(inc.method)} ${escapeHtml(inc.path)} → ${escapeHtml(inc.statusCode)}</span>
-              <span>${escapeHtml((rec.status || 'investigating').toUpperCase())}</span>
-            </div>
-            <div class="mt-1 text-neutral-500 text-[10px]">detected ${escapeHtml(when)} — ${escapeHtml(inc.reason)}</div>
-          </div>`;
-        }
-
-        const sevCls = (a.severity === 'critical' || a.severity === 'high') ? 'sev-high' : 'sev-low';
-        const deps = (a.dependencyFindings || []).map(d =>
-          `<span class="px-2 py-0.5 rounded bg-[#f0ece2] text-[10px] font-bold">${escapeHtml(d.service)}: ${escapeHtml(d.status)}</span>`).join(' ');
-        const fixes = (a.suggestedFixes || []).map(f => `
-          <div class="p-3 rounded bg-[#fbfaf7] border border-[#e4dbcc] mt-2">
-            <div class="flex flex-wrap items-center justify-between gap-2 text-[11px]">
-              <span class="font-bold">${escapeHtml(f.title)}</span>
-              <span class="px-2 py-0.5 rounded bg-[#f0ece2] text-[10px] uppercase">${escapeHtml(f.kind)}${f.file ? ' // ' + escapeHtml(f.file) : ''}</span>
-            </div>
-            <p class="text-[11px] text-[#8b775f] mt-1">${escapeHtml(f.description)}</p>
-            ${formatDiff(f.diff)}
-          </div>`).join('');
-
-        return `<div class="bg-white text-black p-4 text-xs font-bold">
-          <div class="flex flex-wrap justify-between gap-2 border-b border-[#e4dbcc] pb-2">
-            <span>${escapeHtml(inc.method)} ${escapeHtml(inc.path)} → ${escapeHtml(inc.statusCode)} <span class="text-neutral-400">(${Math.round(inc.durationMs || 0)}ms)</span></span>
-            <span class="flex flex-wrap gap-1">
-              <span class="px-2 py-0.5 rounded text-[10px] uppercase ${sevCls}">${escapeHtml(a.severity)}</span>
-              <span class="px-2 py-0.5 rounded bg-[#f0ece2] text-[10px]">${Math.round((a.confidence || 0) * 100)}% CONF</span>
-              ${a.escalate ? '<span class="px-2 py-0.5 rounded bg-amber-100 text-amber-900 text-[10px]">ESCALATED</span>' : ''}
-            </span>
-          </div>
-          <div class="mt-2">${escapeHtml(a.summary)}</div>
-          <div class="mt-1 text-neutral-600">Root cause: ${escapeHtml(a.rootCause?.summary)}</div>
-          ${a.reasoning ? `<div class="mt-1 text-[10px] text-neutral-400">${escapeHtml(a.reasoning)}</div>` : ''}
-          ${a.escalationReason ? `<div class="mt-1 text-[10px] text-amber-800">${escapeHtml(a.escalationReason)}</div>` : ''}
-          ${deps ? `<div class="flex flex-wrap gap-1 mt-2">${deps}</div>` : ''}
-          ${fixes}
-        </div>`;
-      }).join('');
-    } catch (e) { /* backend not reachable yet */ }
-  }
-
-  let feedTimer = null;
-  $('btn-start').addEventListener('click', async () => {
-    const btn = $('btn-start'), s = $('status-monitor');
-    btn.disabled = true; s.textContent = '> starting…';
-    try {
-      await pushSafety();
-      await api('/api/monitoring/start', {});
-      btn.textContent = 'Monitoring active'; s.textContent = '> [OK] AGENT WATCHING. IT WILL NOT SLEEP.';
-      await refreshIncidents();
-      if (!feedTimer) feedTimer = setInterval(refreshIncidents, 4000);
-    } catch (e) { s.textContent = '> [ERROR] ' + e.message; btn.disabled = false; }
-  });
-
-  /* Load real state + link nav to wizard */
-  document.addEventListener('DOMContentLoaded', async () => {
-    const links = document.querySelectorAll('#sidebarNav .nav-link');
-    links.forEach((link, index) => link.addEventListener('click', event => { event.preventDefault(); goToStep(index + 1); }));
-    document.querySelectorAll('#mobileNav nav a').forEach((link, index) => link.addEventListener('click', event => {
-      event.preventDefault(); toggleMobileNav(); goToStep(index + 1);
-    }));
-
-    try {
-      const { state } = await api('/api/state');
-      if (state.gateway?.targetUrl) $('gateway-target').value = state.gateway.targetUrl;
-      if (state.gateway?.port) $('gateway-port').value = state.gateway.port;
-      if (state.gateway?.lastCheck) {
-        const lc = state.gateway.lastCheck;
-        setStatus($('status-gateway-badge'), lc.reachable ? `HTTP ${lc.status} (${lc.latencyMs}ms)` : 'UNREACHABLE', Boolean(lc.reachable));
-      }
-      if (state.external?.authEndpoint) $('auth-endpoint').value = state.external.authEndpoint;
-      if (state.external?.databaseEndpoint) $('db-endpoint').value = state.external.databaseEndpoint;
-      if (state.codebase?.repoUrl) $('repo-url').value = state.codebase.repoUrl;
-      if (state.codebase?.commits?.length) renderCommits(state.codebase.commits);
-      if (state.safety) {
-        $('toggle-dryrun').setAttribute('aria-checked', String(Boolean(state.safety.dryRun)));
-        $('toggle-rollback').setAttribute('aria-checked', String(Boolean(state.safety.autoRollback)));
-        $('toggle-escalation').setAttribute('aria-checked', String(Number(state.safety.escalationThreshold) > 0));
-      }
-      if (state.monitoring?.active) {
-        $('btn-start').textContent = 'Monitoring active';
-        $('status-monitor').textContent = '> [OK] AGENT WATCHING.';
-        refreshIncidents();
-        feedTimer = setInterval(refreshIncidents, 4000);
-      }
-    } catch (e) { /* backend not reachable yet */ }
-  });
+document.addEventListener('DOMContentLoaded', async () => {
+  document.querySelectorAll('#sidebarNav .nav-link').forEach((l, i) => l.addEventListener('click', () => goToStep(i + 1)));
+  try {
+    const { state } = await api('/api/state');
+    if (state.gateway?.targetUrl) $('gateway-target').value = state.gateway.targetUrl;
+    if (state.gateway?.port) $('gateway-port').value = state.gateway.port;
+    if (state.gateway?.lastCheck) { const lc = state.gateway.lastCheck; setStatus($('status-gateway-badge'), badge(lc), Boolean(lc.reachable)); }
+    if (state.external?.authEndpoint) $('auth-endpoint').value = state.external.authEndpoint;
+    if (state.external?.databaseEndpoint) $('db-endpoint').value = state.external.databaseEndpoint;
+    if (state.codebase?.repoUrl) $('repo-url').value = state.codebase.repoUrl;
+    if (state.codebase?.commits?.length) renderCommits(state.codebase.commits);
+    if (state.safety) {
+      $('toggle-dryrun').setAttribute('aria-checked', String(Boolean(state.safety.dryRun)));
+      $('toggle-rollback').setAttribute('aria-checked', String(Boolean(state.safety.autoRollback)));
+      $('toggle-escalation').setAttribute('aria-checked', String(Number(state.safety.escalationThreshold) > 0));
+    }
+    if (state.monitoring?.active) {
+      $('btn-start').textContent = 'Monitoring active';
+      setStatus($('status-monitor'), '> [OK] AGENT WATCHING.', true);
+      refreshIncidents();
+      feedTimer = setInterval(refreshIncidents, 4000);
+    }
+  } catch (e) { /* backend not reachable yet */ }
+});
 </script>
 </body>
 </html>
