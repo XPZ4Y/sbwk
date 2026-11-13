@@ -225,7 +225,7 @@ function buildToolDefinitions() {
         function: {
           name: `inspect_${service}_${check}`,
           description: `${TOOL_DESCRIPTIONS[`${service}.${check}`]} Read-only.`,
-          parameters: { type: "object", properties: {}, additionalProperties: false, strict: true }
+          parameters: { type: "object", properties: {}, additionalProperties: false }
         }
       });
     }
@@ -534,7 +534,7 @@ export async function groqReason(input, cfg = defaultConfig) {
       tools,
       tool_choice: "auto",
       temperature: settings.temperature,
-      max_tokens: settings.maxTokens
+      max_completion_tokens: settings.maxTokens
     }, debug);
 
     if (!result.ok) {
@@ -548,16 +548,18 @@ export async function groqReason(input, cfg = defaultConfig) {
     if (!msg) { log("warn", "llm_empty_message", { iteration: i, finish }); return attachDebug(null, debug, cfg, "empty message"); }
 
     // Append the assistant message (may include tool_calls).
-    messages.push(msg);
+    messages.push({
+      role: "assistant",
+      content: msg.content ?? "",
+      ...(msg.tool_calls ? { tool_calls: msg.tool_calls } : {})
+    });
 
     if (!msg.tool_calls || msg.tool_calls.length === 0) {
-      const parsed = parseFinalAnswer(msg.content);
-      if (!parsed) {
-        log("warn", "llm_parse_failed", { iteration: i, finish, head: (msg.content || "").slice(0, 400) });
-        lastError = "unparseable final answer";
-      }
-      return attachDebug(parsed, debug, cfg, parsed ? null : lastError);
-    }
+			const parsed = parseFinalAnswer(msg.content);
+			if (parsed) return attachDebug(parsed, debug, cfg, null);
+			log("warn", "llm_parse_failed", { iteration: i, finish, head: (msg.content || "").slice(0, 400) });
+			break; // fall through to forced JSON-mode call
+		}
 
     // Execute tool calls in order; append each result with matching tool_call_id.
     for (const call of msg.tool_calls) {
@@ -585,7 +587,7 @@ export async function groqReason(input, cfg = defaultConfig) {
     model: cfg.GROQ_MODEL,
     messages,
     temperature: settings.temperature,
-    max_tokens: settings.maxTokens,
+    max_completion_tokens: settings.maxTokens,
     response_format: { type: "json_object" }
   }, debug);
 
