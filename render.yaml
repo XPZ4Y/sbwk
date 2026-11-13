@@ -1,0 +1,134 @@
+# render.yaml
+services:
+  # 1. dummy backend — public is fine for a demo, but you can make it private
+  - type: web
+    name: sbwk-server
+    runtime: docker
+    dockerfilePath: ./services/dummy-server/Dockerfile
+    dockerContext: ./services/dummy-server
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8000"
+
+  # 2. edge — the only service end-users should reach
+  - type: web
+    name: sbwk-middleware
+    runtime: docker
+    dockerfilePath: ./services/middleware/Dockerfile
+    dockerContext: ./services/middleware
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "8080"
+      - key: TARGET_SERVER_URL
+        value: http://sbwk-server:8000          # Render internal DNS
+      - key: AGENT_CORE_URL
+        value: http://sbwk-agent-core:4200
+      - key: AGENT_CORE_TOKEN
+        sync: false                             # set in dashboard, secret
+      - key: MIDDLEWARE_ADMIN_TOKEN
+        sync: false
+      - key: DETECT_STATUS_MIN
+        value: "500"
+      - key: DETECT_SLOW_MS
+        value: "2000"
+
+  # 3. brain — needs a disk
+  - type: web
+    name: sbwk-agent-core
+    runtime: docker
+    dockerfilePath: ./services/agent-core/Dockerfile
+    dockerContext: ./services/agent-core
+    plan: starter
+    disk:
+      name: agent-core-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4200"
+      - key: AGENT_CORE_TOKEN
+        sync: false
+      - key: AGENT_MODE
+        value: live
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_MODEL
+        value: llama-3.3-70b-versatile
+      - key: LIQUID_API_KEY
+        sync: false
+      - key: LIQUID_ENABLED
+        value: "true"
+      - key: CONNECTOR_URL
+        value: http://sbwk-agent-connector:4100
+      - key: CONNECTOR_API_TOKEN
+        sync: false
+      - key: CODEBASE_PATH
+        value: ""                               # see "codebase" note below
+      - key: DATA_DIR
+        value: /data
+      - key: DRY_RUN
+        value: "true"
+      - key: AUTO_ROLLBACK
+        value: "true"                           # still inert, per our last conversation
+      - key: ESCALATION_CONFIDENCE_THRESHOLD
+        value: "0.8"
+
+  # 4. hands — private, no public URL
+  - type: pserv                                # private service
+    name: sbwk-agent-connector
+    runtime: docker
+    dockerfilePath: ./services/agent-connector/Dockerfile
+    dockerContext: ./services/agent-connector
+    plan: starter
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4100"
+      - key: CONNECTOR_API_TOKEN
+        sync: false
+      - key: CONNECTOR_MODE
+        value: live
+
+  # 5. control plane — needs a disk (holds the PAT)
+  - type: web
+    name: sbwk-control-plane
+    runtime: docker
+    dockerfilePath: ./services/control-plane/Dockerfile
+    dockerContext: ./services/control-plane
+    plan: starter
+    disk:
+      name: control-plane-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: "4300"
+      - key: CONTROL_PLANE_PASSWORD
+        sync: false
+      - key: MIDDLEWARE_URL
+        value: http://sbwk-middleware:8080
+      - key: MIDDLEWARE_ADMIN_TOKEN
+        sync: false
+      - key: CONNECTOR_URL
+        value: http://sbwk-agent-connector:4100
+      - key: CONNECTOR_API_TOKEN
+        sync: false
+      - key: AGENT_CORE_URL
+        value: http://sbwk-agent-core:4200
+      - key: AGENT_CORE_TOKEN
+        sync: false
+      - key: DEFAULT_TARGET_URL
+        value: http://sbwk-server:8000
+      - key: DATA_DIR
+        value: /data
