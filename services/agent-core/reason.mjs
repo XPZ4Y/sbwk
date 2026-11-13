@@ -433,9 +433,7 @@ async function postChat(baseUrl, cfg, body, debug) {
     // Change 2: reasoning-model parameters for openai/gpt-oss-* models.
     // Ignored by Groq for non-reasoning models, but gated here to be explicit.
     const isReasoningModel = /gpt-oss/i.test(cfg.GROQ_MODEL || "");
-    const requestBody = isReasoningModel
-      ? { ...body, reasoning_effort: "low", include_reasoning: false }
-      : body;
+    const requestBody = body;
 
     const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(requestBody), signal: controller.signal });
     const text = await res.text();
