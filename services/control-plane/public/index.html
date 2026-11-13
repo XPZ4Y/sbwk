@@ -3,682 +3,1248 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Sleepy Bot · Developer onboarding</title>
+<title>Sleepy Bot · Control Plane</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-:root{--bg:#f4f5f9;--panel:#ffffff;--panel2:#eceff7;--line:#dfe3ee;--tx:#14213d;--mu:#5b6785;--ice:#14213d;--ok:#1f8a70;--wake:#b7791f;--bad:#c2410c;
---sans:'Canva Sans','DM Sans',system-ui,sans-serif;--mono:'JetBrains Mono',ui-monospace,monospace;--head:var(--sans)}
-*{box-sizing:border-box;margin:0}
-html{scroll-behavior:smooth}
-body{background:var(--bg);color:var(--tx);font:400 15px/1.7 var(--sans);-webkit-font-smoothing:antialiased;min-height:100vh;
-background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);background-size:48px 48px;background-attachment:fixed}
-body::before{content:"";position:fixed;inset:0;background:radial-gradient(ellipse 70% 55% at 65% 0%,transparent,var(--bg) 85%),radial-gradient(circle at 80% 8%,rgba(20,33,61,.09),transparent 45%);pointer-events:none;z-index:0}
-::selection{background:var(--ice);color:var(--bg)}
-a{color:inherit;text-decoration:none}
-:focus-visible{outline:2px solid var(--ice);outline-offset:3px}
-.rail{position:fixed;inset:0 auto 0 0;width:260px;padding:32px 24px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--line);background:rgba(244,245,249,.88);backdrop-filter:blur(12px);z-index:5}
-.brand{display:flex;align-items:center;gap:12px;font:700 17px var(--head);letter-spacing:-.01em}
-.moon{width:26px;height:26px;border-radius:50%;background:radial-gradient(circle at 70% 30%,transparent 52%,var(--ice) 54%);box-shadow:0 0 18px rgba(20,33,61,.35);transform:rotate(-20deg)}
-.steps{list-style:none;padding:0;margin:0;position:relative}
-.steps::before{content:"";position:absolute;left:11px;top:14px;bottom:14px;width:1px;background:var(--line)}
-.steps button{display:flex;align-items:center;gap:14px;padding:9px 0;color:var(--mu);cursor:pointer;position:relative;transition:color .2s;background:none;border:0;font:inherit;width:100%;text-align:left}
-.steps i{width:23px;height:23px;border-radius:50%;background:var(--bg);border:1px solid var(--line);display:grid;place-items:center;font:500 10px var(--mono);font-style:normal;flex:none;transition:.2s}
-.steps button:hover{color:var(--tx)}
-.steps button.is-active{color:var(--tx)}
-.steps button.is-active i{border-color:var(--ice);color:var(--bg);background:var(--ice);box-shadow:0 0 14px rgba(20,33,61,.35)}
-.steps .dot{width:6px;height:6px;border-radius:50%;background:var(--line);margin-left:auto;flex:none}
-.steps .dot.ok{background:var(--ok)}.steps .dot.bad{background:var(--bad)}.steps .dot.warn{background:var(--wake)}
-.live{display:flex;align-items:center;gap:8px;color:var(--mu);font-size:12px}
-.live .sep{flex:1}
-.signout{color:var(--mu);font-size:11px}.signout:hover{color:var(--tx)}
-.pulse{width:7px;height:7px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 0 rgba(31,138,112,.45);animation:p 2.4s infinite;flex:none}
-.pulse.degraded{background:var(--wake);box-shadow:0 0 0 0 rgba(183,121,31,.45)}
-.pulse.down{background:var(--bad);box-shadow:0 0 0 0 rgba(194,65,12,.45)}
-@keyframes p{70%{box-shadow:0 0 0 9px transparent}100%{box-shadow:0 0 0 0 transparent}}
-main{position:relative;z-index:1;margin-left:260px;padding:0 clamp(20px,5vw,72px)}
-.wrap{max-width:860px;margin:0 auto}
-.mbar{display:none}
-#top{padding:96px 0 72px}
-.tag{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--panel);border-radius:99px;padding:5px 14px;font-size:12px;color:var(--mu);margin-bottom:28px}
-h1{font:700 clamp(44px,8vw,92px)/.95 var(--head);letter-spacing:-.04em;margin-bottom:24px}
-h1 span{display:block;color:transparent;-webkit-text-stroke:1px var(--ice)}
-.lead{font-size:18px;max-width:560px;color:var(--tx);margin-bottom:10px}
-.sub{max-width:560px;color:var(--mu);margin-bottom:36px}
-.row{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
-.term{margin-top:56px;background:var(--panel);border:1px solid var(--line);border-radius:12px;overflow:hidden;box-shadow:0 30px 80px -30px rgba(20,33,61,.22),0 0 0 1px rgba(20,33,61,.05)}
-.term-h{display:flex;gap:7px;padding:12px 16px;border-bottom:1px solid var(--line);background:var(--panel2);align-items:center}
-.term-h b{width:10px;height:10px;border-radius:50%;background:var(--line)}
-.term-h span{margin-left:auto;font-size:11px;color:var(--mu)}
-.term pre{font:400 13px/1.9 var(--mono);padding:20px;overflow-x:auto;color:var(--mu)}
-.term pre div{opacity:0;animation:in .4s forwards}
-.term pre div:nth-child(1){animation-delay:.3s}.term pre div:nth-child(2){animation-delay:1s}.term pre div:nth-child(3){animation-delay:1.7s}.term pre div:nth-child(4){animation-delay:2.4s}.term pre div:nth-child(5){animation-delay:3.1s}
-@keyframes in{to{opacity:1}}
-.t-ok{color:var(--ok)}.t-bad{color:var(--bad)}.t-wake{color:var(--wake)}.t-ice{color:var(--ice)}
-.demo-note{font-size:11px;color:var(--mu);margin-top:8px;font-family:var(--mono)}
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:12px 22px;border-radius:8px;border:1px solid var(--ice);background:var(--ice);color:var(--bg);font:700 14px var(--sans);cursor:pointer;transition:.2s}
-.btn:hover{box-shadow:0 0 24px rgba(20,33,61,.3);transform:translateY(-1px)}
-.btn-ghost{background:transparent;color:var(--tx);border-color:var(--line)}
-.btn-ghost:hover{border-color:var(--ice);box-shadow:none}
-.btn:disabled{opacity:.5;cursor:wait;transform:none;box-shadow:none}
-.link{color:var(--mu);padding:12px 6px}.link:hover{color:var(--tx)}
-label{display:block;font-size:12px;color:var(--mu);margin-bottom:8px}
-.field{width:100%;padding:13px 16px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--tx);font:500 15px var(--sans);transition:.2s}
-.field::placeholder{color:#a3abc4;font-weight:400}
-.field:focus{outline:none;border-color:var(--ice);box-shadow:0 0 0 3px rgba(20,33,61,.12)}
-.field-inline{display:flex;gap:8px;align-items:center}
-.field-inline .field{flex:1}
-.field-suffix{font:500 13px var(--mono);color:var(--mu)}
-h2{font:700 clamp(28px,4.5vw,44px)/1.05 var(--head);letter-spacing:-.03em;margin-bottom:28px}
-.kicker{color:var(--ice);font-size:12px;margin-bottom:14px}
-#how{padding:48px 0 96px}
-.grid{display:grid;gap:14px;grid-template-columns:repeat(auto-fit,minmax(190px,1fr))}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:24px;position:relative;overflow:hidden}
-.card::after{content:"";position:absolute;inset:0 0 auto 0;height:2px;background:linear-gradient(90deg,var(--ice),transparent)}
-.card h3{font:700 17px var(--head);margin:14px 0 8px}
-.card p{font-size:12.5px;color:var(--mu);line-height:1.65}
-.card .n{font-size:11px;color:var(--ice)}
-.wizard-step{display:none;padding:72px 0 96px}
-body.is-wizard #top,body.is-wizard #how{display:none}
-body.is-wizard .wizard-step.is-current{display:block;animation:in .35s both}
-.copy{font-size:16px;margin-bottom:8px;max-width:600px}
-.copy2{color:var(--mu);max-width:600px;margin-bottom:32px}
-.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:clamp(20px,4vw,32px)}
-.stack{display:grid;gap:20px}
-.actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:8px}
-.actions .row{margin-left:auto}
-.stat{margin-top:24px;padding-top:20px;border-top:1px solid var(--line);font-size:13px;color:var(--mu)}
-.badge{display:inline-block;font-size:11px;padding:2px 10px;border-radius:99px;border:1px solid var(--line);margin-bottom:10px;color:var(--mu)}
-.ok{color:var(--ok)!important}
-.warn{color:var(--wake)!important}
-.progress{padding:48px 0 0;margin-bottom:-32px}
-.progress .top{display:flex;justify-content:space-between;font-size:12px;color:var(--mu);margin-bottom:10px}
-.track{height:3px;background:var(--line);border-radius:3px;overflow:hidden}
-.track span{display:block;height:100%;width:25%;background:linear-gradient(90deg,var(--ice),var(--ok));transition:width .3s}
-.dim{font-size:12px;color:var(--mu)}
-.commit{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:10px 14px;font-size:12px;margin-top:8px}
-.commit small{display:block;color:var(--mu);font-size:11px}
-.opt{display:flex;justify-content:space-between;gap:24px;align-items:flex-start;padding:22px 0;border-bottom:1px solid var(--line)}
-.opt:first-child{padding-top:0}
-.opt b{display:block;font:700 16px var(--head);margin-bottom:4px}
-.opt p{font-size:12.5px;color:var(--mu);max-width:380px}
-.toggle{position:relative;width:52px;height:28px;flex:none;border:1px solid var(--line);border-radius:99px;background:var(--bg);cursor:pointer;padding:0;transition:.2s}
-.toggle .knob{position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:var(--mu);transition:.2s}
-.toggle[aria-checked="true"]{border-color:var(--ok);background:rgba(31,138,112,.12)}
-.toggle[aria-checked="true"] .knob{transform:translateX(24px);background:var(--ok);box-shadow:0 0 12px rgba(31,138,112,.45)}
-.threshold{display:flex;align-items:center;gap:10px;flex:none}
-.threshold input{width:88px;padding:8px 12px;border-radius:8px;border:1px solid var(--line);background:var(--bg);font:500 14px var(--mono);color:var(--tx);text-align:right}
-.threshold input:focus{outline:none;border-color:var(--ice);box-shadow:0 0 0 3px rgba(20,33,61,.12)}
-.threshold span{font:500 13px var(--mono);color:var(--mu)}
-.override{margin-top:16px;padding:14px 16px;border:1px dashed var(--wake);border-radius:10px;background:rgba(183,121,31,.06);display:none}
-.override.show{display:block}
-.override label{color:var(--wake);margin-bottom:6px}
-.override .row{gap:8px;margin-top:8px}
-.override .field{padding:9px 12px;font-size:13px}
-.final{margin-top:40px;background:linear-gradient(160deg,var(--panel2),var(--panel));border:1px solid var(--ice);border-radius:12px;padding:clamp(24px,4vw,40px);box-shadow:0 0 60px -20px rgba(20,33,61,.25)}
-.final h3{font:700 28px var(--head);letter-spacing:-.02em;margin-bottom:8px}
-.final p{color:var(--mu);max-width:420px;margin-bottom:24px}
-#incident-feed{display:grid;gap:12px;margin-top:20px}
-.inc{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:16px;font-size:12.5px}
-.inc-h{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px;padding-bottom:10px;border-bottom:1px solid var(--line)}
-.chip{display:inline-block;font-size:10.5px;padding:1px 9px;border-radius:99px;background:var(--panel2);color:var(--tx);margin-left:4px}
-.sev-high{background:rgba(194,65,12,.12);color:var(--bad)}
-.esc{background:rgba(183,121,31,.15);color:var(--wake)}
-.fix{margin-top:10px;padding:12px;border:1px solid var(--line);border-radius:8px;background:var(--panel)}
-.diff-view{background:var(--bg);border:1px solid var(--line);border-radius:6px;margin-top:8px;font-size:11px;overflow-x:auto}
-.diff-view .line{padding:0 10px;white-space:pre}
-.diff-add{background:rgba(31,138,112,.1);color:var(--ok)}.diff-del{background:rgba(194,65,12,.1);color:var(--bad)}.diff-hdr{color:var(--mu)}
-footer{padding:48px 0;border-top:1px solid var(--line);color:var(--mu);font-size:12px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
-@media(max-width:1023px){
-.rail{display:none}main{margin-left:0}
-.mbar{display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:6;margin:0 calc(-1*clamp(20px,5vw,72px));padding:14px clamp(20px,5vw,72px);background:rgba(244,245,249,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
-#top{padding-top:56px}
-.mbar .brand{pointer-events:none}
-}
-@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}.term pre div{opacity:1}}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
-h1{letter-spacing:-.045em;font-weight:700}
-h2{letter-spacing:-.035em}
-.panel,.card,.final,.inc,.term{border-radius:18px}
-.panel,.card{box-shadow:0 18px 50px -28px rgba(20,33,61,.28)}
-.btn{border-radius:10px;font-weight:500}
-.btn-ghost{background:#fff}
-.field{border-radius:10px;background:#f9fafc}
-.kicker{font-family:var(--mono);font-size:12px;letter-spacing:.02em}
-.status-mono,#status-gateway,#status-test,#status-repo,#status-monitor{font-family:var(--mono);font-size:12.5px;white-space:pre-wrap}
-.term{background:#0f1a33;border-color:#1c2d57;box-shadow:0 40px 80px -40px rgba(20,33,61,.7)}
-.term-h{background:#16224a;border-color:#1c2d57}
-.term-h b{background:rgba(255,255,255,.22)}
-.term-h span{color:#8e9bc4}
-.term pre{color:#b8c2e0}
-.term .t-ok{color:#5eead4}.term .t-bad{color:#ff8a8a}.term .t-wake{color:#ffc66b}.term .t-ice{color:#8fa8ff}
-.final{background:linear-gradient(160deg,#1c2d57,#0f1a33);border-color:#1c2d57;color:#fff;box-shadow:0 30px 70px -30px rgba(20,33,61,.7)}
-.final .kicker{color:#8fa8ff}
-.final p,.final .dim{color:#aeb8d6}
-.final .btn{background:#fff;color:#14213d;border-color:#fff}
-.final .btn:hover{box-shadow:0 0 28px rgba(143,168,255,.45)}
-.final .ok{color:#5eead4!important}
-.inc{color:var(--tx)}.inc .dim{color:var(--mu)}
-.final .inc .t-wake{color:var(--wake)}
-.card::after{background:linear-gradient(90deg,#14213d,#5b7bd5,transparent)}
-.track span{background:linear-gradient(90deg,#14213d,#5b7bd5)}
-.toggle[aria-checked="true"]{border-color:var(--ice);background:var(--ice)}
-.toggle[aria-checked="true"] .knob{background:#fff;box-shadow:none}
+:root {
+  --bg: #f5f3ee;
+  --fg: #0a0a0a;
+  --fg-mid: #4a4a4a;
+  --fg-dim: #888;
+  --line: #0a0a0a;
+  --hair: rgba(10,10,10,0.12);
+  --accent: #e64a19;
+  --ok: #007a5a;
+  --bad: #b71c1c;
+  --mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+html, body { height: 100%; }
+body {
+  font: 13px/1.5 var(--mono);
+  background: var(--bg);
+  color: var(--fg);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+button { font: inherit; }
+::selection { background: var(--fg); color: var(--bg); }
+:focus-visible { outline: 2px solid var(--fg); outline-offset: 2px; }
+
+.shell {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  min-height: 100vh;
+}
+
+/* ── rail ─────────────────────────────────────────────────── */
+.rail {
+  border-right: 2px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+.rail-head {
+  padding: 20px 16px 16px;
+  border-bottom: 2px solid var(--line);
+}
+.brand {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+.brand-sub {
+  font-size: 10px;
+  color: var(--fg-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-top: 2px;
+}
+.tabs {
+  list-style: none;
+  flex: 1;
+  padding: 8px 0;
+}
+.tabs button {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border: 0;
+  border-left: 4px solid transparent;
+  background: transparent;
+  color: var(--fg-mid);
+  font-weight: 700;
+  font-size: 11px;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+}
+.tabs button:hover { color: var(--fg); }
+.tabs button.is-active {
+  color: var(--fg);
+  border-left-color: var(--fg);
+  background: rgba(10,10,10,0.04);
+}
+.rail-foot {
+  border-top: 2px solid var(--line);
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 10px;
+  color: var(--fg-mid);
+}
+.status-line { display: flex; align-items: center; gap: 8px; }
+.dot {
+  width: 8px; height: 8px;
+  background: var(--fg-dim);
+  border-radius: 50%;
+  flex: none;
+}
+.dot.ok { background: var(--ok); }
+.dot.warn { background: var(--accent); }
+.dot.bad { background: var(--bad); }
+.rail-foot a {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  text-decoration: none;
+  color: var(--fg-mid);
+  font-size: 10px;
+}
+.rail-foot a:hover { color: var(--fg); }
+
+/* ── content ─────────────────────────────────────────────── */
+main { min-width: 0; }
+.tab-panel { display: none; }
+.tab-panel.is-active { display: block; }
+
+.panel-head {
+  padding: 24px 32px 20px;
+  border-bottom: 2px solid var(--line);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.panel-head h1 {
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+.panel-head .meta {
+  font-size: 10px;
+  color: var(--fg-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+/* ── requests tab ────────────────────────────────────────── */
+.toolbar {
+  padding: 10px 32px;
+  border-bottom: 1px solid var(--hair);
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  font-size: 11px;
+  flex-wrap: wrap;
+}
+.toolbar label {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.toolbar input[type="checkbox"] {
+  appearance: none;
+  width: 14px; height: 14px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  cursor: pointer;
+  position: relative;
+}
+.toolbar input[type="checkbox"]:checked { background: var(--fg); }
+.toolbar input[type="checkbox"]:checked::after {
+  content: "";
+  position: absolute;
+  inset: 3px;
+  background: var(--bg);
+}
+.toolbar select, .toolbar button {
+  font: inherit;
+  font-size: 11px;
+  padding: 4px 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+.toolbar button:hover, .toolbar select:hover { background: rgba(10,10,10,0.05); }
+.feed-state {
+  margin-left: auto;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ok);
+}
+.feed-state.warn { color: var(--accent); }
+.feed-state.bad { color: var(--bad); }
+
+.log-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.log-table thead th {
+  text-align: left;
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding: 8px 12px;
+  border-bottom: 2px solid var(--line);
+  color: var(--fg-mid);
+  position: sticky;
+  top: 0;
+  background: var(--bg);
+}
+.log-table tbody td {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--hair);
+  vertical-align: top;
+}
+.log-table tr.log-row { cursor: pointer; }
+.log-table tr.log-row:hover { background: rgba(10,10,10,0.03); }
+.log-table tr.log-row.is-anomaly td:first-child {
+  box-shadow: inset 4px 0 0 var(--accent);
+}
+.col-time { white-space: nowrap; color: var(--fg-mid); font-size: 11px; }
+.col-method { font-weight: 700; }
+.col-status { font-weight: 700; }
+.col-inc { text-align: right; width: 60px; }
+.cell-4xx { color: #a05600; }
+.cell-5xx { color: var(--bad); }
+.cat-bad { color: var(--bad); }
+.cat-warn { color: #a05600; }
+
+.link-btn {
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  padding: 0 6px;
+  font-size: 11px;
+  cursor: pointer;
+}
+.link-btn:hover { background: var(--fg); color: var(--bg); }
+
+.log-detail td {
+  background: rgba(10,10,10,0.04);
+  padding: 12px 12px 14px 24px;
+}
+.detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 6px 20px;
+  font-size: 11px;
+}
+.detail-grid .k {
+  color: var(--fg-mid);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-right: 6px;
+  font-size: 10px;
+}
+.detail-grid code {
+  font-family: var(--mono);
+  word-break: break-all;
+}
+pre.sample {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--hair);
+  background: var(--bg);
+  font-size: 11px;
+  overflow-x: auto;
+  max-height: 280px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+tr.empty td {
+  padding: 40px 12px;
+  text-align: center;
+  color: var(--fg-dim);
+  font-style: italic;
+}
+
+/* ── config tab ──────────────────────────────────────────── */
+#config-form {
+  padding: 24px 32px 32px;
+  max-width: 1040px;
+}
+fieldset {
+  border: 2px solid var(--line);
+  padding: 16px 20px 18px;
+  margin-bottom: 20px;
+}
+legend {
+  padding: 0 8px;
+  font-weight: 700;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.btn-micro {
+  font-size: 10px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-weight: 700;
+}
+.btn-micro:hover { background: var(--fg); color: var(--bg); }
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 160px;
+  gap: 16px;
+}
+.field-row.equal { grid-template-columns: 1fr 1fr; }
+.field { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.field label {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--fg-mid);
+}
+.field input, .field select {
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--line);
+  width: 100%;
+}
+.field input:focus, .field select:focus {
+  outline: 2px solid var(--fg);
+  outline-offset: -2px;
+}
+.field .hint {
+  font-size: 10px;
+  color: var(--fg-dim);
+  min-height: 12px;
+}
+.field .hint.warn { color: var(--accent); }
+.field .hint.error { color: var(--bad); }
+.inline { display: flex; align-items: stretch; }
+.inline input { flex: 1; }
+.inline .suffix {
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-left: 0;
+  background: rgba(10,10,10,0.05);
+  font-size: 12px;
+}
+
+.service-row {
+  display: grid;
+  grid-template-columns: 140px 120px 1fr 200px 36px;
+  gap: 12px;
+  padding: 14px 0;
+  border-top: 1px solid var(--hair);
+  align-items: start;
+}
+.service-row:first-child { border-top: 0; padding-top: 0; }
+.services-empty {
+  padding: 16px 0;
+  color: var(--fg-dim);
+  font-style: italic;
+  font-size: 12px;
+}
+.btn-remove {
+  font-size: 16px;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  background: var(--bg);
+  color: var(--fg);
+  cursor: pointer;
+  align-self: end;
+  margin-top: 16px;
+}
+.btn-remove:hover { background: var(--bad); color: #fff; border-color: var(--bad); }
+
+.opt-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-top: 1px solid var(--hair);
+  gap: 16px;
+}
+.opt-row:first-of-type { border-top: 0; padding-top: 0; }
+.opt-label .key {
+  display: block;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.05em;
+}
+.opt-label .desc {
+  display: block;
+  font-size: 11px;
+  color: var(--fg-mid);
+}
+.toggle {
+  width: 52px; height: 26px;
+  border: 2px solid var(--line);
+  background: var(--bg);
+  cursor: pointer;
+  position: relative;
+  flex: none;
+  padding: 0;
+}
+.toggle::after {
+  content: "";
+  position: absolute;
+  top: 2px; left: 2px;
+  width: 18px; height: 18px;
+  background: var(--fg);
+}
+.toggle[aria-checked="true"] { background: var(--fg); }
+.toggle[aria-checked="true"]::after {
+  left: auto; right: 2px;
+  background: var(--bg);
+}
+
+.warn-bar {
+  margin: 16px 32px 0;
+  border: 2px solid var(--accent);
+  padding: 10px 14px;
+  background: rgba(230,74,25,0.05);
+  font-size: 12px;
+  max-width: 1040px;
+}
+.warn-bar[hidden] { display: none; }
+.warn-line { padding: 3px 0; }
+.warn-key {
+  font-weight: 700;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent);
+  margin-right: 8px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 16px 0 0;
+  border-top: 2px solid var(--line);
+  margin-top: 24px;
+  flex-wrap: wrap;
+}
+.btn-primary {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 10px 22px;
+  background: var(--fg);
+  color: var(--bg);
+  border: 2px solid var(--fg);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.btn-primary:hover { background: var(--bg); color: var(--fg); }
+.btn-primary:disabled { opacity: 0.4; cursor: wait; }
+.btn-ghost {
+  font-size: 12px;
+  padding: 10px 22px;
+  background: transparent;
+  color: var(--fg);
+  border: 2px solid var(--line);
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.btn-ghost:hover { background: rgba(10,10,10,0.05); }
+.save-status {
+  font-size: 11px;
+  color: var(--fg-mid);
+  margin-left: auto;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.save-status.ok { color: var(--ok); }
+.save-status.bad { color: var(--bad); }
+
+/* ── about tab ───────────────────────────────────────────── */
+.prose {
+  padding: 24px 32px 64px;
+  max-width: 760px;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.prose .lead { font-size: 16px; margin-bottom: 24px; }
+.prose h2 {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin: 32px 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 2px solid var(--line);
+}
+.prose p + p { margin-top: 12px; }
+.prose ul { list-style: none; padding-left: 0; }
+.prose ul li {
+  padding: 4px 0 4px 22px;
+  position: relative;
+}
+.prose ul li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--fg-mid);
+}
+.prose b { font-weight: 700; }
+.prose pre {
+  font: 12px/1.5 var(--mono);
+  padding: 16px;
+  border: 2px solid var(--line);
+  background: var(--bg);
+  overflow-x: auto;
+  margin: 16px 0;
+  white-space: pre;
+}
+.prose code {
+  font-family: var(--mono);
+  background: rgba(10,10,10,0.06);
+  padding: 1px 5px;
+  font-size: 12px;
+}
+
+/* ── responsive ─────────────────────────────────────────── */
+@media (max-width: 900px) {
+  .shell { grid-template-columns: 1fr; }
+  .rail {
+    position: static;
+    height: auto;
+    border-right: 0;
+    border-bottom: 2px solid var(--line);
+  }
+  .rail-head { padding: 16px; }
+  .tabs { display: flex; padding: 0; overflow-x: auto; }
+  .tabs button {
+    border-left: 0;
+    border-bottom: 4px solid transparent;
+    white-space: nowrap;
+    padding: 10px 16px;
+  }
+  .tabs button.is-active { border-left: 0; border-bottom-color: var(--fg); }
+  .panel-head, .toolbar, #config-form, .prose { padding-left: 16px; padding-right: 16px; }
+  .warn-bar { margin-left: 16px; margin-right: 16px; }
+  .field-row, .field-row.equal { grid-template-columns: 1fr; }
+  .service-row { grid-template-columns: 1fr; gap: 10px; }
+  .btn-remove { margin-top: 0; align-self: start; }
+}
 </style>
 </head>
 <body>
 
-<aside class="rail">
-  <div>
-    <a href="#top" class="brand" id="brand-side"><span class="moon"></span>Sleepy Bot</a>
-    <p class="dim" style="margin:10px 0 44px">Developer onboarding</p>
-    <ol class="steps" id="sidebarNav">
-      <li><button type="button" class="nav-link" data-step="1"><i>1</i>Gateway<span class="dot" data-dot="1"></span></button></li>
-      <li><button type="button" class="nav-link" data-step="2"><i>2</i>External access<span class="dot" data-dot="2"></span></button></li>
-      <li><button type="button" class="nav-link" data-step="3"><i>3</i>Codebase<span class="dot" data-dot="3"></span></button></li>
-      <li><button type="button" class="nav-link" data-step="4"><i>4</i>Safety limits<span class="dot" data-dot="4"></span></button></li>
+<div class="shell">
+  <aside class="rail">
+    <div class="rail-head">
+      <div class="brand">Sleepy Bot</div>
+      <div class="brand-sub">control plane</div>
+    </div>
+
+    <ol class="tabs" role="tablist">
+      <li role="presentation"><button type="button" role="tab" class="tab-btn is-active" data-tab="requests" aria-selected="true">Requests</button></li>
+      <li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="config" aria-selected="false">Config</button></li>
+      <li role="presentation"><button type="button" role="tab" class="tab-btn" data-tab="about" aria-selected="false">About</button></li>
     </ol>
-  </div>
-  <div class="live">
-    <span class="pulse" id="live-pulse"></span><span id="live-label">Checking services…</span>
-    <span class="sep"></span>
-    <a href="#" id="logout" class="signout">Sign out</a>
-  </div>
-</aside>
 
-<main>
-<div class="mbar">
-  <span class="brand"><span class="moon"></span>Sleepy Bot</span>
-  <span class="live"><span class="pulse" id="live-pulse-m"></span><span id="live-label-m">ready</span></span>
-</div>
-<div class="wrap">
-
-  <div id="wizardProgress" class="progress" hidden aria-live="polite">
-    <div class="top"><span id="wizardStepLabel">Step 1 of 4</span><span>Setup</span></div>
-    <div class="track" role="progressbar" aria-label="Setup progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="25"><span id="wizardProgressBar"></span></div>
-  </div>
-
-  <section id="top">
-    <div class="tag"><span class="pulse"></span>Middleware agent for your stack</div>
-    <h1>Sleepy Bot<span>never sleeps.</span></h1>
-    <p class="lead">It reads every request, pulls your logs, reads your code, and tells you where the problem is.</p>
-    <p class="sub">If it isn't confident in a fix, it wakes the human engineer.</p>
-    <div class="row">
-      <button id="btn-begin" type="button" class="btn">Start setup</button>
-      <a href="#how" class="link">How it works</a>
-    </div>
-    <div class="term" aria-hidden="true">
-      <div class="term-h"><b></b><b></b><b></b><span>sleepy-bot · edge · demo</span></div>
-<pre><div><span class="t-ice">GET</span> /api/checkout <span class="t-bad">→ 500</span> (2140ms)</div><div>detector  anomaly flagged, dispatching agent</div><div>logs      auth <span class="t-ok">ok</span> · db <span class="t-bad">connection pool exhausted</span></div><div>code      commit a41f9c2 lowered pool size 50 → 5</div><div><span class="t-wake">confidence 91%</span>  fix proposed, awaiting approval</div></pre>
-    </div>
-    <div class="demo-note">// illustrative transcript, not live output</div>
-  </section>
-
-  <section id="how">
-    <div class="kicker">How it works</div>
-    <h2>From request to root cause</h2>
-    <div class="grid">
-      <div class="card"><span class="n">1</span><h3>Intercept</h3><p>A container takes inbound traffic and forwards it to your server. Nothing reaches the app unread.</p></div>
-      <div class="card"><span class="n">2</span><h3>Detect</h3><p>A built-in detector flags 404s, 500s and slow responses, then dispatches the core agent.</p></div>
-      <div class="card"><span class="n">3</span><h3>Diagnose</h3><p>The agent pulls auth and database logs, then compares your codebase to recent commits.</p></div>
-      <div class="card"><span class="n">4</span><h3>Escalate</h3><p>It proposes a fix. Below your confidence threshold, it stops and wakes the human engineer.</p></div>
-    </div>
-  </section>
-
-  <!-- STEP 1 -->
-  <article id="step-01" class="wizard-step">
-    <div class="kicker">Step 1 of 4</div>
-    <h2>Network gateway</h2>
-    <p class="copy">Sleepy Bot sits between the client and your server and receives all traffic.</p>
-    <p class="copy2">Point your DNS at the Sleepy Bot edge container. Every request passes through the agent first.</p>
-    <div class="panel">
-      <form class="stack" id="form-gateway">
-        <div><label for="gateway-target">Target URL</label><input id="gateway-target" type="text" class="field" placeholder="https://your-production-app.com"></div>
-        <div><label for="gateway-port">Edge port (stored only — not pushed to middleware)</label><input id="gateway-port" type="number" class="field" placeholder="8080" value="8080"></div>
-        <div class="row">
-          <button type="button" id="btn-gateway-save" class="btn btn-ghost">Save target</button>
-          <button type="button" id="btn-gateway-check" class="btn btn-ghost">Check reachability</button>
-          <button type="submit" id="btn-gateway" class="btn" style="margin-left:auto">Next</button>
-        </div>
-      </form>
-      <div class="stat">
-        <span id="status-gateway-badge" class="badge">Unchecked</span>
-        <div id="status-gateway">&gt; awaiting configuration</div>
-        <div class="dim" style="margin-top:6px">Reachability probes the target URL from this control plane's network. It does not confirm the edge container is routing traffic.</div>
+    <div class="rail-foot">
+      <div class="status-line">
+        <span class="dot" id="health-dot"></span>
+        <span id="health-label">checking…</span>
       </div>
-      <div class="override" id="override-gateway">
-        <label for="override-gateway-reason">Advancing without a passing check. Reason (required):</label>
-        <div class="row">
-          <input id="override-gateway-reason" type="text" class="field" placeholder="e.g. staging edge not yet deployed">
-          <button type="button" class="btn btn-ghost" id="override-gateway-confirm">Override &amp; continue</button>
-        </div>
-      </div>
+      <a href="#" id="logout">Sign out →</a>
     </div>
-  </article>
+  </aside>
 
-  <!-- STEP 2 -->
-  <article id="step-02" class="wizard-step">
-    <div class="kicker">Step 2 of 4</div>
-    <h2>External access</h2>
-    <p class="copy">The agent needs logs from your authentication and database services.</p>
-    <p class="copy2">Provide read-only credentials only. The agent must never have write access.</p>
-    <div class="panel">
-      <form class="stack" id="form-external">
-        <div><label for="auth-endpoint">Auth provider endpoint</label><input id="auth-endpoint" type="text" class="field" placeholder="https://auth.your-app.com/logs"></div>
-        <div><label for="api-key">Read-only API key</label><input id="api-key" type="password" class="field" placeholder="••••••••••••••••••••"></div>
-        <div><label for="db-endpoint">Database provider endpoint</label><input id="db-endpoint" type="text" class="field" placeholder="mongodb+srv://readonly@cluster.mongodb.net"></div>
-        <div class="actions">
-          <button type="button" class="btn btn-ghost" id="btn-external-back">Back</button>
-          <div class="row">
-            <button type="button" id="btn-test-save" class="btn btn-ghost">Save</button>
-            <button type="submit" id="btn-test" class="btn">Test and continue</button>
+  <main>
+
+    <!-- ─── REQUESTS ──────────────────────────────────────── -->
+    <section id="tab-requests" class="tab-panel is-active" role="tabpanel">
+      <header class="panel-head">
+        <h1>Requests</h1>
+        <div class="meta">
+          <span id="req-count">0</span> total ·
+          <span id="req-anomalies">0</span> anomalies
+        </div>
+      </header>
+
+      <div class="toolbar">
+        <label><input type="checkbox" id="filter-anomaly"> anomalies only</label>
+        <label><input type="checkbox" id="filter-errors"> errors only</label>
+        <select id="filter-status">
+          <option value="">any status</option>
+          <option value="2xx">2xx</option>
+          <option value="4xx">4xx</option>
+          <option value="5xx">5xx</option>
+        </select>
+        <button type="button" id="btn-pause">Pause</button>
+        <span class="feed-state" id="feed-state">live</span>
+      </div>
+
+      <table class="log-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Method</th>
+            <th>Path</th>
+            <th>Status</th>
+            <th>ms</th>
+            <th>Category</th>
+            <th>Incident</th>
+          </tr>
+        </thead>
+        <tbody id="log-body">
+          <tr class="empty"><td colspan="7">// no requests yet</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ─── CONFIG ────────────────────────────────────────── -->
+    <section id="tab-config" class="tab-panel" role="tabpanel">
+      <header class="panel-head">
+        <h1>Config</h1>
+        <div class="meta" id="config-meta">not loaded</div>
+      </header>
+
+      <div class="warn-bar" id="warn-bar" hidden></div>
+
+      <form id="config-form" autocomplete="off">
+        <fieldset>
+          <legend>Server</legend>
+          <div class="field-row">
+            <div class="field">
+              <label for="cfg-target">TARGET_URL</label>
+              <input id="cfg-target" type="text" placeholder="https://your-app.example.com">
+              <div class="hint" id="hint-target"></div>
+            </div>
+            <div class="field">
+              <label for="cfg-port">EDGE_PORT</label>
+              <input id="cfg-port" type="number" placeholder="8080">
+              <div class="hint">stored only — not pushed to middleware</div>
+            </div>
           </div>
-        </div>
-        <span id="status-test" class="dim">// awaiting input</span>
-      </form>
-      <div class="override" id="override-external">
-        <label for="override-external-reason">Advancing without passing checks. Reason (required):</label>
-        <div class="row">
-          <input id="override-external-reason" type="text" class="field" placeholder="e.g. auth logs behind VPN, will wire later">
-          <button type="button" class="btn btn-ghost" id="override-external-confirm">Override &amp; continue</button>
-        </div>
-      </div>
-    </div>
-  </article>
+        </fieldset>
 
-  <!-- STEP 3 -->
-  <article id="step-03" class="wizard-step">
-    <div class="kicker">Step 3 of 4</div>
-    <h2>Codebase link</h2>
-    <p class="copy">The agent reads your source code to find the root cause.</p>
-    <p class="copy2">Connect the repository and it reads the last five commits, then matches them to failing requests. Optional: skip to use local inspection only.</p>
-    <div class="panel">
-      <form class="stack" id="form-codebase">
-        <div><label for="repo-url">Repository URL</label><input id="repo-url" type="text" class="field" placeholder="https://github.com/your-org/your-repo"></div>
-        <div><label for="repo-token">Personal access token</label><input id="repo-token" type="password" class="field" placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"></div>
-        <div class="actions">
-          <button type="button" class="btn btn-ghost" id="btn-repo-back">Back</button>
-          <div class="row">
-            <button type="button" id="btn-repo-skip" class="btn btn-ghost">Skip</button>
-            <button type="submit" id="btn-repo" class="btn">Link and continue</button>
+        <fieldset>
+          <legend>
+            External services
+            <button type="button" class="btn-micro" id="btn-add-service">+ add</button>
+          </legend>
+          <div id="services-list"></div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Codebase</legend>
+          <div class="field-row equal">
+            <div class="field">
+              <label for="cfg-repo">REPO_URL</label>
+              <input id="cfg-repo" type="text" placeholder="https://github.com/your-org/your-repo">
+              <div class="hint">optional — enables commit correlation in the incident feed</div>
+            </div>
+            <div class="field">
+              <label for="cfg-token">GITHUB_TOKEN</label>
+              <input id="cfg-token" type="password" placeholder="(unchanged)">
+              <div class="hint" id="hint-token">leave blank to keep the existing token</div>
+            </div>
           </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Safety</legend>
+          <div class="opt-row">
+            <div class="opt-label">
+              <span class="key">DRY_RUN</span>
+              <span class="desc">agent proposes actions, does not execute them</span>
+            </div>
+            <button type="button" class="toggle" id="cfg-dryrun" role="switch" aria-checked="true" aria-label="Dry run"></button>
+          </div>
+          <div class="opt-row">
+            <div class="opt-label">
+              <span class="key">AUTO_ROLLBACK</span>
+              <span class="desc">revert a fix if it doesn't clear the error in 60s</span>
+            </div>
+            <button type="button" class="toggle" id="cfg-rollback" role="switch" aria-checked="true" aria-label="Auto rollback"></button>
+          </div>
+          <div class="opt-row">
+            <div class="opt-label">
+              <span class="key">ESCALATION_THRESHOLD</span>
+              <span class="desc">below this confidence, the agent wakes the human</span>
+            </div>
+            <div class="inline" style="width:120px">
+              <input id="cfg-threshold" type="number" min="0" max="100" step="1" aria-label="Escalation threshold percent">
+              <span class="suffix">%</span>
+            </div>
+          </div>
+        </fieldset>
+
+        <fieldset>
+          <legend>Monitoring</legend>
+          <div class="opt-row">
+            <div class="opt-label">
+              <span class="key">MONITORING_ACTIVE</span>
+              <span class="desc">start or pause the agent's watch on every request</span>
+            </div>
+            <button type="button" class="toggle" id="cfg-monitoring" role="switch" aria-checked="false" aria-label="Monitoring active"></button>
+          </div>
+        </fieldset>
+
+        <div class="form-actions">
+          <button type="submit" class="btn-primary" id="btn-save">Save config</button>
+          <button type="button" class="btn-ghost" id="btn-reload">Reload</button>
+          <span class="save-status" id="save-status"></span>
         </div>
-        <span id="status-repo" class="dim">// not connected</span>
-        <div id="repo-commits"></div>
       </form>
-    </div>
-  </article>
+    </section>
 
-  <!-- STEP 4 -->
-  <article id="step-04" class="wizard-step">
-    <div class="kicker">Step 4 of 4</div>
-    <h2>Safety limits</h2>
-    <p class="copy2">The agent acts automatically. Set the limits before it does.</p>
-    <div class="panel">
-      <div class="opt"><div><b>Dry-run mode</b><p>The agent suggests actions but does not run them. You approve each one.</p></div>
-        <button id="toggle-dryrun" class="toggle" role="switch" aria-checked="true" aria-label="Dry-run mode"><span class="knob"></span></button></div>
-      <div class="opt"><div><b>Auto-rollback on failure</b><p>If a fix doesn't clear the error within 60 seconds, the change is reverted.</p></div>
-        <button id="toggle-rollback" class="toggle" role="switch" aria-checked="true" aria-label="Auto-rollback on failure"><span class="knob"></span></button></div>
-      <div class="opt" style="border:0;padding-bottom:0">
-        <div><b>Escalation threshold</b><p>Below this confidence, the agent stops and wakes the human engineer. Set to 0 to never escalate.</p></div>
-        <div class="threshold">
-          <input id="escalation-threshold" type="number" min="0" max="100" step="1" value="80" aria-label="Escalation threshold percent">
-          <span>%</span>
-        </div>
+    <!-- ─── ABOUT ─────────────────────────────────────────── -->
+    <section id="tab-about" class="tab-panel" role="tabpanel">
+      <header class="panel-head">
+        <h1>About</h1>
+      </header>
+      <div class="prose">
+        <p class="lead">Sleepy Bot sits between your users and your server. Every request passes through the edge. The edge detects anomalies, dispatches them to the agent, and the agent reasons about dependencies and code — then either proposes a fix or wakes a human.</p>
+
+        <h2>The stack</h2>
+<pre>   ┌──────────┐    ┌──────────────┐    ┌─────────┐
+   │  CLIENT  │───▶│  MIDDLEWARE  │───▶│ SERVER  │
+   └──────────┘    │    (edge)    │    └─────────┘
+                   └──────┬───────┘
+                          │ anomaly
+                          ▼
+                   ┌──────────────┐    ┌──────────────┐
+                   │ AGENT CORE   │───▶│  CONNECTOR   │
+                   │ (reasoning)  │    │  (read-only) │
+                   └──────────────┘    └──────────────┘
+                          │
+                          ▼
+                   ┌──────────────┐
+                   │  ENGINEER    │
+                   │  (if unsure) │
+                   └──────────────┘</pre>
+
+        <h2>What each tab does</h2>
+        <ul>
+          <li><b>Requests</b> — live view of everything passing through the edge. Rows with a left bar were flagged as anomalies and dispatched to the agent. Click a row to see the request ID, upstream, client IP and a response sample.</li>
+          <li><b>Config</b> — the whole stack in one form: server target, external services, codebase link, safety limits, and the monitoring switch. Warnings appear inline when something will be stored but not monitored, or sent over plaintext.</li>
+          <li><b>About</b> — this page.</li>
+        </ul>
+
+        <h2>What gets pushed where</h2>
+        <ul>
+          <li><code>TARGET_URL</code> → middleware (<code>/_sbwk/config</code>) so the edge re-points immediately.</li>
+          <li>External services → connector (<code>/connector/config</code>), only for HTTP-scheme endpoints of kind <code>auth</code>, <code>database</code> or <code>external_api</code>. Non-HTTP endpoints (<code>mongodb+srv:</code>, <code>postgres:</code>, …) are stored but the connector does not monitor them.</li>
+          <li><code>REPO_URL</code> + commits → agent-core (<code>/config</code>) for commit correlation.</li>
+          <li>Safety limits + monitoring switch → agent-core (<code>/config</code>).</li>
+        </ul>
+
+        <h2>What this page cannot verify</h2>
+        <ul>
+          <li>It cannot prove the edge container is actually routing traffic — only that the control plane can reach the target from its own network.</li>
+          <li>It cannot check that the API token you provided is read-only. It can check that the auth endpoint answered, but any HTTP response (including <code>401</code> and <code>403</code>) counts as "reachable".</li>
+          <li>It cannot monitor a MongoDB, Postgres or Redis endpoint. Those are DNS-checked only.</li>
+          <li>The "auto-rollback within 60 seconds" promise lives in agent-core, not here.</li>
+        </ul>
       </div>
-    </div>
-    <div class="actions" style="margin-top:20px"><button type="button" class="btn btn-ghost" id="btn-safety-back">Back</button></div>
+    </section>
 
-    <div class="final">
-      <div class="kicker">Final step</div>
-      <h3>Initialize agent</h3>
-      <p>Setup is complete. Start monitoring and the agent will watch every request.</p>
-      <button id="btn-start" class="btn">Start monitoring</button>
-      <div id="status-monitor" class="dim" style="margin-top:18px">// monitoring inactive</div>
-      <div id="incident-feed"></div>
-    </div>
-  </article>
-
-  <footer><span>Sleepy Bot · EG Software, 2026</span><a href="#top">Back to top</a></footer>
+  </main>
 </div>
-</main>
 
 <script>
+/* ─── helpers ─────────────────────────────────────────────── */
 const $ = id => document.getElementById(id);
-const api = async (path, body) => {
-  const res = await fetch(path, body ? { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) } : undefined);
+const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+
+async function api(path, body) {
+  const res = await fetch(path, body ? {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body)
+  } : undefined);
   if (res.status === 401) { location.href = '/login'; throw new Error('session expired'); }
   const data = await res.json().catch(() => ({}));
-  if (!res.ok || data.success === false) {
-    const err = new Error(data.error || ('HTTP ' + res.status));
-    err.status = res.status;
-    throw err;
-  }
+  if (!res.ok || data.success === false) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
-};
-const escapeHtml = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-const setStatus = (el, text, ok) => { el.textContent = text; el.classList.toggle('ok', !!ok); el.classList.toggle('warn', ok === 'warn'); };
-
-const wizardTitles = ['Network gateway', 'External access', 'Codebase link', 'Safety limits'];
-function goToStep(step) {
-  const steps = document.querySelectorAll('.wizard-step');
-  if (step < 1 || step > steps.length) return;
-  document.body.classList.add('is-wizard');
-  $('wizardProgress').hidden = false;
-  steps.forEach((a, i) => a.classList.toggle('is-current', i === step - 1));
-  $('wizardStepLabel').textContent = `Step ${step} of ${steps.length} · ${wizardTitles[step - 1]}`;
-  const p = step / steps.length * 100;
-  $('wizardProgressBar').style.width = p + '%';
-  $('wizardProgressBar').parentElement.setAttribute('aria-valuenow', String(Math.round(p)));
-  document.querySelectorAll('#sidebarNav .nav-link').forEach(b => b.classList.toggle('is-active', Number(b.dataset.step) === step));
-  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
-$('btn-begin').addEventListener('click', () => goToStep(1));
-document.querySelectorAll('#sidebarNav .nav-link').forEach(b => b.addEventListener('click', () => goToStep(Number(b.dataset.step))));
-$('brand-side').addEventListener('click', (e) => { if (document.body.classList.contains('is-wizard')) { e.preventDefault(); document.body.classList.remove('is-wizard'); window.scrollTo({ top: 0 }); } });
+
+/* ─── tab wiring ──────────────────────────────────────────── */
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => {
+      const on = b === btn;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-selected', String(on));
+    });
+    document.querySelectorAll('.tab-panel').forEach(p => {
+      p.classList.toggle('is-active', p.id === `tab-${btn.dataset.tab}`);
+    });
+  });
+});
+
 $('logout').addEventListener('click', async (e) => {
   e.preventDefault();
-  try { await fetch('/api/logout', { method: 'POST' }); } catch { /* ignore */ }
+  try { await fetch('/api/logout', { method: 'POST' }); } catch {}
   location.href = '/login';
 });
 
-/* --- live service health ------------------------------------------- */
+/* ─── health dot ──────────────────────────────────────────── */
 async function refreshHealth(services) {
   if (!services) {
     try { services = (await api('/api/state')).services; } catch { return; }
   }
-  const vals = Object.values(services);
+  const vals = Object.values(services || {});
   const bad = vals.filter(v => v !== 'healthy').length;
-  const cls = bad === 0 ? '' : bad === vals.length ? 'down' : 'degraded';
-  const label = bad === 0 ? 'All services healthy' : `${bad}/${vals.length} services degraded`;
-  for (const [pulseId, labelId] of [['live-pulse', 'live-label'], ['live-pulse-m', 'live-label-m']]) {
-    const p = $(pulseId), l = $(labelId);
-    if (p) { p.classList.remove('degraded', 'down'); if (cls) p.classList.add(cls); }
-    if (l) l.textContent = label;
+  const dot = $('health-dot'), label = $('health-label');
+  dot.className = 'dot';
+  if (bad === 0) dot.classList.add('ok');
+  else if (bad === vals.length) dot.classList.add('bad');
+  else dot.classList.add('warn');
+  label.textContent = bad === 0 ? 'all healthy' : `${bad}/${vals.length} degraded`;
+}
+
+/* ─── REQUESTS ────────────────────────────────────────────── */
+const MAX_ROWS = 200;
+const expanded = new Set();
+let filterSig = '';
+let feedTimer = null;
+let feedBackoff = 0;
+let paused = false;
+
+function rowMatches(l) {
+  if ($('filter-anomaly').checked && !l.anomaly) return false;
+  if ($('filter-errors').checked && l.statusCode < 400) return false;
+  const f = $('filter-status').value;
+  if (f === '2xx' && (l.statusCode < 200 || l.statusCode >= 300)) return false;
+  if (f === '4xx' && (l.statusCode < 400 || l.statusCode >= 500)) return false;
+  if (f === '5xx' && (l.statusCode < 500 || l.statusCode >= 600)) return false;
+  return true;
+}
+
+function renderRow(l) {
+  const time = new Date(l.timestamp).toLocaleTimeString();
+  const statusCls = l.statusCode >= 500 ? 'cell-5xx' : l.statusCode >= 400 ? 'cell-4xx' : '';
+  const catCls = (l.category === 'server_error' || l.category === 'timeout') ? 'cat-bad'
+               : l.category === 'normal' ? '' : 'cat-warn';
+  const isExpanded = expanded.has(l.id);
+  const main = `<tr data-log-id="${escapeHtml(l.id)}" class="log-row ${l.anomaly ? 'is-anomaly' : ''}">
+    <td class="col-time">${escapeHtml(time)}</td>
+    <td class="col-method">${escapeHtml(l.method)}</td>
+    <td class="col-path">${escapeHtml(l.path)}</td>
+    <td class="col-status ${statusCls}">${l.statusCode}</td>
+    <td>${Math.round(l.durationMs)}</td>
+    <td class="${catCls}">${escapeHtml(l.category || 'normal')}</td>
+    <td class="col-inc">${l.incidentId ? `<button class="link-btn" data-copy="${escapeHtml(l.incidentId)}">copy</button>` : '—'}</td>
+  </tr>`;
+  if (!isExpanded) return main;
+  return main + `<tr class="log-detail" data-log-id="${escapeHtml(l.id)}">
+    <td colspan="7">
+      <div class="detail-grid">
+        <div><span class="k">id</span><code>${escapeHtml(l.id)}</code></div>
+        <div><span class="k">upstream</span><code>${escapeHtml(l.upstream)}</code></div>
+        <div><span class="k">client</span><code>${escapeHtml(l.clientIp || '?')}</code></div>
+        ${l.incidentId ? `<div><span class="k">incident</span><code>${escapeHtml(l.incidentId)}</code></div>` : ''}
+      </div>
+      ${l.responseSample ? `<pre class="sample">${escapeHtml(l.responseSample)}</pre>` : ''}
+    </td>
+  </tr>`;
+}
+
+function renderLogs(rawLogs) {
+  $('req-count').textContent = String(rawLogs.length);
+  $('req-anomalies').textContent = String(rawLogs.filter(l => l.anomaly).length);
+
+  const body = $('log-body');
+  const newFilterSig = `${$('filter-anomaly').checked}|${$('filter-errors').checked}|${$('filter-status').value}`;
+  if (newFilterSig !== filterSig) {
+    filterSig = newFilterSig;
+    body.innerHTML = '';
+    expanded.clear();
+  }
+
+  const matching = rawLogs.filter(rowMatches);
+  const currentIds = new Set(matching.map(l => l.id));
+
+  // remove rows that no longer match filters or fell off the end
+  body.querySelectorAll('tr[data-log-id]').forEach(el => {
+    if (!currentIds.has(el.dataset.logId)) el.remove();
+  });
+
+  // insert new rows at the top
+  const existingIds = new Set([...body.querySelectorAll('tr.log-row')].map(el => el.dataset.logId));
+  const fresh = matching.filter(l => !existingIds.has(l.id));
+  for (const l of fresh) {
+    body.insertAdjacentHTML('afterbegin', renderRow(l));
+  }
+
+  // cap visible rows
+  const rows = body.querySelectorAll('tr.log-row');
+  for (let i = MAX_ROWS; i < rows.length; i++) {
+    const row = rows[i];
+    const detail = row.nextElementSibling;
+    if (detail && detail.classList.contains('log-detail')) detail.remove();
+    row.remove();
+  }
+
+  if (!body.querySelector('tr.log-row')) {
+    body.innerHTML = '<tr class="empty"><td colspan="7">// no requests match current filters</td></tr>';
+  }
+
+  wireRows(rawLogs);
+}
+
+function wireRows(rawLogs) {
+  const body = $('log-body');
+  body.querySelectorAll('tr.log-row').forEach(row => {
+    if (row.dataset.wired) return;
+    row.dataset.wired = '1';
+    row.addEventListener('click', (e) => {
+      if (e.target.closest('button')) return;
+      const id = row.dataset.logId;
+      if (expanded.has(id)) expanded.delete(id); else expanded.add(id);
+      const detail = row.nextElementSibling;
+      if (detail && detail.classList.contains('log-detail')) detail.remove();
+      if (expanded.has(id)) {
+        const l = rawLogs.find(x => x.id === id);
+        if (l) row.insertAdjacentHTML('afterend', renderRow(l).split('</tr>')[1] + '</tr>');
+      }
+    });
+  });
+  body.querySelectorAll('[data-copy]').forEach(btn => {
+    if (btn.dataset.wired) return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      navigator.clipboard?.writeText(btn.dataset.copy);
+      btn.textContent = 'copied';
+      setTimeout(() => { btn.textContent = 'copy'; }, 1000);
+    });
+  });
+}
+
+async function fetchLogs() {
+  try {
+    const r = await api('/api/logs?limit=100');
+    feedBackoff = 0;
+    const state = $('feed-state');
+    if (r.unreachable) {
+      state.textContent = 'middleware unreachable';
+      state.className = 'feed-state warn';
+    } else {
+      state.textContent = paused ? 'paused' : 'live';
+      state.className = 'feed-state';
+    }
+    renderLogs(r.logs || []);
+  } catch {
+    feedBackoff = Math.min(feedBackoff + 1, 5);
+    const state = $('feed-state');
+    state.textContent = 'error — retrying';
+    state.className = 'feed-state bad';
+    restartFeed(Math.min(4000 * 2 ** feedBackoff, 60000));
+  }
+}
+function restartFeed(delay = 4000) {
+  clearInterval(feedTimer); clearTimeout(feedTimer);
+  feedTimer = setTimeout(() => { fetchLogs(); if (!paused) restartFeed(4000); }, delay);
+}
+['filter-anomaly','filter-errors','filter-status'].forEach(id => {
+  $(id).addEventListener('change', () => fetchLogs());
+});
+$('btn-pause').addEventListener('click', () => {
+  paused = !paused;
+  $('btn-pause').textContent = paused ? 'Resume' : 'Pause';
+  const s = $('feed-state');
+  if (paused) { s.textContent = 'paused'; s.className = 'feed-state warn'; }
+  else { restartFeed(100); }
+});
+
+/* ─── CONFIG ──────────────────────────────────────────────── */
+let services = [];
+let currentState = null;
+let dirty = false;
+
+function inferScheme(endpoint) {
+  try {
+    const u = new URL(endpoint);
+    if (u.protocol === 'http:' || u.protocol === 'https:') return u.protocol.slice(0, -1);
+    if (u.protocol === 'mongodb+srv:') return 'mongodb+srv';
+    if (u.protocol === 'postgres:' || u.protocol === 'postgresql:') return 'postgres';
+    if (u.protocol === 'redis:' || u.protocol === 'rediss:') return 'redis';
+    return 'other';
+  } catch { return 'other'; }
+}
+const isLoopback = host => host === 'localhost' || host === '127.0.0.1' || host.endsWith('.local');
+
+function renderServices() {
+  const list = $('services-list');
+  if (!services.length) {
+    list.innerHTML = '<div class="services-empty">// no services configured — click + add</div>';
+    return;
+  }
+  list.innerHTML = services.map((svc, i) => `
+    <div class="service-row" data-index="${i}">
+      <div class="field">
+        <label>NAME</label>
+        <input data-field="name" value="${escapeHtml(svc.name || '')}" placeholder="auth">
+      </div>
+      <div class="field">
+        <label>KIND</label>
+        <select data-field="kind">
+          <option value="auth"${svc.kind === 'auth' ? ' selected' : ''}>auth</option>
+          <option value="database"${svc.kind === 'database' ? ' selected' : ''}>database</option>
+          <option value="external_api"${svc.kind === 'external_api' ? ' selected' : ''}>external_api</option>
+          <option value="other"${svc.kind === 'other' ? ' selected' : ''}>other</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>ENDPOINT</label>
+        <input data-field="endpoint" value="${escapeHtml(svc.endpoint || '')}" placeholder="https://auth.example.com/logs">
+        <div class="hint" data-hint="endpoint"></div>
+      </div>
+      <div class="field">
+        <label>TOKEN</label>
+        <input data-field="token" type="password" placeholder="${svc.hasToken ? '•••• stored ••••' : ''}">
+        <div class="hint">${svc.hasToken ? 'leave blank to keep stored token' : ''}</div>
+      </div>
+      <button type="button" class="btn-remove" data-action="remove" aria-label="Remove service">×</button>
+    </div>
+  `).join('');
+
+  list.querySelectorAll('.service-row').forEach(row => {
+    const i = Number(row.dataset.index);
+    row.querySelectorAll('[data-field]').forEach(el => {
+      el.addEventListener('input', () => {
+        const f = el.dataset.field;
+        if (f) services[i][f] = el.value;
+        dirty = true;
+        validate();
+      });
+    });
+    row.querySelector('[data-action="remove"]').addEventListener('click', () => {
+      services.splice(i, 1);
+      dirty = true;
+      renderServices();
+      validate();
+    });
+  });
+}
+
+$('btn-add-service').addEventListener('click', () => {
+  services.push({ id: `svc_${Date.now()}`, name: 'service', kind: 'other', endpoint: '', hasToken: false });
+  dirty = true;
+  renderServices();
+  validate();
+});
+
+function collectWarnings() {
+  const warnings = [];
+  const target = $('cfg-target').value.trim();
+  if (target) {
+    try {
+      const u = new URL(target);
+      if (u.protocol === 'http:' && !isLoopback(u.hostname)) {
+        warnings.push({ field: 'gateway.targetUrl', message: 'http:// target — traffic between edge and server is unencrypted.' });
+      }
+    } catch {
+      warnings.push({ field: 'gateway.targetUrl', message: 'not a valid URL.' });
+    }
+  }
+  services.forEach((svc, i) => {
+    const label = svc.name || svc.kind || `services[${i}]`;
+    if (!svc.endpoint) return;
+    const scheme = inferScheme(svc.endpoint);
+    if (scheme === 'other') {
+      warnings.push({ field: `services[${i}].endpoint`, message: `${label}: unrecognised scheme — stored, not monitored.` });
+    } else if (scheme !== 'http' && scheme !== 'https') {
+      warnings.push({ field: `services[${i}].endpoint`, message: `${label}: ${scheme} is DNS-checked only; connector will not monitor it.` });
+    } else if (scheme === 'http' && !isLoopback(new URL(svc.endpoint).hostname)) {
+      warnings.push({ field: `services[${i}].endpoint`, message: `${label}: plaintext http:// — its token will be sent unencrypted.` });
+    }
+    if (!['auth','database','external_api'].includes(svc.kind)) {
+      warnings.push({ field: `services[${i}].kind`, message: `${label}: kind "${svc.kind}" has no connector slot — stored only.` });
+    }
+  });
+  return warnings;
+}
+
+function validate() {
+  const warnings = collectWarnings();
+
+  // warn bar
+  const bar = $('warn-bar');
+  if (!warnings.length) {
+    bar.hidden = true; bar.innerHTML = '';
+  } else {
+    bar.hidden = false;
+    bar.innerHTML = warnings.map(w => `<div class="warn-line"><span class="warn-key">${escapeHtml(w.field)}</span>${escapeHtml(w.message)}</div>`).join('');
+  }
+
+  // per-service endpoint hint
+  document.querySelectorAll('.service-row').forEach((row, i) => {
+    const hint = row.querySelector('[data-hint="endpoint"]');
+    if (!hint) return;
+    const match = warnings.find(w => w.field === `services[${i}].endpoint`);
+    hint.textContent = match ? match.message : '';
+    hint.className = 'hint' + (match ? ' warn' : '');
+  });
+
+  // target hint
+  const targetHint = $('hint-target');
+  const targetWarn = warnings.find(w => w.field === 'gateway.targetUrl');
+  targetHint.textContent = targetWarn ? targetWarn.message : '';
+  targetHint.className = 'hint' + (targetWarn ? ' warn' : '');
+}
+
+function populate(state) {
+  currentState = state;
+  $('cfg-target').value = state.gateway.targetUrl || '';
+  $('cfg-port').value = state.gateway.port || 8080;
+  $('cfg-repo').value = state.codebase.repoUrl || '';
+  $('cfg-token').value = '';
+  $('hint-token').textContent = state.codebase.hasToken ? 'leave blank to keep stored token' : 'no token stored';
+  $('cfg-dryrun').setAttribute('aria-checked', String(Boolean(state.safety.dryRun)));
+  $('cfg-rollback').setAttribute('aria-checked', String(Boolean(state.safety.autoRollback)));
+  $('cfg-threshold').value = Math.round((state.safety.escalationThreshold ?? 0.8) * 100);
+  $('cfg-monitoring').setAttribute('aria-checked', String(Boolean(state.monitoring.active)));
+  $('config-meta').textContent = state.monitoring.active
+    ? `monitoring active since ${state.monitoring.startedAt ? new Date(state.monitoring.startedAt).toLocaleString() : 'unknown'}`
+    : 'monitoring inactive';
+
+  services = (state.external.services || []).map(s => ({ ...s }));
+  renderServices();
+  validate();
+  dirty = false;
+}
+
+async function loadState() {
+  try {
+    const { state, services: health } = await api('/api/state');
+    populate(state);
+    refreshHealth(health);
+  } catch (e) {
+    $('config-meta').textContent = 'failed to load — ' + e.message;
   }
 }
 
-/* --- step dots ----------------------------------------------------- */
-function setDot(step, status) {
-  const d = document.querySelector(`.dot[data-dot="${step}"]`);
-  if (!d) return;
-  d.classList.remove('ok', 'bad', 'warn');
-  if (status) d.classList.add(status);
-}
-
-/* --- Step 1 -------------------------------------------------------- */
-let gatewayPassed = false;
-async function saveGateway() {
-  const targetUrl = $('gateway-target').value.trim(), port = $('gateway-port').value.trim();
-  if (!targetUrl) throw new Error('enter a target URL');
-  await api('/api/gateway', { targetUrl, port });
-  return targetUrl;
-}
-const reach = (check) => check.reachable
-  ? `> [OK] TARGET SERVER REACHABLE from control plane (${check.method === 'http' ? 'HTTP ' + check.status : check.method}, ${check.latencyMs}ms)`
-  : `> [FAIL] TARGET UNREACHABLE: ${check.error}`;
-const badge = c => c.reachable ? `HTTP ${c.status} (${c.latencyMs}ms)` : 'Unreachable';
-
-async function runGatewayCheck() {
-  await saveGateway();
-  const { check } = await api('/api/gateway/check', {});
-  $('status-gateway').textContent = reach(check);
-  setStatus($('status-gateway-badge'), badge(check), check.reachable);
-  gatewayPassed = !!check.reachable;
-  setDot(1, gatewayPassed ? 'ok' : 'bad');
-  return check;
-}
-
-$('btn-gateway-save').addEventListener('click', async () => {
-  const btn = $('btn-gateway-save'), s = $('status-gateway');
-  btn.disabled = true; s.textContent = '> saving target…';
-  try { const u = await saveGateway(); s.textContent = `> [OK] TARGET SAVED: ${u}`; setStatus($('status-gateway-badge'), 'Saved', true); }
-  catch (e) { s.textContent = '> [ERROR] ' + e.message; }
-  finally { btn.disabled = false; }
+['cfg-target','cfg-port','cfg-repo','cfg-token','cfg-threshold'].forEach(id => {
+  $(id).addEventListener('input', () => { dirty = true; validate(); });
 });
-$('btn-gateway-check').addEventListener('click', async () => {
-  const btn = $('btn-gateway-check');
-  btn.disabled = true; $('status-gateway').textContent = '> checking…';
-  try { await runGatewayCheck(); }
-  catch (e) { $('status-gateway').textContent = '> [ERROR] ' + e.message; setStatus($('status-gateway-badge'), 'Error', false); setDot(1, 'bad'); }
-  finally { btn.disabled = false; }
-});
-$('form-gateway').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = $('btn-gateway');
-  btn.disabled = true; $('status-gateway').textContent = '> saving + checking…';
-  try {
-    const check = await runGatewayCheck();
-    if (check.reachable) { $('override-gateway').classList.remove('show'); goToStep(2); }
-    else { $('override-gateway').classList.add('show'); }
-  } catch (err) { $('status-gateway').textContent = '> [ERROR] ' + err.message; }
-  finally { btn.disabled = false; }
-});
-$('override-gateway-confirm').addEventListener('click', () => {
-  const reason = $('override-gateway-reason').value.trim();
-  if (!reason) { $('override-gateway-reason').focus(); return; }
-  setDot(1, 'warn');
-  console.info('[override] step 1 advanced without passing check:', reason);
-  goToStep(2);
-});
-
-/* --- Step 2 -------------------------------------------------------- */
-let externalPassed = false;
-async function saveExternal() {
-  await api('/api/external', { authEndpoint: $('auth-endpoint').value.trim(), apiKey: $('api-key').value, databaseEndpoint: $('db-endpoint').value.trim() });
-}
-$('btn-external-back').addEventListener('click', () => goToStep(1));
-$('btn-test-save').addEventListener('click', async () => {
-  const btn = $('btn-test-save'), s = $('status-test');
-  btn.disabled = true; setStatus(s, '> saving…', false);
-  try { await saveExternal(); setStatus(s, '> [OK] EXTERNAL ENDPOINTS SAVED', true); }
-  catch (e) { setStatus(s, '> [ERROR] ' + e.message, false); }
-  finally { btn.disabled = false; }
-});
-$('form-external').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = $('btn-test'), s = $('status-test');
-  btn.disabled = true; setStatus(s, '> validating…', false);
-  try {
-    await saveExternal();
-    const r = await api('/api/external/test', {});
-    const authOk = r.auth?.reachable;
-    const dbOk = r.database?.reachable;
-    const dbMethod = r.database?.method;
-    const dbNote = r.database?.note ? ' (DNS-only)' : '';
-    const warn = dbMethod === 'dns' ? ' — note: Mongo endpoint stored but NOT monitored by connector' : '';
-    const detail = `auth:${authOk ? 'OK' : 'FAIL'} db:${dbOk ? 'OK' : 'FAIL'}${dbNote}`;
-    const allOk = authOk && dbOk;
-    externalPassed = allOk;
-    setStatus(s, `> [${allOk ? 'OK' : 'WARN'}] ${r.reachable}/${r.total} REACHABLE (${detail})${warn}`, allOk ? true : 'warn');
-    setDot(2, allOk ? 'ok' : 'warn');
-    if (allOk) { $('override-external').classList.remove('show'); goToStep(3); }
-    else { $('override-external').classList.add('show'); }
-  } catch (err) { setStatus(s, '> [ERROR] ' + err.message, false); }
-  finally { btn.disabled = false; }
-});
-$('override-external-confirm').addEventListener('click', () => {
-  const reason = $('override-external-reason').value.trim();
-  if (!reason) { $('override-external-reason').focus(); return; }
-  setDot(2, 'warn');
-  console.info('[override] step 2 advanced without passing checks:', reason);
-  goToStep(3);
-});
-
-/* --- Step 3 -------------------------------------------------------- */
-function renderCommits(commits) {
-  const box = $('repo-commits');
-  if (!commits || !commits.length) { box.innerHTML = ''; return; }
-  box.innerHTML = `<div class="dim" style="margin-top:12px">// last ${commits.length} commits</div>` +
-    commits.map(c => `<div class="commit"><span class="t-ice">${escapeHtml((c.sha || '').slice(0, 7))}</span> ${escapeHtml((c.message || '').split('\n')[0])}<small>${escapeHtml(c.author || '')} · ${escapeHtml(c.date || '')}</small></div>`).join('');
-}
-$('btn-repo-back').addEventListener('click', () => goToStep(2));
-$('form-codebase').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const btn = $('btn-repo'), s = $('status-repo');
-  btn.disabled = true; setStatus(s, '> linking…', false); $('repo-commits').innerHTML = '';
-  try {
-    const r = await api('/api/codebase', { repoUrl: $('repo-url').value.trim(), token: $('repo-token').value });
-    setStatus(s, `> [OK] REPOSITORY LINKED — ${r.codebase.fullName} (${r.codebase.commits.length} commits)`, true);
-    renderCommits(r.codebase.commits);
-    setDot(3, 'ok');
-    // server clears the token when repoUrl is set without a new token (fixes re-link flow)
-    $('repo-token').value = '';
-    goToStep(4);
-  } catch (err) { setStatus(s, '> [ERROR] ' + err.message, false); }
-  finally { btn.disabled = false; }
-});
-$('btn-repo-skip').addEventListener('click', async () => {
-  const btn = $('btn-repo-skip'), s = $('status-repo');
-  btn.disabled = true; setStatus(s, '> clearing git link…', false);
-  try {
-    $('repo-url').value = ''; $('repo-token').value = ''; $('repo-commits').innerHTML = '';
-    const r = await api('/api/codebase', { repoUrl: '', token: '' });
-    setStatus(s, r.skipped ? '> [SKIPPED] GIT CLEARED — LOCAL INSPECTION ONLY' : '> [OK] REPOSITORY LINKED', true);
-    setDot(3, 'ok');
-    goToStep(4);
-  } catch (err) { setStatus(s, '> [ERROR] ' + err.message, false); }
-  finally { btn.disabled = false; }
-});
-
-/* --- Step 4 -------------------------------------------------------- */
-function safetyPayload() {
-  const pct = Number($('escalation-threshold').value);
-  const t = Number.isFinite(pct) ? Math.max(0, Math.min(100, pct)) / 100 : 0;
-  return {
-    dryRun: $('toggle-dryrun').getAttribute('aria-checked') === 'true',
-    autoRollback: $('toggle-rollback').getAttribute('aria-checked') === 'true',
-    escalationThreshold: t,
-  };
-}
-async function pushSafety() { try { await api('/api/safety', safetyPayload()); } catch (e) { console.error(e); } }
-['toggle-dryrun', 'toggle-rollback'].forEach(id => {
-  $(id).addEventListener('click', function () {
-    this.setAttribute('aria-checked', this.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
-    pushSafety();
+['cfg-dryrun','cfg-rollback','cfg-monitoring'].forEach(id => {
+  $(id).addEventListener('click', () => {
+    const on = $(id).getAttribute('aria-checked') === 'true';
+    $(id).setAttribute('aria-checked', String(!on));
+    dirty = true;
   });
 });
-$('escalation-threshold').addEventListener('change', pushSafety);
-$('btn-safety-back').addEventListener('click', () => goToStep(3));
 
-function formatDiff(diffText) {
-  if (!diffText) return '';
-  const lines = String(diffText).split('\n').map(line => {
-    const cls = (line.startsWith('+++') || line.startsWith('---') || line.startsWith('@@')) ? 'diff-hdr' : line.startsWith('+') ? 'diff-add' : line.startsWith('-') ? 'diff-del' : '';
-    return `<div class="line ${cls}">${escapeHtml(line) || ' '}</div>`;
-  }).join('');
-  return `<div class="diff-view">${lines}</div>`;
-}
+$('btn-reload').addEventListener('click', () => { if (!dirty || confirm('Discard unsaved changes?')) loadState(); });
 
-function fmtTime(iso) {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleString();
-}
+$('config-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const btn = $('btn-save'), status = $('save-status');
+  btn.disabled = true; status.textContent = 'saving…'; status.className = 'save-status';
 
-let lastIncidentSig = '';
-let feedTimer = null;
-let feedFailures = 0;
-async function refreshIncidents() {
+  const payload = {
+    gateway: {
+      targetUrl: $('cfg-target').value.trim(),
+      port: Number($('cfg-port').value) || 8080
+    },
+    external: {
+      services: services.map(s => {
+        const out = { id: s.id, name: s.name, kind: s.kind, endpoint: s.endpoint };
+        // include a new token only if the user typed one
+        const row = document.querySelector(`.service-row[data-index="${services.indexOf(s)}"]`);
+        const tokenInput = row?.querySelector('[data-field="token"]');
+        if (tokenInput && tokenInput.value) out.token = tokenInput.value;
+        return out;
+      })
+    },
+    codebase: {
+      repoUrl: $('cfg-repo').value.trim(),
+      ...( $('cfg-token').value ? { token: $('cfg-token').value } : {} )
+    },
+    safety: {
+      dryRun: $('cfg-dryrun').getAttribute('aria-checked') === 'true',
+      autoRollback: $('cfg-rollback').getAttribute('aria-checked') === 'true',
+      escalationThreshold: Math.max(0, Math.min(100, Number($('cfg-threshold').value) || 0)) / 100
+    },
+    monitoring: { active: $('cfg-monitoring').getAttribute('aria-checked') === 'true' },
+    save: true
+  };
+
   try {
-    const r = await api('/api/incidents?limit=10');
-    feedFailures = 0;
-    const feed = $('incident-feed');
-    if (r.unreachable) {
-      feed.innerHTML = '<div class="dim warn">// incident backend unreachable — feed is not live</div>';
-      return;
+    const r = await api('/api/config', payload);
+    populate(r.state);
+    if (r.warnings?.length) {
+      const bar = $('warn-bar');
+      bar.hidden = false;
+      bar.innerHTML = r.warnings.map(w => `<div class="warn-line"><span class="warn-key">${escapeHtml(w.field)}</span>${escapeHtml(w.message)}</div>`).join('');
     }
-    if (!r.incidents || !r.incidents.length) {
-      feed.innerHTML = '<div class="dim">// no incidents yet. Trigger one through the edge, e.g. /status/500</div>';
-      return;
+    const appliedEntries = Object.entries(r.applied || {});
+    const failed = appliedEntries.filter(([, v]) => !v.ok);
+    if (failed.length) {
+      status.textContent = `saved, apply failed: ${failed.map(([k, v]) => `${k}: ${v.error || v.status || 'error'}`).join('; ')}`;
+      status.className = 'save-status bad';
+    } else {
+      status.textContent = 'saved ✓';
+      status.className = 'save-status ok';
     }
-    // cheap signature so we don't rebuild DOM (and lose selection/diffs) every 4s
-    const sig = r.incidents.map(x => (x.incident?.id || '') + ':' + (x.status || '')).join('|');
-    if (sig === lastIncidentSig) return;
-    lastIncidentSig = sig;
-    feed.innerHTML = r.incidents.map(rec => {
-      const inc = rec.incident || {}, a = rec.analysis;
-      const when = fmtTime(inc.detectedAt);
-      if (!a) {
-        return `<div class="inc"><div class="inc-h"><span>${escapeHtml(inc.method)} ${escapeHtml(inc.path)} → ${escapeHtml(inc.statusCode)}</span><span class="t-wake">${escapeHtml((rec.status || 'investigating').toUpperCase())}</span></div>
-          <div class="dim" style="margin-top:8px">detected ${escapeHtml(when)} — ${escapeHtml(inc.reason)}</div></div>`;
-      }
-      const sev = (a.severity === 'critical' || a.severity === 'high') ? 'sev-high' : '';
-      const deps = (a.dependencyFindings || []).map(d => `<span class="chip">${escapeHtml(d.service)}: ${escapeHtml(d.status)}</span>`).join('');
-      const fixes = (a.suggestedFixes || []).map(f => `<div class="fix">
-        <div class="inc-h" style="border:0;padding:0"><b>${escapeHtml(f.title)}</b><span class="chip">${escapeHtml(f.kind)}${f.file ? ' · ' + escapeHtml(f.file) : ''}</span></div>
-        <p class="dim" style="margin-top:4px">${escapeHtml(f.description)}</p>${formatDiff(f.diff)}</div>`).join('');
-      return `<div class="inc">
-        <div class="inc-h"><span>${escapeHtml(inc.method)} ${escapeHtml(inc.path)} → ${escapeHtml(inc.statusCode)} <span class="dim">(${Math.round(inc.durationMs || 0)}ms)</span></span>
-          <span><span class="chip ${sev}">${escapeHtml(a.severity)}</span><span class="chip">${Math.round((a.confidence || 0) * 100)}% confidence</span>${a.escalate ? '<span class="chip esc">Escalated</span>' : ''}</span></div>
-        <div style="margin-top:10px">${escapeHtml(a.summary)}</div>
-        <div class="dim" style="margin-top:4px">Root cause: ${escapeHtml(a.rootCause?.summary)}</div>
-        ${a.reasoning ? `<div class="dim" style="margin-top:4px">${escapeHtml(a.reasoning)}</div>` : ''}
-        ${a.escalationReason ? `<div class="t-wake" style="margin-top:4px">${escapeHtml(a.escalationReason)}</div>` : ''}
-        ${deps ? `<div style="margin-top:10px">${deps}</div>` : ''}${fixes}</div>`;
-    }).join('');
+    dirty = false;
+    // refresh the requests tab health dot
+    const s = await api('/api/state');
+    refreshHealth(s.services);
   } catch (e) {
-    feedFailures = Math.min(feedFailures + 1, 6);
-    clearInterval(feedTimer); feedTimer = null;
-    const delay = Math.min(4000 * Math.pow(2, feedFailures), 60000);
-    feedTimer = setTimeout(() => { feedTimer = null; refreshIncidents().then(scheduleFeed); }, delay);
+    status.textContent = 'save failed: ' + e.message;
+    status.className = 'save-status bad';
+  } finally {
+    btn.disabled = false;
   }
-}
-function scheduleFeed() {
-  if (!feedTimer) feedTimer = setInterval(refreshIncidents, 4000);
-}
-
-$('btn-start').addEventListener('click', async () => {
-  const btn = $('btn-start'), s = $('status-monitor');
-  btn.disabled = true; s.textContent = '> starting…';
-  try {
-    await pushSafety();
-    await api('/api/monitoring/start', {});
-    btn.textContent = 'Monitoring active'; setStatus(s, '> [OK] AGENT WATCHING.', true);
-    await refreshIncidents();
-    if (!feedTimer) feedTimer = setInterval(refreshIncidents, 4000);
-  } catch (e) { s.textContent = '> [ERROR] ' + e.message; btn.disabled = false; }
 });
 
+/* ─── boot ────────────────────────────────────────────────── */
 document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    const { state, services } = await api('/api/state');
-    refreshHealth(services);
-    if (state.gateway?.targetUrl) $('gateway-target').value = state.gateway.targetUrl;
-    if (state.gateway?.port) $('gateway-port').value = state.gateway.port;
-    if (state.gateway?.lastCheck) {
-      const lc = state.gateway.lastCheck;
-      setStatus($('status-gateway-badge'), badge(lc), Boolean(lc.reachable));
-      setDot(1, lc.reachable ? 'ok' : 'bad');
-    }
-    if (state.external?.authEndpoint) $('auth-endpoint').value = state.external.authEndpoint;
-    if (state.external?.databaseEndpoint) $('db-endpoint').value = state.external.databaseEndpoint;
-    if (state.external?.lastTest) {
-      const lt = state.external.lastTest;
-      const allOk = lt.auth?.reachable && lt.database?.reachable;
-      setDot(2, allOk ? 'ok' : (lt.reachable > 0 ? 'warn' : 'bad'));
-    }
-    if (state.codebase?.repoUrl) $('repo-url').value = state.codebase.repoUrl;
-    if (state.codebase?.commits?.length) { renderCommits(state.codebase.commits); setDot(3, 'ok'); }
-    if (state.codebase?.fullName) setDot(3, 'ok');
-    if (state.safety) {
-      $('toggle-dryrun').setAttribute('aria-checked', String(Boolean(state.safety.dryRun)));
-      $('toggle-rollback').setAttribute('aria-checked', String(Boolean(state.safety.autoRollback)));
-      $('escalation-threshold').value = String(Math.round(Number(state.safety.escalationThreshold ?? 0.8) * 100));
-    }
-    if (state.monitoring?.active) {
-      $('btn-start').textContent = 'Monitoring active';
-      setStatus($('status-monitor'), '> [OK] AGENT WATCHING.', true);
-      refreshIncidents();
-      feedTimer = setInterval(refreshIncidents, 4000);
-    } else {
-      setStatus($('status-monitor'), '// monitoring inactive', false);
-    }
-    // refresh health every 30s so the sidebar pulse tracks reality
-    setInterval(() => refreshHealth().catch(() => {}), 30000);
-  } catch (e) { /* backend not reachable or not authed; api() handles 401 */ }
+  loadState();
+  fetchLogs();
+  restartFeed(4000);
+  setInterval(() => refreshHealth().catch(() => {}), 30000);
 });
 </script>
 </body>
