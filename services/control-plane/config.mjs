@@ -19,6 +19,8 @@ export const config = {
   DATA_DIR: str(env.DATA_DIR, undefined),
   REQUEST_TIMEOUT_MS: num(env.REQUEST_TIMEOUT_MS, 6000),
   GITHUB_API_BASE: str(env.GITHUB_API_BASE, "https://api.github.com"),
+	CONTROL_PLANE_PASSWORD: str(env.CONTROL_PLANE_PASSWORD, ""),
+
   // Downstream services the control plane configures.
   MIDDLEWARE_URL: str(env.MIDDLEWARE_URL, "http://localhost:8080"),
   MIDDLEWARE_ADMIN_TOKEN: str(env.MIDDLEWARE_ADMIN_TOKEN, "development-only-change-this-admin-token-123456"),

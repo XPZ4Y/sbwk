@@ -1,0 +1,5 @@
+*.mjs
+*.Dockerfile
+package.json
+public/*.html
+test/*.mjs

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sleepy Bot · Sign in</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#f4f5f9;--panel:#fff;--line:#dfe3ee;--tx:#14213d;--mu:#5b6785;--bad:#c2410c}
+  *{box-sizing:border-box;margin:0}
+  body{min-height:100vh;display:grid;place-items:center;background:var(--bg);color:var(--tx);
+    font:400 15px/1.7 'DM Sans',system-ui,sans-serif;
+    background-image:linear-gradient(var(--line) 1px,transparent 1px),linear-gradient(90deg,var(--line) 1px,transparent 1px);
+    background-size:48px 48px}
+  .card{width:min(400px,90vw);background:var(--panel);border:1px solid var(--line);border-radius:18px;
+    padding:40px;box-shadow:0 18px 50px -28px rgba(20,33,61,.28)}
+  .brand{display:flex;align-items:center;gap:12px;font:700 17px 'DM Sans';margin-bottom:28px}
+  .moon{width:26px;height:26px;border-radius:50%;
+    background:radial-gradient(circle at 70% 30%,transparent 52%,var(--tx) 54%);
+    box-shadow:0 0 18px rgba(20,33,61,.35);transform:rotate(-20deg)}
+  h1{font:700 22px 'DM Sans';letter-spacing:-.02em;margin-bottom:6px}
+  p.sub{color:var(--mu);font-size:13px;margin-bottom:24px}
+  label{display:block;font-size:12px;color:var(--mu);margin-bottom:8px}
+  input{width:100%;padding:13px 16px;border-radius:10px;border:1px solid var(--line);
+    background:#f9fafc;font:500 15px 'DM Sans';color:var(--tx)}
+  input:focus{outline:none;border-color:var(--tx);box-shadow:0 0 0 3px rgba(20,33,61,.12)}
+  button{width:100%;margin-top:20px;padding:13px;border-radius:10px;border:1px solid var(--tx);
+    background:var(--tx);color:#fff;font:700 14px 'DM Sans';cursor:pointer}
+  button:hover{box-shadow:0 0 24px rgba(20,33,61,.3)}
+  button:disabled{opacity:.5;cursor:wait}
+  .err{color:var(--bad);font:400 12.5px 'JetBrains Mono';margin-top:14px;min-height:1.2em}
+  .foot{margin-top:24px;font-size:11px;color:var(--mu);text-align:center}
+</style>
+</head>
+<body>
+<form class="card" id="login-form">
+  <div class="brand"><span class="moon"></span>Sleepy Bot</div>
+  <h1>Sign in</h1>
+  <p class="sub">Control plane access requires the admin password.</p>
+  <label for="password">Admin password</label>
+  <input id="password" name="password" type="password" autocomplete="current-password" autofocus required>
+  <button type="submit" id="submit">Continue</button>
+  <div class="err" id="error" role="alert"></div>
+  <div class="foot">Session expires after 8 hours.</div>
+</form>
+<script>
+  const form = document.getElementById('login-form');
+  const btn = document.getElementById('submit');
+  const err = document.getElementById('error');
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    btn.disabled = true; err.textContent = '';
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: document.getElementById('password').value }),
+      });
+      if (res.ok) { location.href = '/'; return; }
+      const data = await res.json().catch(() => ({}));
+      err.textContent = data.error || 'sign-in failed';
+    } catch { err.textContent = 'network error'; }
+    finally { btn.disabled = false; }
+  });
+</script>
+</body>
+</html>

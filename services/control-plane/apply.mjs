@@ -1,14 +1,23 @@
-// Push onboarding configuration to the running services (real, over HTTP).
+// Push configuration to the running services over HTTP. Every call returns a
+// result object and never throws, so one failing service cannot break a save.
 import { config } from "./config.mjs";
+import { buildConnectorSlots } from "./external.mjs";
 
 async function post(url, token, body) {
   const controller = new AbortController();
   const t = setTimeout(() => controller.abort(), config.REQUEST_TIMEOUT_MS);
   try {
-    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` }, body: JSON.stringify(body), signal: controller.signal });
-    return { ok: res.ok, status: res.status };
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+      signal: controller.signal,
+      redirect: "manual"
+    });
+    await res.body?.cancel().catch(() => {});
+    return res.ok ? { ok: true, status: res.status } : { ok: false, status: res.status, error: `HTTP ${res.status}` };
   } catch (e) {
-    return { ok: false, error: e.name === "AbortError" ? "timeout" : (e.message || "unreachable") };
+    return { ok: false, error: e.name === "AbortError" ? "timeout" : (e.cause?.code || e.message || "unreachable") };
   } finally { clearTimeout(t); }
 }
 
@@ -17,19 +26,11 @@ export function applyGateway(state) {
 }
 
 export function applyExternal(state) {
-  // Map HTTP endpoints to the connector's live integration. Non-HTTP (e.g. mongodb+srv)
-  // is stored but not pushed — the connector's live diagnostics are HTTP-based.
-  const services = {};
-  const map = (endpoint) => {
-    try { const u = new URL(endpoint); if (u.protocol === "http:" || u.protocol === "https:") return { baseUrl: u.origin, paths: { logs: u.pathname || "/logs" } }; } catch { /* ignore */ }
-    return null;
-  };
-  const auth = map(state.external.authEndpoint);
-  if (auth) services.auth = { ...auth, token: state.external.apiKey || undefined };
-  const db = map(state.external.databaseEndpoint);
-  if (db) services.database = db;
-  if (!Object.keys(services).length) return Promise.resolve({ ok: true, skipped: "no HTTP endpoints to push (stored for future driver-based integration)" });
-  return post(`${config.CONNECTOR_URL}/connector/config`, config.CONNECTOR_API_TOKEN, { services });
+  const { slots, skipped } = buildConnectorSlots(state.external.services);
+  // Always push, even an empty map, so removing a service also clears it at the connector.
+  // ASSUMPTION to verify: the connector treats this as a full replace, not a merge.
+  return post(`${config.CONNECTOR_URL}/connector/config`, config.CONNECTOR_API_TOKEN, { services: slots })
+    .then(r => (skipped.length ? { ...r, skipped } : r));
 }
 
 export function applyCodebase(state) {
@@ -49,13 +50,20 @@ export function applyMonitoring(active) {
 }
 
 export async function serviceHealth() {
-  const targets = { middleware: `${config.MIDDLEWARE_URL}/health`, agentCore: `${config.AGENT_CORE_URL}/health`, connector: `${config.CONNECTOR_URL}/health` };
+  const targets = {
+    middleware: `${config.MIDDLEWARE_URL}/health`,
+    agentCore: `${config.AGENT_CORE_URL}/health`,
+    connector: `${config.CONNECTOR_URL}/health`
+  };
   const out = {};
   await Promise.all(Object.entries(targets).map(async ([name, url]) => {
     const controller = new AbortController();
     const t = setTimeout(() => controller.abort(), 3000);
-    try { const res = await fetch(url, { signal: controller.signal }); out[name] = res.ok ? "healthy" : `http ${res.status}`; }
-    catch { out[name] = "unreachable"; }
+    try {
+      const res = await fetch(url, { signal: controller.signal, redirect: "manual" });
+      await res.body?.cancel().catch(() => {});
+      out[name] = res.ok ? "healthy" : `http ${res.status}`;
+    } catch { out[name] = "unreachable"; }
     finally { clearTimeout(t); }
   }));
   return out;
