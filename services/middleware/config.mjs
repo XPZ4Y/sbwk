@@ -47,7 +47,19 @@ export const config = {
   BATCH_TIMEOUT_MS: num(env.BATCH_TIMEOUT_MS, 25000),
   // If the batch gate itself is unreachable: still run a real agent ("investigate")
   // or accept the miss ("skip"). Default keeps signal.
-  LIQUID_BATCH_FALLBACK: normalizeBatchFallback(env.LIQUID_BATCH_FALLBACK)
+  LIQUID_BATCH_FALLBACK: normalizeBatchFallback(env.LIQUID_BATCH_FALLBACK),
+
+  // --- Dumb activation rules (see activation.mjs) --------------------------
+  // 1. IMPULSE: let ONE severe bad request skip the "wait for a pattern" rule —
+  //    a 5xx, an unreachable/timed-out upstream, a repeated failure on the same
+  //    path, or a response slower than BATCH_IMPULSE_SEVERE_MS.
+  // 2. TRIVIAL: known noise (scanner paths, favicon probes, client auth
+  //    mistakes) is answered locally instead of spending a Liquid call — but
+  //    only if EVERY incident in the batch is trivial. Off by default so the
+  //    cost model stays explicit.
+  BATCH_IMPULSE: bool(env.BATCH_IMPULSE, true),
+  BATCH_IMPULSE_SEVERE_MS: num(env.BATCH_IMPULSE_SEVERE_MS, 5000),
+  BATCH_SKIP_TRIVIAL: bool(env.BATCH_SKIP_TRIVIAL, false)
 };
 
 if (config.NODE_ENV === "production") {

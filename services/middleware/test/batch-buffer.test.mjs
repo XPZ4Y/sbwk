@@ -32,6 +32,10 @@ function makeBuffer(over = {}) {
     now: () => t,
     setIntervalImpl: () => null,
     clearIntervalImpl: () => {},
+    // Threshold tests isolate the count rule; the impulse/trivial rules have
+    // their own tests at the bottom of this file.
+    impulse: false,
+    skipTrivial: false,
     ...over
   });
   return { buf, flushed, advance: ms => { t += ms; }, now: () => t };
@@ -251,4 +255,85 @@ test("buildLogDigest survives empty and malformed input", () => {
   assert.equal(describeDigest(empty), "0 bad requests (none); top paths: none");
   assert.doesNotThrow(() => buildLogDigest(null));
   assert.doesNotThrow(() => buildLogDigest([null, undefined, 42]));
+});
+
+/* ── dumb activation: impulse + trivial ──────────────────────────────────── */
+
+test("BATCH_IMPULSE: one 5xx flushes immediately, below BATCH_MIN_BAD", async () => {
+  const { buf, flushed } = makeBuffer({ minBad: 10, impulse: true });
+  const { flush } = buf.add(incident({ statusCode: 500 }));
+  assert.ok(flush, "a 500 should self-activate the gate");
+  await flush;
+  assert.equal(flushed.length, 1);
+  assert.equal(flushed[0].meta.reason, "impulse");
+  assert.equal(flushed[0].incidents.length, 1);
+  assert.equal(buf.stats().activation.impulses, 1);
+  assert.match(buf.stats().activation.lastImpulse.reasons.join(" "), /HTTP 500/);
+});
+
+test("BATCH_IMPULSE: a quiet 404 is still buffered, not flushed", async () => {
+  const { buf, flushed } = makeBuffer({ minBad: 10, impulse: true });
+  const { flush } = buf.add(incident({ statusCode: 404, category: "client_error", path: "/checkout" }));
+  assert.equal(flush, null);
+  assert.equal(flushed.length, 0);
+  assert.equal(buf.stats().buffered, 1);
+  assert.equal(buf.stats().activation.impulses, 0);
+});
+
+test("BATCH_IMPULSE off: the same 5xx waits for the pattern again", async () => {
+  const { buf, flushed } = makeBuffer({ minBad: 3, impulse: false });
+  assert.equal(buf.add(incident({ statusCode: 500 })).flush, null);
+  assert.equal(flushed.length, 0);
+  assert.equal(buf.stats().activation.impulse, false);
+});
+
+test("BATCH_IMPULSE: an unreachable upstream self-activates", async () => {
+  const { buf, flushed } = makeBuffer({ minBad: 10, impulse: true });
+  await buf.add(incident({ statusCode: 502, category: "upstream_unreachable" }));
+  assert.equal(flushed[0].meta.reason, "impulse");
+});
+
+test("BATCH_IMPULSE: scanner noise does not self-activate even when it repeats", async () => {
+  const { buf, flushed } = makeBuffer({ minBad: 10, windowMs: 600000, impulse: true });
+  for (let i = 0; i < 5; i++) buf.add(incident({ path: "/.env", statusCode: 404, category: "client_error" }));
+  assert.equal(flushed.length, 0);
+  assert.equal(buf.stats().activation.impulses, 0);
+});
+
+test("BATCH_SKIP_TRIVIAL: pure-noise batches are marked trivial for the gate", async () => {
+  const { buf, flushed } = makeBuffer({ minBad: 2, impulse: false, skipTrivial: true });
+  buf.add(incident({ path: "/.env", statusCode: 404, category: "client_error" }));
+  const { flush } = buf.add(incident({ path: "/wp-login.php", statusCode: 404, category: "client_error" }));
+  await flush;
+  assert.equal(flushed.length, 1);
+  assert.equal(flushed[0].meta.trivial, true);
+  assert.ok(flushed[0].meta.trivialCode);
+  assert.equal(buf.stats().activation.trivialFlushes, 1);
+});
+
+test("BATCH_SKIP_TRIVIAL: one real incident in the batch disables the shortcut", async () => {
+  const { buf, flushed } = makeBuffer({ minBad: 2, impulse: false, skipTrivial: true });
+  buf.add(incident({ path: "/.env", statusCode: 404, category: "client_error" }));
+  const { flush } = buf.add(incident({ path: "/checkout", statusCode: 500 }));
+  await flush;
+  assert.equal(flushed.length, 1);
+  assert.equal(flushed[0].meta.trivial, undefined);
+  assert.equal(buf.stats().activation.trivialFlushes, 0);
+});
+
+test("BATCH_SKIP_TRIVIAL is off by default: the batch is sent as-is", async () => {
+  const { buf, flushed } = makeBuffer({ minBad: 2, impulse: false });
+  buf.add(incident({ path: "/.env", statusCode: 404, category: "client_error" }));
+  await buf.add(incident({ path: "/wp-login.php", statusCode: 404, category: "client_error" })).flush;
+  assert.equal(flushed[0].meta.trivial, undefined);
+});
+
+test("stats() reports the activation configuration", () => {
+  const { buf } = makeBuffer({ impulse: true, impulseSevereMs: 4000, skipTrivial: true });
+  const a = buf.stats().activation;
+  assert.equal(a.impulse, true);
+  assert.equal(a.impulseSevereMs, 4000);
+  assert.equal(a.skipTrivial, true);
+  assert.equal(a.impulses, 0);
+  assert.equal(a.lastImpulse, null);
 });

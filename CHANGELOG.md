@@ -4,6 +4,58 @@ All notable changes to SBWK (Sleepy Bot with Keys). Newest first.
 
 ---
 
+## v2.2.1 — dumb activation function for the batch gate
+
+**Theme:** the gate's wake condition was one number, which meant five 404s woke it
+exactly as readily as the upstream dying — and it never said "this is obviously
+not something a model can help with". Two dumb, predictable rules fix both ends.
+
+### 1. IMPULSE — one severe event skips the pattern rule (`services/middleware/activation.mjs` — new)
+
+`BATCH_IMPULSE=true` (default) flushes a single bad request immediately instead
+of waiting for `BATCH_MIN_BAD` when it is:
+
+| signal | why |
+| --- | --- |
+| 5xx | a server error has a plausible code cause, no need to aggregate |
+| `upstream_unreachable` / `timeout` | the most actionable class there is |
+| repeat failure on the same path | recurrence already means "pattern" |
+| `durationMs >= BATCH_IMPULSE_SEVERE_MS` (default 5000) | a very slow response |
+
+Scanner noise never self-activates, however often it repeats. Set
+`BATCH_IMPULSE=false` to make `BATCH_MIN_BAD` the only way in.
+
+### 2. TRIVIAL — known noise is answered locally (`BATCH_SKIP_TRIVIAL`, default off)
+
+When **every** incident in a batch is recognised noise — scanner paths
+(`/.env`, `/wp-login.php`, `/phpmyadmin`…), `favicon`/`robots` probes, plain
+`401`/`403` client auth mistakes — the batch is marked `trivial` and Agent Core
+answers it with `reason: "known_noise"` **without calling Liquid at all**. 5xx and
+upstream failures are never trivial, and one real incident disables the shortcut
+for the whole batch. Off by default: it filters traffic, so opt in knowingly.
+
+### 3. Reporting
+
+* `/_sbwk/status` → `batch.activation { impulse, impulseSevereMs, skipTrivial,
+  impulses, trivialFlushes, lastImpulse }` (additive).
+* Flushes carry `reason: "impulse"`; noise flushes carry
+  `trivial/trivialReason/trivialCode` in the payload, and the resulting analyses
+  get `batch.reason: "known_noise"` with no warning attached (noise is not an
+  error).
+* Log events: `batch_flush` now includes `trivial`, `impulse` shows up as the
+  flush reason, `batch_skipped` reports the noise reason.
+
+### 4. Tests
+
+* `services/middleware/test/activation.test.mjs` (17) plus 10 new buffer tests
+  and 2 new gate tests (`known_noise` short-circuit, trusted even with
+  `LIQUID_BATCH_FALLBACK=skip`).
+* `npm run demo:batch` rewritten into 7 isolated scenarios (immediate mode,
+  count rule, impulse rule, trivial rule, Liquid down, agent-core down) — all 35
+  checks pass against real services.
+
+---
+
 ## v2.2.0 — lazy two-stage gate (opt-in batch detection)
 
 **Theme:** every bad request is cheaply buffered; only a *pattern* of bad

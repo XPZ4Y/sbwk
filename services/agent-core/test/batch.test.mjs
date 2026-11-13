@@ -318,7 +318,7 @@ test("MONITORING_ACTIVE=false records batches but never calls Liquid", async () 
 
 test("settings() and recent() describe the gate for GET /incidents/batch", async () => {
   const { gate } = makeGate({ triage: triageWith({ looks_anomalous: { noul: 0.02 } }) });
-  assert.deepEqual(gate.settings(), { threshold: 0.6, fallback: "investigate", maxIncidents: 50, questions: ["looks_anomalous"] });
+  assert.deepEqual(gate.settings(), { threshold: 0.6, fallback: "investigate", maxIncidents: 50, questions: ["looks_anomalous"], honorsKnownNoise: true });
   assert.deepEqual(gate.recent(), []);
   await gate.runBatch(batchOf(1));
   const [entry] = gate.recent();
@@ -334,4 +334,46 @@ test("skippedAnalysis never claims a diagnosis and never escalates", () => {
   assert.equal(a.severity, "low");
   assert.equal(a.batch.batchId, "b1");
   assert.match(a.reasoning, /gated before any LLM call/);
+});
+
+/* ── known noise: the middleware's dumb activation says "don't pay for this" ── */
+
+test("a batch marked trivial by the middleware never calls Liquid", async () => {
+  const store = new IncidentStore(200);
+  let liquidCalls = 0;
+  const gate = createBatchGate({
+    store,
+    investigator: { runInvestigation: async () => { throw new Error("must not run"); } },
+    config: { LIQUID_BATCH_FALLBACK: "investigate", MONITORING_ACTIVE: true },
+    liquidGate: async () => { liquidCalls += 1; return triageWith({ looks_anomalous: { noul: 0.99 } }); }
+  });
+  const batch = {
+    ...batchOf(2),
+    batch: { reason: "threshold", minBad: 2, trivial: true, trivialReason: "scanner/noise path (no application route)", trivialCode: "scanner_path" }
+  };
+  const result = await gate.runBatch(batch);
+  assert.equal(liquidCalls, 0, "no Liquid call for known noise");
+  assert.equal(result.action, "skip");
+  assert.equal(result.reason, "known_noise");
+  assert.equal(result.noiseCode, "scanner_path");
+  assert.equal(result.fallback, false);
+  const rec = store.get(batch.incidents[0].id);
+  assert.equal(rec.status, "skipped");
+  assert.match(rec.analysis.summary, /known noise/);
+  assert.match(rec.analysis.rootCause.summary, /no AI was called/);
+  assert.equal(rec.analysis.warnings.length, 0, "known noise is not a warning");
+});
+
+test("known noise is trusted even when LIQUID_BATCH_FALLBACK=skip", async () => {
+  const store = new IncidentStore(200);
+  const gate = createBatchGate({
+    store,
+    investigator: { runInvestigation: async () => { throw new Error("must not run"); } },
+    config: { LIQUID_BATCH_FALLBACK: "skip", MONITORING_ACTIVE: true },
+    liquidGate: async () => { throw new Error("must not be called"); }
+  });
+  const result = await gate.runBatch({ ...batchOf(1), batch: { trivial: true, trivialCode: "bot_or_asset", trivialReason: "favicon/robots/asset probe" } });
+  assert.equal(result.action, "skip");
+  assert.equal(result.reason, "known_noise");
+  assert.equal(result.noiseCode, "bot_or_asset");
 });

@@ -156,14 +156,18 @@ export function validateBatchIncident(b) {
 export function skippedAnalysis({ incident, digest = {}, gate = {}, batchId }) {
   const evidence = describeDigest(digest);
   const probability = gate.anomalyProbability;
-  const why = gate.fallback
-    ? `Liquid AI could not review this batch (${gate.reason}) and LIQUID_BATCH_FALLBACK=skip, so no investigation ran.`
-    : `Liquid AI reviewed the batch and judged it ordinary background noise (anomaly probability ${probability}), so no investigation ran.`;
+  const why = gate.reason === "known_noise"
+    ? `The batch is recognised background noise (${gate.noiseReason || "no actionable incident"}), so no AI was called at all.`
+    : gate.reason === "monitoring_inactive"
+      ? "Monitoring is paused, so the batch was recorded without any AI call."
+      : gate.fallback
+        ? `Liquid AI could not review this batch (${gate.reason}) and LIQUID_BATCH_FALLBACK=skip, so no investigation ran.`
+        : `Liquid AI reviewed the batch and judged it ordinary background noise (anomaly probability ${probability}), so no investigation ran.`;
   return {
     incidentId: incident.id,
     mode: "skipped",
     severity: "low",
-    summary: `Batched incident not investigated — Liquid says the pattern is normal. (${evidence})`,
+    summary: `Batched incident not investigated — ${gate.reason === "known_noise" ? "the batch is known noise" : "Liquid says the pattern is normal"}. (${evidence})`,
     rootCause: { summary: why, confidence: 0.1 },
     suggestedFixes: [
       {
@@ -228,6 +232,20 @@ export function createBatchGate(deps = {}) {
   };
 
   async function runGate(digest, meta) {
+    // The middleware's dumb activation function already recognised pure noise
+    // (BATCH_SKIP_TRIVIAL). Trust it: no Liquid call, no Groq call, no cost.
+    if (meta.trivial === true) {
+      return {
+        action: BATCH_ACTIONS.SKIP,
+        reason: "known_noise",
+        noiseReason: meta.trivialReason || "recognised background noise",
+        noiseCode: meta.trivialCode || null,
+        anomalyProbability: 0,
+        liquidStatus: "not_called",
+        fallback: false,
+        threshold
+      };
+    }
     // Respect the global monitoring switch (onboarding "start monitoring").
     if (config.MONITORING_ACTIVE === false) {
       return { action: BATCH_ACTIONS.SKIP, reason: "monitoring_inactive", anomalyProbability: null, liquidStatus: "not_called", fallback: false, threshold };
@@ -313,6 +331,7 @@ export function createBatchGate(deps = {}) {
       batchId,
       action: gate.action,
       reason: gate.reason,
+      ...(gate.noiseCode ? { noiseCode: gate.noiseCode, noiseReason: gate.noiseReason } : {}),
       fallback: gate.fallback,
       anomalyProbability: gate.anomalyProbability,
       threshold,
@@ -325,7 +344,7 @@ export function createBatchGate(deps = {}) {
     if (gate.action === BATCH_ACTIONS.SKIP) {
       // Global switch off: record the incidents, but do not spend Liquid either.
       const zero = { action: BATCH_ACTIONS.SKIP, reason: "monitoring_inactive", anomalyProbability: gate.anomalyProbability, liquidStatus: gate.liquidStatus, threshold, model: gate.model, latencyMs: Date.now() - started };
-      base.skipped = skipAll(incidents, { digest, gate: config.MONITORING_ACTIVE === false ? zero : { ...gate, latencyMs: Date.now() - started }, batchId });
+      base.skipped = skipAll(incidents, { digest, gate: gate.noiseCode ? { ...gate, latencyMs: Date.now() - started } : config.MONITORING_ACTIVE === false ? zero : { ...gate, latencyMs: Date.now() - started }, batchId });
       base.durationMs = Date.now() - started;
       return remember(base);
     }
@@ -342,6 +361,6 @@ export function createBatchGate(deps = {}) {
     process,
     runBatch: (batch, opts) => process(batch, { ...opts, awaitInvestigations: true }),
     recent: () => recent.slice().reverse(),
-    settings: () => ({ threshold, fallback, maxIncidents: limit, questions: Object.keys(BATCH_QUESTIONS) })
+    settings: () => ({ threshold, fallback, maxIncidents: limit, questions: Object.keys(BATCH_QUESTIONS), honorsKnownNoise: true })
   };
 }
